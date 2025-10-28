@@ -1,0 +1,52 @@
+text,label
+"Chest pain with shortness of breath and sweating",Cardiology
+"Crushing chest pain radiating to left arm",Cardiology
+"Heart palpitations and irregular heartbeat",Cardiology
+"High blood pressure and dizziness",Cardiology
+"Severe headache with vision changes",Neurology
+"Migraine with nausea and light sensitivity",Neurology
+"Numbness and tingling in extremities",Neurology
+"Seizures and loss of consciousness",Neurology
+"Persistent cough with fever",Pulmonology
+"Difficulty breathing and wheezing",Pulmonology
+"Chronic cough with blood in sputum",Pulmonology
+"Shortness of breath on exertion",Pulmonology
+"Severe abdominal pain with vomiting",Gastroenterology
+"Chronic diarrhea and weight loss",Gastroenterology
+"Blood in stool and stomach cramps",Gastroenterology
+"Acid reflux and difficulty swallowing",Gastroenterology
+"Ear pain with hearing loss",ENT
+"Chronic sinus infection and nasal congestion",ENT
+"Sore throat with difficulty swallowing",ENT
+"Ringing in ears and vertigo",ENT
+"Joint pain and stiffness in morning",Rheumatology
+"Swollen joints with redness",Rheumatology
+"Muscle weakness and fatigue",Rheumatology
+"Back pain radiating down leg",Orthopedics
+"Knee pain with swelling after injury",Orthopedics
+"Shoulder pain limiting movement",Orthopedics
+"Ankle sprain with bruising",Orthopedics
+"Skin rash with itching",Dermatology
+"Acne and facial breakouts",Dermatology
+"Hair loss and scalp irritation",Dermatology
+"Mole changes in size and color",Dermatology
+"Frequent urination with burning",Urology
+"Blood in urine and flank pain",Urology
+"Erectile dysfunction",Urology
+"Kidney stones with severe pain",Urology
+"Irregular menstrual periods",Gynecology
+"Pelvic pain and heavy bleeding",Gynecology
+"Pregnancy symptoms and morning sickness",Gynecology
+"Menopausal hot flashes",Gynecology
+"Depression and loss of interest",Psychiatry
+"Anxiety and panic attacks",Psychiatry
+"Insomnia and difficulty sleeping",Psychiatry
+"Mood swings and irritability",Psychiatry
+"Blurred vision and eye pain",Ophthalmology
+"Double vision and floaters",Ophthalmology
+"Red itchy eyes with discharge",Ophthalmology
+"Sudden vision loss",Ophthalmology
+"Fever with general malaise",General Physician
+"Common cold symptoms",General Physician
+"Annual checkup needed",General Physician
+"Fatigue and general weakness",General Physician
