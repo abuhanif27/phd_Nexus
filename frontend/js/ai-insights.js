@@ -473,15 +473,15 @@ if (checkAuth()) {
             <p style="font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary);">Example symptoms:</p>
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                 <button type="button" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;" 
-                        onclick="document.getElementById('symptomsInput').value = 'severe chest pain, shortness of breath, rapid heartbeat'">
+                        onclick="document.getElementById('symptoms').value = 'severe chest pain, shortness of breath, rapid heartbeat'">
                     Chest pain example
                 </button>
                 <button type="button" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;"
-                        onclick="document.getElementById('symptomsInput').value = 'skin rash, itching, redness on arms and legs'">
+                        onclick="document.getElementById('symptoms').value = 'skin rash, itching, redness on arms and legs'">
                     Skin issues example
                 </button>
                 <button type="button" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;"
-                        onclick="document.getElementById('symptomsInput').value = 'persistent headache, dizziness, sensitivity to light'">
+                        onclick="document.getElementById('symptoms').value = 'persistent headache, dizziness, sensitivity to light'">
                     Neurological example
                 </button>
             </div>
@@ -495,4 +495,93 @@ if (checkAuth()) {
       );
     }
   });
+}
+
+// Generate Summary Function
+async function generateSummary() {
+  const btn = document.getElementById("summaryBtn");
+  const spinner = document.getElementById("summarySpinner");
+  const text = document.getElementById("summaryBtnText");
+  const alertDiv = document.getElementById("summaryAlert");
+  const alertText = document.getElementById("summaryAlertText");
+  const summarySection = document.getElementById("summarySection");
+
+  // Hide previous results and errors
+  alertDiv.classList.add("hidden");
+  summarySection.classList.add("hidden");
+
+  // Show loading state
+  btn.disabled = true;
+  spinner.classList.remove("hidden");
+  text.classList.add("hidden");
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/ai/patient-summary/`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        patient_id: 1, // This should be the logged-in user's patient ID
+      }),
+    });
+
+    if (response.status === 401) {
+      logout();
+      return;
+    }
+
+    const data = await response.json();
+
+    if (response.ok) {
+      displaySummaryResults(data);
+    } else {
+      alertText.textContent =
+        data.detail || data.error || "Failed to generate summary";
+      alertDiv.classList.remove("hidden");
+    }
+  } catch (error) {
+    console.error("Summary generation error:", error);
+    alertText.textContent =
+      "Network error. Please ensure the backend is running.";
+    alertDiv.classList.remove("hidden");
+  } finally {
+    // Reset button state
+    btn.disabled = false;
+    spinner.classList.add("hidden");
+    text.classList.remove("hidden");
+  }
+}
+
+// Display summary results
+function displaySummaryResults(data) {
+  const summarySection = document.getElementById("summarySection");
+  const summaryContent = document.getElementById("summaryContent");
+
+  if (data.bullets && data.bullets.length > 0) {
+    const bulletsHtml = data.bullets
+      .map((bullet) => `<li style="margin-bottom: 0.5rem;">${escapeHtml(bullet)}</li>`)
+      .join("");
+
+    summaryContent.innerHTML = `
+      <h4 style="color: var(--secondary-blue); margin-bottom: 1rem;">Key Medical Points:</h4>
+      <ul style="padding-left: 1.5rem; color: var(--text-primary);">
+        ${bulletsHtml}
+      </ul>
+      ${
+        data.citations && data.citations.length > 0
+          ? `<p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+               Based on ${data.citations.length} medical record(s)
+             </p>`
+          : ""
+      }
+    `;
+  } else {
+    summaryContent.innerHTML = `
+      <p style="color: var(--text-secondary);">
+        No medical records available yet. Once you have lab results, prescriptions, 
+        or encounter notes, the AI will generate a comprehensive summary.
+      </p>
+    `;
+  }
+
+  summarySection.classList.remove("hidden");
 }
