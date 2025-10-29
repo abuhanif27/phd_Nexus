@@ -558,7 +558,10 @@ function displaySummaryResults(data) {
 
   if (data.bullets && data.bullets.length > 0) {
     const bulletsHtml = data.bullets
-      .map((bullet) => `<li style="margin-bottom: 0.5rem;">${escapeHtml(bullet)}</li>`)
+      .map(
+        (bullet) =>
+          `<li style="margin-bottom: 0.5rem;">${escapeHtml(bullet)}</li>`
+      )
       .join("");
 
     summaryContent.innerHTML = `
