@@ -1,6 +1,7 @@
 # ✅ AI Features Now Working - Complete Guide
 
 ## Overview
+
 The AI-powered features are now fully functional with an improved machine learning model trained on 158 medical symptom samples.
 
 ---
@@ -8,17 +9,20 @@ The AI-powered features are now fully functional with an improved machine learni
 ## 🎯 What Was Fixed
 
 ### 1. **Enhanced Training Dataset**
+
 - **Before:** 52 training samples (too small for accurate predictions)
 - **After:** 158 comprehensive training samples covering 13 specialties
 - **Result:** Model accuracy improved from ~50% to **84.4%** on test set
 
 ### 2. **Retrained Specialist Classifier**
+
 - **Model:** Logistic Regression with sentence-transformers embeddings
 - **Embedding Model:** all-MiniLM-L6-v2 (384-dimensional vectors)
 - **Training Accuracy:** 94.4%
 - **Test Accuracy:** 84.4%
 
 ### 3. **Improved Prediction Logic**
+
 - Now shows **top 3 specialist recommendations** with confidence scores
 - Lowered confidence threshold from 60% to 15% for better predictions
 - Returns alternative specialists for second opinions
@@ -50,6 +54,7 @@ The model can predict these 13 specialties:
 **Endpoint:** `POST /api/ai/specialist/`
 
 **Example 1 - Chest Pain:**
+
 ```bash
 curl -X POST http://localhost:8000/api/ai/specialist/ \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -58,6 +63,7 @@ curl -X POST http://localhost:8000/api/ai/specialist/ \
 ```
 
 **Response:**
+
 ```json
 {
   "specialist": "Cardiology",
@@ -76,6 +82,7 @@ curl -X POST http://localhost:8000/api/ai/specialist/ \
 ```
 
 **Example 2 - Neurological:**
+
 ```bash
 curl -X POST http://localhost:8000/api/ai/specialist/ \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -84,6 +91,7 @@ curl -X POST http://localhost:8000/api/ai/specialist/ \
 ```
 
 **Response:**
+
 ```json
 {
   "specialist": "Neurology",
@@ -108,6 +116,7 @@ curl -X POST http://localhost:8000/api/ai/specialist/ \
 **Endpoint:** `POST /api/ai/summary/`
 
 **Example:**
+
 ```bash
 curl -X POST http://localhost:8000/api/ai/summary/ \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -116,6 +125,7 @@ curl -X POST http://localhost:8000/api/ai/summary/ \
 ```
 
 **Response:**
+
 ```json
 {
   "summary": "Patient has been experiencing high blood pressure for 3 months with readings of 150/95. Currently taking lisinopril 10mg daily. Also reports occasional dizziness and headaches, especially in the morning.",
@@ -130,12 +140,8 @@ curl -X POST http://localhost:8000/api/ai/summary/ \
     "DATE": ["3 months"],
     "CARDINAL": ["150/95", "10"]
   },
-  "conditions": [
-    "Family history of cardiovascular disease"
-  ],
-  "medications": [
-    "Currently taking lisinopril 10mg daily"
-  ]
+  "conditions": ["Family history of cardiovascular disease"],
+  "medications": ["Currently taking lisinopril 10mg daily"]
 }
 ```
 
@@ -143,16 +149,16 @@ curl -X POST http://localhost:8000/api/ai/summary/ \
 
 ## 📊 Sample Test Cases with Predictions
 
-| Symptom Description | Predicted Specialist | Confidence | Alternatives |
-|---------------------|---------------------|------------|--------------|
-| "Chest pain and shortness of breath" | Cardiology | 25.7% | Pulmonology, Gastro |
-| "Severe headache with vision changes" | Neurology | 25.1% | Ophthalmology, Gastro |
-| "Itchy skin rash that won't go away" | Dermatology | 49.3% | Ophthalmology, Gynecology |
-| "Knee pain after running" | Orthopedics | 37.1% | Rheumatology, Urology |
-| "Persistent cough with fever" | Pulmonology | High | ENT, Cardiology |
-| "Severe abdominal pain and vomiting" | Gastroenterology | High | General Physician |
-| "Blurred vision and eye pain" | Ophthalmology | High | Neurology |
-| "Feeling sad and can't sleep" | Psychiatry | Medium | Neurology, General |
+| Symptom Description                   | Predicted Specialist | Confidence | Alternatives              |
+| ------------------------------------- | -------------------- | ---------- | ------------------------- |
+| "Chest pain and shortness of breath"  | Cardiology           | 25.7%      | Pulmonology, Gastro       |
+| "Severe headache with vision changes" | Neurology            | 25.1%      | Ophthalmology, Gastro     |
+| "Itchy skin rash that won't go away"  | Dermatology          | 49.3%      | Ophthalmology, Gynecology |
+| "Knee pain after running"             | Orthopedics          | 37.1%      | Rheumatology, Urology     |
+| "Persistent cough with fever"         | Pulmonology          | High       | ENT, Cardiology           |
+| "Severe abdominal pain and vomiting"  | Gastroenterology     | High       | General Physician         |
+| "Blurred vision and eye pain"         | Ophthalmology        | High       | Neurology                 |
+| "Feeling sad and can't sleep"         | Psychiatry           | Medium     | Neurology, General        |
 
 ---
 
@@ -161,12 +167,14 @@ curl -X POST http://localhost:8000/api/ai/summary/ \
 ### How to Use AI Insights Page
 
 1. **Login** to the application
+
    - Email: `patient@example.com`
    - Password: `TestPass123!`
 
 2. **Navigate** to "AI Insights" from the menu
 
 3. **Analyze Symptoms:**
+
    - Enter symptoms in the text box
    - Click "Analyze Symptoms"
    - View recommended specialist with confidence score
@@ -189,16 +197,19 @@ curl -X POST http://localhost:8000/api/ai/summary/ \
 ### Models Used
 
 1. **Sentence Transformer:** `all-MiniLM-L6-v2`
+
    - Purpose: Convert text to 384-dimensional embeddings
    - Speed: Very fast (< 50ms per sentence)
    - Accuracy: Good for semantic similarity
 
 2. **Specialist Classifier:** Logistic Regression
+
    - Input: 384-dimensional embeddings
    - Output: 13 specialist classes with probabilities
    - Training: Multinomial with max_iter=1000
 
 3. **NER (Named Entity Recognition):** spaCy `en_core_web_sm`
+
    - Extracts: Dates, numbers, medical terms
    - Used in: Text summarization
 
@@ -232,6 +243,7 @@ text,label
 ```
 
 **To add more data:**
+
 1. Edit `backend/data/symptoms_train.csv`
 2. Add rows with format: `"symptom description","Specialist"`
 3. Run training command above
@@ -242,22 +254,28 @@ text,label
 ## 🐛 Troubleshooting
 
 ### Issue: "General Physician" for everything
+
 **Cause:** Model confidence too low (below 15% threshold)
-**Solution:** 
+**Solution:**
+
 - Add more training samples for that specialty
 - Check if symptom description is clear
 - Lower threshold in `apps/ai/services.py` (line ~125)
 
 ### Issue: Wrong specialist predicted
+
 **Cause:** Insufficient training data for edge cases
 **Solution:**
+
 - Add more varied examples to `symptoms_train.csv`
 - Include similar symptom descriptions
 - Retrain model
 
 ### Issue: Summary not extracting medications
+
 **Cause:** Pattern matching is simple
 **Solution:**
+
 - Use more specific keywords: "prescribed", "medication", "mg", "ml"
 - Add medication name explicitly
 - Consider BioBERT for medical NER (advanced)
@@ -267,6 +285,7 @@ text,label
 ## 🚀 Future Enhancements
 
 ### 1. BioBERT Integration (Requested)
+
 Replace spaCy with BioBERT for better medical entity extraction:
 
 ```python
@@ -280,21 +299,25 @@ model = AutoModel.from_pretrained("dmis-lab/biobert-v1.1")
 ```
 
 **Benefits:**
+
 - Better medical terminology recognition
 - More accurate condition extraction
 - Drug-disease relationship detection
 
 ### 2. Expanded Training Data
+
 - Increase to 500+ samples per specialty
 - Add multilingual support
 - Include rare conditions
 
 ### 3. Patient History Integration
+
 - Use FAISS index for patient record search
 - Generate summaries from actual medical records
 - Contextual recommendations based on history
 
 ### 4. Confidence Calibration
+
 - Use Platt scaling for better probability estimates
 - Add uncertainty quantification
 - Show explanation for predictions
@@ -306,7 +329,7 @@ model = AutoModel.from_pretrained("dmis-lab/biobert-v1.1")
 Test these scenarios to verify everything works:
 
 - [ ] **Cardiology:** "chest pain and difficulty breathing" → Cardiology
-- [ ] **Neurology:** "severe headache with vision changes" → Neurology  
+- [ ] **Neurology:** "severe headache with vision changes" → Neurology
 - [ ] **Dermatology:** "itchy skin rash" → Dermatology
 - [ ] **Orthopedics:** "knee pain after running" → Orthopedics
 - [ ] **Pulmonology:** "persistent cough with fever" → Pulmonology
@@ -329,6 +352,7 @@ Test these scenarios to verify everything works:
 - ✅ 13 medical specialties supported
 
 **Login and test:**
+
 ```
 URL: http://localhost:8080/ai-insights.html
 Email: patient@example.com
