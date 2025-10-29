@@ -93,82 +93,65 @@ document
 // Display symptom analysis results
 function displaySymptomResults(data) {
   const resultsSection = document.getElementById("resultsSection");
-  const specialistDiv = document.getElementById("recommendedSpecialist");
-  const confidenceDiv = document.getElementById("confidenceScore");
-  const alternativesDiv = document.getElementById("alternativeSpecialists");
+  const specialistSpan = document.getElementById("recommendedSpecialist");
+  const confidenceSpan = document.getElementById("confidence");
 
   // Recommended specialist
   if (data.specialist || data.predicted_specialist) {
     const specialist = data.specialist || data.predicted_specialist;
     const confidence = data.confidence || data.confidence_score || 0;
 
-    specialistDiv.innerHTML = `
-            <div style="text-align: center; padding: 2rem;">
-                <div style="font-size: 4rem; margin-bottom: 1rem;">
-                    ${getSpecialistIcon(specialist)}
-                </div>
-                <h2 style="color: var(--primary-blue); margin-bottom: 0.5rem;">
-                    ${escapeHtml(specialist)}
-                </h2>
-                <p style="color: var(--text-secondary);">
-                    Recommended specialist based on your symptoms
-                </p>
-            </div>
-        `;
+    // Update specialist name with icon
+    specialistSpan.innerHTML = `
+      ${getSpecialistIcon(specialist)} ${escapeHtml(specialist)}
+    `;
 
-    confidenceDiv.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <div style="flex: 1;">
-                    <div style="background: var(--bg-light); border-radius: 10px; height: 20px; overflow: hidden;">
-                        <div style="background: linear-gradient(90deg, var(--accent-teal), var(--primary-blue)); 
-                                    height: 100%; width: ${Math.round(
-                                      confidence * 100
-                                    )}%; 
-                                    transition: width 0.5s ease;"></div>
-                    </div>
-                </div>
-                <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary-blue); min-width: 60px;">
-                    ${Math.round(confidence * 100)}%
-                </div>
-            </div>
-            <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.9rem;">
-                ${getConfidenceMessage(confidence)}
-            </p>
-        `;
+    // Update confidence percentage
+    confidenceSpan.textContent = `${Math.round(confidence * 100)}%`;
 
-    // Alternative specialists
+    // Show alternatives if available
+    const entitiesSection = document.getElementById("entitiesSection");
     if (data.alternatives && data.alternatives.length > 0) {
-      alternativesDiv.innerHTML = `
-                <h4 style="margin-bottom: 1rem;">Alternative Specialists:</h4>
-                <div style="display: grid; gap: 1rem;">
-                    ${data.alternatives
-                      .slice(0, 3)
-                      .map(
-                        (alt) => `
-                        <div style="display: flex; justify-content: space-between; align-items: center; 
-                                    padding: 1rem; background: var(--bg-light); border-radius: 8px;">
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <span style="font-size: 2rem;">${getSpecialistIcon(
-                                  alt.specialist || alt.name
-                                )}</span>
-                                <span style="font-weight: 500;">${escapeHtml(
-                                  alt.specialist || alt.name
-                                )}</span>
-                            </div>
-                            <span style="color: var(--text-secondary);">
-                                ${Math.round(
-                                  (alt.confidence || alt.score || 0) * 100
-                                )}%
-                            </span>
-                        </div>
-                    `
-                      )
-                      .join("")}
+      entitiesSection.innerHTML = `
+        <h4 style="color: var(--secondary-blue); margin-bottom: 1rem">
+          Alternative Specialists
+        </h4>
+        <div style="display: grid; gap: 1rem;">
+          ${data.alternatives
+            .slice(0, 3)
+            .map(
+              (alt) => `
+              <div style="display: flex; justify-content: space-between; align-items: center; 
+                          padding: 1rem; background: white; border-radius: 8px; border: 1px solid var(--secondary-gray);">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                  <span style="font-size: 2rem;">${getSpecialistIcon(
+                    alt.specialist || alt.name
+                  )}</span>
+                  <span style="font-weight: 500; color: var(--text-primary);">${escapeHtml(
+                    alt.specialist || alt.name
+                  )}</span>
                 </div>
-            `;
+                <span style="color: var(--secondary-blue); font-weight: 600;">
+                  ${Math.round((alt.confidence || alt.score || 0) * 100)}%
+                </span>
+              </div>
+            `
+            )
+            .join("")}
+        </div>
+      `;
     } else {
-      alternativesDiv.innerHTML =
-        '<p style="color: var(--text-secondary);">No alternatives available</p>';
+      // Keep original entities section if no alternatives
+      entitiesSection.innerHTML = `
+        <h4 style="color: var(--secondary-blue); margin-bottom: 1rem">
+          Extracted Medical Entities
+        </h4>
+        <div id="entitiesList" style="display: flex; flex-wrap: wrap; gap: 0.5rem">
+          <span style="padding: 0.5rem 1rem; background: white; border-radius: 20px; font-size: 0.9rem; border: 1px solid var(--secondary-gray);">
+            No additional entities extracted
+          </span>
+        </div>
+      `;
     }
 
     resultsSection.classList.remove("hidden");
@@ -458,6 +441,13 @@ function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Clear results and reset form
+function clearResults() {
+  document.getElementById("resultsSection").classList.add("hidden");
+  document.getElementById("symptoms").value = "";
+  document.getElementById("symptoms").focus();
 }
 
 // Initialize
