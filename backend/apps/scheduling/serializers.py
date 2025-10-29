@@ -12,7 +12,18 @@ class DoctorAvailabilitySerializer(serializers.ModelSerializer):
 
 
 class AppointmentSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.CharField(source='doctor.name', read_only=True)
+    specialty = serializers.CharField(source='doctor.specialty', read_only=True)
+    scheduled_at = serializers.SerializerMethodField()
+    
     class Meta:
         model = Appointment
-        fields = ['id', 'doctor', 'patient', 'date', 'start_time', 'end_time', 'status', 'notes', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'doctor', 'doctor_name', 'specialty', 'patient', 'date', 
+                  'start_time', 'end_time', 'scheduled_at', 'status', 'notes', 'created_at']
+        read_only_fields = ['id', 'created_at', 'doctor_name', 'specialty', 'scheduled_at']
+    
+    def get_scheduled_at(self, obj):
+        """Combine date and start_time for frontend compatibility."""
+        from datetime import datetime
+        dt = datetime.combine(obj.date, obj.start_time)
+        return dt.isoformat()
