@@ -183,21 +183,27 @@ class Command(BaseCommand):
         appointments = [
             {
                 'doctor': created_doctors[0],
-                'scheduled_at': timezone.now() + timedelta(days=7),
-                'reason': 'Follow-up for blood pressure management',
+                'date': (timezone.now() + timedelta(days=7)).date(),
+                'start_time': '10:00',
+                'end_time': '10:30',
+                'notes': 'Follow-up for blood pressure management',
                 'status': 'scheduled'
             },
             {
                 'doctor': created_doctors[2],
-                'scheduled_at': timezone.now() + timedelta(days=14),
-                'reason': 'Consultation for recurring headaches',
+                'date': (timezone.now() + timedelta(days=14)).date(),
+                'start_time': '14:00',
+                'end_time': '14:45',
+                'notes': 'Consultation for recurring headaches',
                 'status': 'scheduled'
             },
             {
                 'doctor': created_doctors[4],
-                'scheduled_at': timezone.now() - timedelta(days=30),
-                'reason': 'Annual physical examination',
-                'status': 'completed'
+                'date': (timezone.now() - timedelta(days=30)).date(),
+                'start_time': '09:00',
+                'end_time': '10:00',
+                'notes': 'Annual physical examination',
+                'status': 'done'
             }
         ]
         
@@ -205,9 +211,11 @@ class Command(BaseCommand):
             apt, created = Appointment.objects.get_or_create(
                 patient=patient,
                 doctor=apt_data['doctor'],
-                scheduled_at=apt_data['scheduled_at'],
+                date=apt_data['date'],
+                start_time=apt_data['start_time'],
                 defaults={
-                    'reason': apt_data['reason'],
+                    'end_time': apt_data['end_time'],
+                    'notes': apt_data['notes'],
                     'status': apt_data['status']
                 }
             )
