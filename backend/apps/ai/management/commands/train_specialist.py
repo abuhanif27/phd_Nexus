@@ -43,19 +43,31 @@ class Command(BaseCommand):
         
         # Train classifier
         self.stdout.write('Training classifier...')
-        X_train, X_test, y_train, y_test = train_test_split(
-            embeddings, df['label'].values, test_size=0.2, random_state=42
-        )
         
-        clf = LogisticRegression(max_iter=1000, random_state=42)
+        # For small datasets, use stratified split or skip test split
+        if len(df) < 100:
+            self.stdout.write(self.style.WARNING(f'Small dataset ({len(df)} samples). Training on all data.'))
+            X_train = embeddings
+            y_train = df['label'].values
+            X_test = None
+            y_test = None
+        else:
+            X_train, X_test, y_train, y_test = train_test_split(
+                embeddings, df['label'].values, test_size=0.2, random_state=42, stratify=df['label'].values
+            )
+        
+        clf = LogisticRegression(max_iter=1000, random_state=42, multi_class='multinomial')
         clf.fit(X_train, y_train)
         
         # Evaluate
         train_score = clf.score(X_train, y_train)
-        test_score = clf.score(X_test, y_test)
-        
         self.stdout.write(f'Train accuracy: {train_score:.3f}')
-        self.stdout.write(f'Test accuracy: {test_score:.3f}')
+        
+        if X_test is not None:
+            test_score = clf.score(X_test, y_test)
+            self.stdout.write(f'Test accuracy: {test_score:.3f}')
+        else:
+            self.stdout.write('Test split skipped (dataset too small)')
         
         # Save model
         os.makedirs(os.path.dirname(output_file), exist_ok=True)

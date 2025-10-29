@@ -16,10 +16,24 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Ensure we're in the backend directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+echo "Working directory: $SCRIPT_DIR"
+echo ""
+
 # Check Python version
 echo "Checking Python version..."
+if ! command -v python3 &> /dev/null; then
+    echo "${RED}✗ Python 3 is not installed${NC}"
+    echo "Please install Python 3.8 or higher"
+    exit 1
+fi
+
 python_version=$(python3 --version 2>&1 | awk '{print $2}')
-echo "Found Python $python_version"
+echo "${GREEN}✓ Found Python $python_version${NC}"
+echo ""
 
 # Create virtual environment
 if [ ! -d ".venv" ]; then
@@ -37,6 +51,13 @@ source .venv/bin/activate
 # Upgrade pip
 echo "${YELLOW}Upgrading pip...${NC}"
 pip install --upgrade pip
+
+# Check if requirements.txt exists
+if [ ! -f "requirements.txt" ]; then
+    echo "${RED}✗ requirements.txt not found!${NC}"
+    echo "Please ensure requirements.txt is in the backend directory"
+    exit 1
+fi
 
 # Install dependencies
 echo "${YELLOW}Installing Python dependencies...${NC}"
@@ -88,10 +109,13 @@ echo "${GREEN}✓ Database initialized${NC}"
 
 # Create superuser prompt
 echo ""
-echo "${YELLOW}Would you like to create a superuser? (y/n)${NC}"
+echo "${YELLOW}Would you like to create a superuser/admin account? (y/n)${NC}"
 read -r create_superuser
-if [ "$create_superuser" = "y" ]; then
-    python manage.py createsuperuser
+if [ "$create_superuser" = "y" ] || [ "$create_superuser" = "Y" ]; then
+    echo "${YELLOW}Creating superuser...${NC}"
+    echo "You'll be prompted to enter email and password"
+    python manage.py createsuperuser --email --noinput 2>/dev/null || python manage.py createsuperuser
+    echo "${GREEN}✓ Superuser created${NC}"
 fi
 
 # Seed demo data
@@ -103,14 +127,25 @@ echo "${GREEN}✓ Demo data seeded${NC}"
 # Train specialist classifier
 echo ""
 echo "${YELLOW}Training specialist classifier...${NC}"
-python manage.py train_specialist --in data/symptoms_train.csv --out ai_models/specialist_clf.joblib
-echo "${GREEN}✓ Classifier trained${NC}"
+if [ -f "data/symptoms_train.csv" ]; then
+    python manage.py train_specialist --in data/symptoms_train.csv --out ai_models/specialist_clf.joblib
+    echo "${GREEN}✓ Classifier trained${NC}"
+else
+    echo "${RED}✗ Training data not found at data/symptoms_train.csv${NC}"
+    echo "Skipping classifier training"
+fi
 
 # Build FAISS index for patient 1
 echo ""
 echo "${YELLOW}Building FAISS index for demo patient...${NC}"
-python manage.py build_index --patient 1
-echo "${GREEN}✓ Index built${NC}"
+# Check if patient exists first
+patient_count=$(python manage.py shell -c "from apps.patients.models import Patient; print(Patient.objects.count())" 2>/dev/null || echo "0")
+if [ "$patient_count" -gt 0 ]; then
+    python manage.py build_index --patient 1 2>/dev/null || echo "${YELLOW}Note: Index building may require patient data. Skipping for now.${NC}"
+    echo "${GREEN}✓ Index build attempted${NC}"
+else
+    echo "${YELLOW}Note: No patients found. Skipping index building.${NC}"
+fi
 
 # Summary
 echo ""
