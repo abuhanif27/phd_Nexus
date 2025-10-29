@@ -6,10 +6,17 @@ from .models import File, LabResult, Prescription, Encounter, SymptomLog
 
 
 class FileSerializer(serializers.ModelSerializer):
+    file_type = serializers.CharField(source='kind', required=False)
+    title = serializers.CharField(source='filename', read_only=True)
+    description = serializers.CharField(default='', required=False, write_only=True)
+    uploaded_at = serializers.DateTimeField(source='created_at', read_only=True)
+    file_size = serializers.IntegerField(source='size', read_only=True)
+    
     class Meta:
         model = File
-        fields = ['id', 'patient', 'kind', 'filename', 'mime', 'size', 'created_at']
-        read_only_fields = ['id', 'patient', 'created_at']
+        fields = ['id', 'patient', 'kind', 'file_type', 'title', 'description', 
+                  'filename', 'mime', 'size', 'file_size', 'created_at', 'uploaded_at']
+        read_only_fields = ['id', 'patient', 'filename', 'mime', 'size', 'created_at']
 
 
 class LabResultSerializer(serializers.ModelSerializer):
