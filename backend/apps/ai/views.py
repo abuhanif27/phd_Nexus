@@ -116,3 +116,19 @@ class BuildIndexView(views.APIView):
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class TextSummaryView(views.APIView):
+    """Generate summary from arbitrary medical text."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = TextSummarySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        text = serializer.validated_data['text']
+        
+        # Generate summary
+        result = ai_service.summarize_text(text)
+        
+        return Response(result)
