@@ -101,6 +101,30 @@ class FileSignedLinkView(views.APIView):
             )
 
 
+class FileViewSet(viewsets.ModelViewSet):
+    """CRUD operations for medical files."""
+    queryset = File.objects.all()
+    serializer_class = FileSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'post', 'delete']  # No PUT/PATCH for files
+    
+    def get_queryset(self):
+        if self.request.user.role == 'patient':
+            return self.queryset.filter(patient__user=self.request.user).order_by('-created_at')
+        elif self.request.user.role == 'doctor':
+            # Doctors can see files from patients with consent
+            # TODO: Filter by consent
+            return self.queryset.order_by('-created_at')
+        return self.queryset.order_by('-created_at')
+    
+    def perform_create(self, serializer):
+        """Set patient automatically."""
+        if self.request.user.role == 'patient':
+            serializer.save(patient=self.request.user.patient_profile)
+        else:
+            serializer.save()
+
+
 class LabResultViewSet(viewsets.ModelViewSet):
     """CRUD operations for lab results."""
     queryset = LabResult.objects.all()
@@ -109,8 +133,8 @@ class LabResultViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         if self.request.user.role == 'patient':
-            return self.queryset.filter(patient__user=self.request.user)
-        return self.queryset
+            return self.queryset.filter(patient__user=self.request.user).order_by('-ts')
+        return self.queryset.order_by('-ts')
 
 
 class PrescriptionViewSet(viewsets.ModelViewSet):
