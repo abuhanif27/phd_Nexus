@@ -4,11 +4,12 @@ URL routing for medical records.
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    FileUploadView, FileSignedLinkView, LabResultViewSet,
+    FileUploadView, FileSignedLinkView, FileViewSet, LabResultViewSet,
     PrescriptionViewSet, EncounterViewSet, RecordsSummaryView
 )
 
 router = DefaultRouter()
+router.register('files', FileViewSet, basename='file')
 router.register('labs', LabResultViewSet, basename='lab')
 router.register('prescriptions', PrescriptionViewSet, basename='prescription')
 router.register('encounters', EncounterViewSet, basename='encounter')
