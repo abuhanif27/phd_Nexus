@@ -140,8 +140,9 @@ class AIService:
                 confidence = float(proba[pred_idx])
                 specialist = self.specialist_classifier.classes_[pred_idx]
                 
-                # Lower the threshold to 0.3 so we show actual predictions
-                if confidence < 0.3:
+                # Lower the threshold to 0.15 so we show actual predictions
+                # If confidence is very low, it means symptoms are unclear
+                if confidence < 0.15:
                     specialist = 'General Physician'
                     confidence = 0.5
                     alternatives = []
