@@ -8,7 +8,7 @@ from apps.patients.models import Patient
 from apps.records.models import SymptomLog
 from .serializers import (
     SymptomAnalyzeSerializer, SpecialistPredictSerializer,
-    SummaryRequestSerializer, AISummarySerializer
+    SummaryRequestSerializer, TextSummarySerializer, AISummarySerializer
 )
 from .services import ai_service
 
