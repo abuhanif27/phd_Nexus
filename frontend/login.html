@@ -1,96 +1,175 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - PhD NexusCare</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-</head>
-<body>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
     <div class="auth-container">
-        <div class="auth-card fade-in">
-            <div class="auth-header">
-                <div class="logo" style="justify-content: center; margin-bottom: 1rem;">
-                    <div class="logo-icon">🏥</div>
-                    <span>NexusCare</span>
-                </div>
-                <h2>Welcome Back</h2>
-                <p style="color: var(--text-secondary);">Sign in to access your medical dashboard</p>
-            </div>
-
-            <!-- Alert Message (Hidden by default) -->
-            <div id="alertMessage" class="alert alert-error hidden">
-                <span>⚠️</span>
-                <span id="alertText">Error message here</span>
-            </div>
-
-            <form id="loginForm">
-                <div class="form-group">
-                    <label class="form-label" for="email">Email Address</label>
-                    <input 
-                        type="email" 
-                        id="email" 
-                        class="form-control" 
-                        placeholder="your.email@example.com"
-                        required
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="password">Password</label>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        class="form-control" 
-                        placeholder="Enter your password"
-                        required
-                    >
-                </div>
-
-                <div class="form-group" style="display: flex; justify-content: space-between; align-items: center;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                        <input type="checkbox" id="remember">
-                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Remember me</span>
-                    </label>
-                    <a href="#" style="font-size: 0.9rem; color: var(--accent-teal); text-decoration: none;">
-                        Forgot Password?
-                    </a>
-                </div>
-
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;" id="loginBtn">
-                    <span id="loginBtnText">Sign In</span>
-                    <div id="loginSpinner" class="spinner hidden" style="width: 20px; height: 20px; border-width: 2px; margin: 0 auto;"></div>
-                </button>
-            </form>
-
-            <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--secondary-gray);">
-                <p style="color: var(--text-secondary);">
-                    Don't have an account? 
-                    <a href="register.html" style="color: var(--accent-teal); text-decoration: none; font-weight: 600;">
-                        Sign Up
-                    </a>
-                </p>
-            </div>
-
-            <div style="margin-top: 2rem; padding: 1rem; background: var(--primary-light); border-radius: var(--border-radius-sm);">
-                <p style="font-size: 0.85rem; color: var(--text-secondary); text-align: center;">
-                    🔒 <strong>Demo Credentials:</strong><br>
-                    Patient: patient@example.com / Pass1234!<br>
-                    Doctor: doctor@example.com / Pass1234!
-                </p>
-            </div>
-
-            <div style="text-align: center; margin-top: 1.5rem;">
-                <a href="index.html" style="color: var(--text-secondary); text-decoration: none; font-size: 0.9rem;">
-                    ← Back to Home
-                </a>
-            </div>
+      <div class="auth-card fade-in">
+        <div class="auth-header">
+          <div
+            class="logo"
+            style="justify-content: center; margin-bottom: 1rem"
+          >
+            <div class="logo-icon">🏥</div>
+            <span>NexusCare</span>
+          </div>
+          <h2>Welcome Back</h2>
+          <p style="color: var(--text-secondary)">
+            Sign in to access your medical dashboard
+          </p>
         </div>
+
+        <!-- Alert Message (Hidden by default) -->
+        <div id="alertMessage" class="alert alert-error hidden">
+          <span>⚠️</span>
+          <span id="alertText">Error message here</span>
+        </div>
+
+        <form id="loginForm">
+          <div class="form-group">
+            <label class="form-label" for="email">Email Address</label>
+            <input
+              type="email"
+              id="email"
+              class="form-control"
+              placeholder="your.email@example.com"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              class="form-control"
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+
+          <div
+            class="form-group"
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            "
+          >
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                cursor: pointer;
+              "
+            >
+              <input type="checkbox" id="remember" />
+              <span style="font-size: 0.9rem; color: var(--text-secondary)"
+                >Remember me</span
+              >
+            </label>
+            <a
+              href="#"
+              style="
+                font-size: 0.9rem;
+                color: var(--accent-teal);
+                text-decoration: none;
+              "
+            >
+              Forgot Password?
+            </a>
+          </div>
+
+          <button
+            type="submit"
+            class="btn btn-primary"
+            style="width: 100%; margin-top: 1rem"
+            id="loginBtn"
+          >
+            <span id="loginBtnText">Sign In</span>
+            <div
+              id="loginSpinner"
+              class="spinner hidden"
+              style="
+                width: 20px;
+                height: 20px;
+                border-width: 2px;
+                margin: 0 auto;
+              "
+            ></div>
+          </button>
+        </form>
+
+        <div
+          style="
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--secondary-gray);
+          "
+        >
+          <p style="color: var(--text-secondary)">
+            Don't have an account?
+            <a
+              href="register.html"
+              style="
+                color: var(--accent-teal);
+                text-decoration: none;
+                font-weight: 600;
+              "
+            >
+              Sign Up
+            </a>
+          </p>
+        </div>
+
+        <div
+          style="
+            margin-top: 2rem;
+            padding: 1rem;
+            background: var(--primary-light);
+            border-radius: var(--border-radius-sm);
+          "
+        >
+          <p
+            style="
+              font-size: 0.85rem;
+              color: var(--text-secondary);
+              text-align: center;
+            "
+          >
+            🔒 <strong>Demo Credentials:</strong><br />
+            Patient: patient@example.com / Pass1234!<br />
+            Doctor: doctor@example.com / Pass1234!
+          </p>
+        </div>
+
+        <div style="text-align: center; margin-top: 1.5rem">
+          <a
+            href="index.html"
+            style="
+              color: var(--text-secondary);
+              text-decoration: none;
+              font-size: 0.9rem;
+            "
+          >
+            ← Back to Home
+          </a>
+        </div>
+      </div>
     </div>
 
     <script src="js/auth.js"></script>
-</body>
+  </body>
 </html>
