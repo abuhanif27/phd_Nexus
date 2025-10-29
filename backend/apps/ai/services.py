@@ -107,41 +107,60 @@ class AIService:
     def predict_specialist(self, text: str) -> Dict:
         """
         Predict specialist from symptom text.
-        Returns specialist name and confidence.
+        Returns specialist name, confidence, and top alternatives.
         """
         if not self.specialist_classifier or not self.embedding_model:
             return {
                 'specialist': 'General Physician',
-                'confidence': 0.5
+                'confidence': 0.5,
+                'alternatives': []
             }
         
         try:
             # Generate embedding
             embedding = self.embedding_model.encode([text])[0]
             
-            # Get prediction
+            # Get prediction with probabilities
             if hasattr(self.specialist_classifier, 'predict_proba'):
                 proba = self.specialist_classifier.predict_proba([embedding])[0]
-                pred_idx = np.argmax(proba)
+                
+                # Get top 3 predictions
+                top_indices = np.argsort(proba)[-3:][::-1]
+                alternatives = []
+                
+                for idx in top_indices[1:]:  # Skip the top one
+                    if proba[idx] > 0.05:  # Only show if >5% confidence
+                        alternatives.append({
+                            'specialist': self.specialist_classifier.classes_[idx],
+                            'confidence': float(proba[idx])
+                        })
+                
+                # Top prediction
+                pred_idx = top_indices[0]
                 confidence = float(proba[pred_idx])
                 specialist = self.specialist_classifier.classes_[pred_idx]
+                
+                # Lower the threshold to 0.3 so we show actual predictions
+                if confidence < 0.3:
+                    specialist = 'General Physician'
+                    confidence = 0.5
+                    alternatives = []
             else:
                 specialist = self.specialist_classifier.predict([embedding])[0]
                 confidence = 0.8
-            
-            # Apply confidence threshold
-            if confidence < 0.6:
-                specialist = 'General Physician'
+                alternatives = []
             
             return {
                 'specialist': specialist,
-                'confidence': confidence
+                'confidence': confidence,
+                'alternatives': alternatives
             }
         except Exception as e:
             print(f"Prediction error: {e}")
             return {
                 'specialist': 'General Physician',
-                'confidence': 0.5
+                'confidence': 0.5,
+                'alternatives': []
             }
     
     def build_patient_index(self, patient_id: int):
