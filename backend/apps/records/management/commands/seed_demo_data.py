@@ -63,8 +63,6 @@ class Command(BaseCommand):
             user, created = User.objects.get_or_create(
                 email=doc_data['email'],
                 defaults={
-                    'first_name': doc_data['first_name'],
-                    'last_name': doc_data['last_name'],
                     'role': 'doctor',
                     'is_active': True,
                 }
@@ -89,8 +87,6 @@ class Command(BaseCommand):
         patient_user, created = User.objects.get_or_create(
             email='patient@example.com',
             defaults={
-                'first_name': 'John',
-                'last_name': 'Doe',
                 'role': 'patient',
                 'is_active': True,
             }
