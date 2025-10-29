@@ -17,6 +17,11 @@ class SummaryRequestSerializer(serializers.Serializer):
     patient_id = serializers.IntegerField()
 
 
+class TextSummarySerializer(serializers.Serializer):
+    """Serializer for arbitrary text summarization."""
+    text = serializers.CharField()
+
+
 class AISummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = AISummary

@@ -312,6 +312,78 @@ class AIService:
             # Fallback: return first few sentences
             sentences = text.split('.')[:sentence_count]
             return [s.strip() + '.' for s in sentences if s.strip()]
+    
+    def summarize_text(self, text: str) -> Dict:
+        """
+        Generate summary from arbitrary medical text.
+        Uses TextRank for extractive summarization and spaCy for entity extraction.
+        """
+        if not text.strip():
+            return {
+                'summary': '',
+                'key_points': [],
+                'entities': {}
+            }
+        
+        try:
+            # Generate extractive summary
+            summary_sentences = self._extractive_summary(text, sentence_count=3)
+            summary = ' '.join(summary_sentences)
+            
+            # Extract key points (top 5 sentences)
+            key_points = self._extractive_summary(text, sentence_count=5)
+            
+            # Extract medical entities using spaCy
+            entities = {}
+            if self.spacy_model:
+                doc = self.spacy_model(text)
+                for ent in doc.ents:
+                    entity_type = ent.label_
+                    if entity_type not in entities:
+                        entities[entity_type] = []
+                    if ent.text not in entities[entity_type]:
+                        entities[entity_type].append(ent.text)
+            
+            # Try to extract conditions and medications using simple patterns
+            conditions = []
+            medications = []
+            
+            # Simple pattern matching for common medical terms
+            condition_keywords = ['diagnosed with', 'suffering from', 'condition', 'disease', 'disorder', 'syndrome']
+            medication_keywords = ['prescribed', 'medication', 'drug', 'tablet', 'capsule', 'mg', 'ml']
+            
+            sentences = text.split('.')
+            for sent in sentences:
+                sent_lower = sent.lower()
+                if any(keyword in sent_lower for keyword in condition_keywords):
+                    # Extract potential condition
+                    words = sent.strip().split()
+                    if len(words) > 2:
+                        conditions.append(sent.strip())
+                
+                if any(keyword in sent_lower for keyword in medication_keywords):
+                    # Extract potential medication
+                    words = sent.strip().split()
+                    if len(words) > 2:
+                        medications.append(sent.strip())
+            
+            return {
+                'summary': summary,
+                'key_points': key_points[:5],
+                'entities': entities,
+                'conditions': conditions[:5],
+                'medications': medications[:5]
+            }
+        
+        except Exception as e:
+            print(f"Text summarization error: {e}")
+            return {
+                'summary': text[:200] + '...' if len(text) > 200 else text,
+                'key_points': [text[:100] + '...' if len(text) > 100 else text],
+                'entities': {},
+                'conditions': [],
+                'medications': []
+            }
 
 
 # Global service instance
