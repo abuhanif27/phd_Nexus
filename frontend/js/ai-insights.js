@@ -41,7 +41,7 @@ document
   ?.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const symptoms = document.getElementById("symptomsInput").value.trim();
+    const symptoms = document.getElementById("symptoms").value.trim();
 
     if (!symptoms) {
       showSymptomAlert("Please enter your symptoms");
