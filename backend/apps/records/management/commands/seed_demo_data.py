@@ -177,7 +177,7 @@ class Command(BaseCommand):
                 }
             )
             if created:
-                self.stdout.write(self.style.SUCCESS(f'Created prescription from Dr. {rx_data["doctor"].user.get_full_name()}'))
+                self.stdout.write(self.style.SUCCESS(f'Created prescription from {rx_data["doctor"].name}'))
         
         # Create demo appointments
         appointments = [
@@ -212,7 +212,7 @@ class Command(BaseCommand):
                 }
             )
             if created:
-                self.stdout.write(self.style.SUCCESS(f'Created appointment with Dr. {apt_data["doctor"].user.get_full_name()}'))
+                self.stdout.write(self.style.SUCCESS(f'Created appointment with {apt_data["doctor"].name}'))
         
         self.stdout.write(self.style.SUCCESS('\n✅ Demo data seeding complete!'))
         self.stdout.write(self.style.SUCCESS('\n📋 Summary:'))
