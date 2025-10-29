@@ -129,6 +129,10 @@ function displayRecords(records) {
 // Show upload modal
 function showUploadModal() {
   document.getElementById("uploadModal").classList.remove("hidden");
+  // Focus first input
+  setTimeout(() => {
+    document.getElementById("fileType").focus();
+  }, 100);
 }
 
 // Close upload modal
@@ -137,6 +141,23 @@ function closeUploadModal() {
   document.getElementById("uploadForm").reset();
   document.getElementById("uploadAlert").classList.add("hidden");
 }
+
+// Close modal when clicking outside
+document.getElementById("uploadModal")?.addEventListener("click", (e) => {
+  if (e.target.id === "uploadModal") {
+    closeUploadModal();
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    const modal = document.getElementById("uploadModal");
+    if (modal && !modal.classList.contains("hidden")) {
+      closeUploadModal();
+    }
+  }
+});
 
 // Handle upload form
 document.getElementById("uploadForm").addEventListener("submit", async (e) => {
