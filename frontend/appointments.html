@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointments - PhD NexusCare</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="dashboard.html" class="logo">
+                <div class="logo-icon">🏥</div>
+                <span>NexusCare</span>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="records.html" class="nav-link">Records</a></li>
+                <li><a href="appointments.html" class="nav-link" style="color: var(--accent-teal);">Appointments</a></li>
+                <li><a href="ai-insights.html" class="nav-link">AI Insights</a></li>
+                <li>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span id="userEmail" style="color: var(--text-secondary); font-size: 0.9rem;">Loading...</span>
+                        <button onclick="logout()" class="btn btn-outline" style="padding: 0.5rem 1rem;">Logout</button>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
+        <!-- Page Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h1 style="margin-bottom: 0.5rem;">Appointments</h1>
+                <p style="color: var(--text-secondary);">Manage your doctor consultations</p>
+            </div>
+            <button onclick="showBookModal()" class="btn btn-primary" id="book">
+                📅 Book Appointment
+            </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="dashboard-grid" style="margin-bottom: 2rem;">
+            <div class="stat-card">
+                <div class="stat-value" id="upcomingCount">0</div>
+                <div class="stat-label">📅 Upcoming</div>
+            </div>
+            
+            <div class="stat-card accent">
+                <div class="stat-value" id="completedCount">0</div>
+                <div class="stat-label">✅ Completed</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-value" id="cancelledCount">0</div>
+                <div class="stat-label">❌ Cancelled</div>
+            </div>
+            
+            <div class="stat-card accent">
+                <div class="stat-value" id="totalDoctors">0</div>
+                <div class="stat-label">👨‍⚕️ Doctors</div>
+            </div>
+        </div>
+
+        <!-- Upcoming Appointments -->
+        <div style="margin-bottom: 3rem;">
+            <h2 style="margin-bottom: 1.5rem; color: var(--secondary-blue);">Upcoming Appointments</h2>
+            <div id="upcomingAppointments" class="features-grid">
+                <div class="feature-card" style="text-align: center; padding: 3rem;">
+                    <div class="spinner" style="margin: 0 auto 1rem;"></div>
+                    <p style="color: var(--text-secondary);">Loading appointments...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Find Doctors -->
+        <div style="margin-bottom: 3rem;">
+            <h2 style="margin-bottom: 1.5rem; color: var(--secondary-blue);">Find Doctors</h2>
+            
+            <!-- Search Filters -->
+            <div style="background: var(--primary-white); padding: 1.5rem; border-radius: var(--border-radius); box-shadow: var(--shadow-md); margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end;">
+                    <div>
+                        <label class="form-label">Specialty</label>
+                        <select id="specialtyFilter" class="form-control">
+                            <option value="">All Specialties</option>
+                            <option value="Cardiology">Cardiology</option>
+                            <option value="Neurology">Neurology</option>
+                            <option value="Pulmonology">Pulmonology</option>
+                            <option value="Gastroenterology">Gastroenterology</option>
+                            <option value="Orthopedics">Orthopedics</option>
+                            <option value="Dermatology">Dermatology</option>
+                            <option value="ENT">ENT</option>
+                            <option value="Psychiatry">Psychiatry</option>
+                            <option value="General Physician">General Physician</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Location</label>
+                        <input type="text" id="locationFilter" class="form-control" placeholder="City or area">
+                    </div>
+                    <button onclick="searchDoctors()" class="btn btn-secondary">Search</button>
+                </div>
+            </div>
+
+            <!-- Doctors List -->
+            <div id="doctorsList" class="features-grid">
+                <div class="feature-card" style="text-align: center; padding: 3rem;">
+                    <div class="spinner" style="margin: 0 auto 1rem;"></div>
+                    <p style="color: var(--text-secondary);">Loading doctors...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Past Appointments -->
+        <div>
+            <h2 style="margin-bottom: 1.5rem; color: var(--secondary-blue);">Past Appointments</h2>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Doctor</th>
+                            <th>Specialty</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pastAppointmentsTable">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                                Loading past appointments...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Book Appointment Modal -->
+    <div id="bookModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; overflow-y: auto;">
+        <div class="auth-card" style="max-width: 600px; margin: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>Book Appointment</h2>
+                <button onclick="closeBookModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary);">×</button>
+            </div>
+
+            <form id="bookForm">
+                <div class="form-group">
+                    <label class="form-label">Select Doctor</label>
+                    <select id="doctorSelect" class="form-control" required>
+                        <option value="">Choose a doctor...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Preferred Date</label>
+                    <input type="date" id="appointmentDate" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Available Time Slots</label>
+                    <div id="timeSlots" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                        <p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 1rem;">
+                            Select a doctor and date first
+                        </p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Reason for Visit</label>
+                    <textarea id="appointmentNotes" class="form-control" rows="3" placeholder="Describe your symptoms or reason for consultation..."></textarea>
+                </div>
+
+                <div id="bookAlert" class="alert alert-error hidden">
+                    <span>⚠️</span>
+                    <span id="bookAlertText">Error message</span>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;" id="bookBtn">
+                    <span id="bookBtnText">Confirm Booking</span>
+                    <div id="bookSpinner" class="spinner hidden" style="width: 20px; height: 20px; border-width: 2px; margin: 0 auto;"></div>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2025 PhD NexusCare. Your privacy-first healthcare platform.</p>
+    </footer>
+
+    <script src="js/appointments.js"></script>
+</body>
+</html>
