@@ -80,10 +80,25 @@ if (document.getElementById("loginForm")) {
       }
     } catch (error) {
       console.error("Login error:", error);
-      showAlert(
-        "Network error. Please ensure the backend server is running at " +
-          API_BASE_URL
-      );
+      if (
+        error.name === "TypeError" &&
+        error.message.includes("Failed to fetch")
+      ) {
+        showAlert(
+          "Cannot connect to backend server. Please check:\n" +
+            "1. Backend is running: cd backend && source .venv/bin/activate && python manage.py runserver\n" +
+            "2. CORS is configured for port 8080\n" +
+            "3. Backend API URL: " +
+            API_BASE_URL
+        );
+      } else {
+        showAlert(
+          "Network error: " +
+            error.message +
+            "\nPlease ensure the backend server is running at " +
+            API_BASE_URL
+        );
+      }
     } finally {
       setLoading("loginBtn", "loginSpinner", "loginBtnText", false);
     }
@@ -165,10 +180,25 @@ if (document.getElementById("registerForm")) {
         }
       } catch (error) {
         console.error("Registration error:", error);
-        showAlert(
-          "Network error. Please ensure the backend server is running at " +
-            API_BASE_URL
-        );
+        if (
+          error.name === "TypeError" &&
+          error.message.includes("Failed to fetch")
+        ) {
+          showAlert(
+            "Cannot connect to backend server. Please check:\n" +
+              "1. Backend is running: cd backend && source .venv/bin/activate && python manage.py runserver\n" +
+              "2. CORS is configured for port 8080\n" +
+              "3. Backend API URL: " +
+              API_BASE_URL
+          );
+        } else {
+          showAlert(
+            "Network error: " +
+              error.message +
+              "\nPlease ensure the backend server is running at " +
+              API_BASE_URL
+          );
+        }
       } finally {
         setLoading("registerBtn", "registerSpinner", "registerBtnText", false);
       }
