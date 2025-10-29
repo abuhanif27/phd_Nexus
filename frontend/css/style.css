@@ -904,5 +904,13 @@ h4 {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
+}
+
+.modal {
+  display: flex;
+}
+
+.modal.hidden {
+  display: none !important;
 }
