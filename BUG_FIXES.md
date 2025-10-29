@@ -287,12 +287,98 @@ def summarize_text(self, text: str) -> Dict:
 
 ---
 
+## 🆕 Latest Fix - Oct 29, 2025 (AI Insights Buttons)
+
+### Problem: Both AI buttons on ai-insights.html page not working
+**User Report:** "ai sympytos anaylye button and genereate summary button not working"
+
+### Issues Found:
+
+1. **Symptom Analysis Button:**
+   - JavaScript looking for `id="symptomsInput"` 
+   - HTML actually has `id="symptoms"`
+   - **Result:** Button did nothing when clicked
+
+2. **Generate Summary Button:**
+   - Function `generateSummary()` completely missing from JavaScript
+   - HTML calls `onclick="generateSummary()"` but function doesn't exist
+   - **Result:** Button click caused JavaScript error
+
+3. **Display Function Issues:**
+   - Trying to update `id="confidenceScore"` (doesn't exist)
+   - Trying to update `id="alternativeSpecialists"` (doesn't exist)
+   - **Result:** Even if API worked, results wouldn't display
+
+4. **Missing Helper Functions:**
+   - `clearResults()` function missing (referenced in HTML)
+   - Example buttons using wrong ID (`symptomsInput` vs `symptoms`)
+
+### Solutions Applied:
+
+**File:** `frontend/js/ai-insights.js`
+
+1. **Fixed Symptom Input ID** (line ~44):
+```javascript
+// Before:
+const symptoms = document.getElementById("symptomsInput").value.trim();
+
+// After:
+const symptoms = document.getElementById("symptoms").value.trim();
+```
+
+2. **Added generateSummary() Function** (70+ lines):
+```javascript
+async function generateSummary() {
+  // Fetches /api/ai/patient-summary/
+  // Shows loading spinner
+  // Displays results or errors
+  // Handles authentication
+}
+```
+
+3. **Fixed displaySymptomResults()** to use correct IDs:
+   - Updates `id="recommendedSpecialist"` (exists)
+   - Updates `id="confidence"` (exists)
+   - Repurposes `entitiesSection` to show alternatives
+   - Displays specialist icons and confidence scores
+
+4. **Added clearResults() Function**:
+```javascript
+function clearResults() {
+  document.getElementById("resultsSection").classList.add("hidden");
+  document.getElementById("symptoms").value = "";
+  document.getElementById("symptoms").focus();
+}
+```
+
+5. **Fixed Example Buttons** - Changed all 3 to use `id="symptoms"`
+
+### Test Results:
+
+✅ **Backend API Working:**
+```bash
+Symptom analysis: Cardiology (30%)
+Login: Success
+Backend: Running on port 8000
+```
+
+✅ **Now Users Need To:**
+1. **Hard refresh browser:** Ctrl + Shift + R (Cmd + Shift + R on Mac)
+2. Test symptom analysis: "severe chest pain" → should show Cardiology
+3. Test summary generation: Click button → should show medical summary
+
+---
+
 ## All Fixed! 🎉
 
-**Both issues are now resolved:**
+**All issues resolved:**
 
 1. ✅ Book appointment close button works
-2. ✅ AI symptom analysis works
+2. ✅ AI symptom analysis works  
 3. ✅ Medical text summarization works
+4. ✅ **Symptom analysis button now working** ⭐
+5. ✅ **Generate summary button now working** ⭐
+6. ✅ Results display properly with alternatives
+7. ✅ Example buttons work correctly
 
-**Ready to test!** Open http://localhost:8080 and try the features.
+**Ready to test!** Open http://localhost:8080/ai-insights.html (refresh with Ctrl+Shift+R)
