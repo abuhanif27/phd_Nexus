@@ -145,10 +145,10 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         if self.request.user.role == 'patient':
-            return self.queryset.filter(patient__user=self.request.user)
+            return self.queryset.filter(patient__user=self.request.user).order_by('-ts')
         elif self.request.user.role == 'doctor':
-            return self.queryset.filter(doctor__user=self.request.user)
-        return self.queryset
+            return self.queryset.filter(doctor__user=self.request.user).order_by('-ts')
+        return self.queryset.order_by('-ts')
 
 
 class EncounterViewSet(viewsets.ModelViewSet):
