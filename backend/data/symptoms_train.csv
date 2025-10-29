@@ -52,6 +52,80 @@ text,label
 "Chronic sinus infection and nasal congestion",ENT
 "Sore throat with difficulty swallowing",ENT
 "Ringing in ears and vertigo",ENT
+"Nosebleeds and facial pressure",ENT
+"Loss of smell and taste",ENT
+"Hoarse voice for more than two weeks",ENT
+"Swollen tonsils with white patches",ENT
+"Itchy skin rash with redness",Dermatology
+"Acne breakouts on face and back",Dermatology
+"Hair loss and scalp irritation",Dermatology
+"Persistent skin infection not healing",Dermatology
+"Moles changing in size or color",Dermatology
+"Severe eczema with dry cracked skin",Dermatology
+"Hives and allergic skin reaction",Dermatology
+"Fungal infection with itching between toes",Dermatology
+"Psoriasis with scaly patches",Dermatology
+"Painful joint swelling in hands",Orthopedics
+"Back pain radiating down leg",Orthopedics
+"Knee pain after physical activity",Orthopedics
+"Shoulder pain with limited movement",Orthopedics
+"Ankle sprain with swelling",Orthopedics
+"Neck stiffness and pain",Orthopedics
+"Hip pain when walking",Orthopedics
+"Wrist pain with numbness in fingers",Orthopedics
+"Fracture with severe bone pain",Orthopedics
+"Arthritis with morning stiffness",Orthopedics
+"Blurred vision and eye pain",Ophthalmology
+"Sudden loss of vision in one eye",Ophthalmology
+"Red itchy eyes with discharge",Ophthalmology
+"Floaters and flashes of light",Ophthalmology
+"Double vision and headache",Ophthalmology
+"Dry eyes with burning sensation",Ophthalmology
+"Difficulty seeing at night",Ophthalmology
+"Eye injury with foreign object",Ophthalmology
+"Anxiety attacks with panic",Psychiatry
+"Depression with loss of interest",Psychiatry
+"Insomnia and sleep disturbances",Psychiatry
+"Mood swings and irritability",Psychiatry
+"Suicidal thoughts and hopelessness",Psychiatry
+"Hallucinations and delusions",Psychiatry
+"Obsessive thoughts and compulsive behavior",Psychiatry
+"Post traumatic stress with flashbacks",Psychiatry
+"Eating disorder with body image issues",Psychiatry
+"Irregular menstrual periods",Gynecology
+"Severe menstrual cramps",Gynecology
+"Vaginal discharge with odor",Gynecology
+"Pelvic pain and discomfort",Gynecology
+"Heavy bleeding during periods",Gynecology
+"Menopausal hot flashes",Gynecology
+"Breast lump or pain",Gynecology
+"Painful intercourse",Gynecology
+"Pregnancy symptoms and morning sickness",Gynecology
+"Difficulty urinating with burning",Urology
+"Blood in urine",Urology
+"Frequent urination at night",Urology
+"Kidney stone pain in side",Urology
+"Incontinence and urinary leakage",Urology
+"Painful bladder with urgency",Urology
+"Erectile dysfunction",Urology
+"Testicular pain or swelling",Urology
+"Joint pain with swelling in multiple joints",Rheumatology
+"Lupus symptoms with butterfly rash",Rheumatology
+"Chronic fatigue and muscle aches",Rheumatology
+"Rheumatoid arthritis with joint deformity",Rheumatology
+"Gout with severe toe pain",Rheumatology
+"Fibromyalgia with widespread pain",Rheumatology
+"Autoimmune disease symptoms",Rheumatology
+"Feeling unwell with general symptoms",General Physician
+"Cold and flu symptoms",General Physician
+"Fever with body aches",General Physician
+"Fatigue and weakness",General Physician
+"Routine checkup needed",General Physician
+"Vaccination and preventive care",General Physician
+"Multiple vague symptoms",General Physician
+"Health concern not specific to any organ",General Physician
+"General wellness advice needed",General Physician
+"Ringing in ears and vertigo",ENT
 "Joint pain and stiffness in morning",Rheumatology
 "Swollen joints with redness",Rheumatology
 "Muscle weakness and fatigue",Rheumatology
