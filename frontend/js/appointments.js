@@ -192,6 +192,10 @@ function displayPastAppointments(appointments) {
 function showBookModal() {
   document.getElementById("bookModal").classList.remove("hidden");
   searchDoctors();
+  // Focus first input
+  setTimeout(() => {
+    document.getElementById("specialtyFilter")?.focus();
+  }, 100);
 }
 
 // Close book modal
@@ -202,6 +206,23 @@ function closeBookModal() {
   document.getElementById("timeSlotsContainer").innerHTML = "";
   document.getElementById("bookAlert").classList.add("hidden");
 }
+
+// Close modal when clicking outside
+document.getElementById("bookModal")?.addEventListener("click", (e) => {
+  if (e.target.id === "bookModal") {
+    closeBookModal();
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    const modal = document.getElementById("bookModal");
+    if (modal && !modal.classList.contains("hidden")) {
+      closeBookModal();
+    }
+  }
+});
 
 // Search doctors
 async function searchDoctors() {
