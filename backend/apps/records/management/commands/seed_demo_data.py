@@ -23,38 +23,28 @@ class Command(BaseCommand):
         doctors_data = [
             {
                 'email': 'dr.cardio@example.com',
-                'first_name': 'Sarah',
-                'last_name': 'Johnson',
-                'specialty': 'Cardiology',
-                'license': 'MD-12345'
+                'name': 'Dr. Sarah Johnson',
+                'specialty': 'Cardiology'
             },
             {
                 'email': 'dr.dermato@example.com',
-                'first_name': 'Michael',
-                'last_name': 'Chen',
-                'specialty': 'Dermatology',
-                'license': 'MD-23456'
+                'name': 'Dr. Michael Chen',
+                'specialty': 'Dermatology'
             },
             {
                 'email': 'dr.neuro@example.com',
-                'first_name': 'Emily',
-                'last_name': 'Rodriguez',
-                'specialty': 'Neurology',
-                'license': 'MD-34567'
+                'name': 'Dr. Emily Rodriguez',
+                'specialty': 'Neurology'
             },
             {
                 'email': 'dr.ortho@example.com',
-                'first_name': 'David',
-                'last_name': 'Williams',
-                'specialty': 'Orthopedics',
-                'license': 'MD-45678'
+                'name': 'Dr. David Williams',
+                'specialty': 'Orthopedics'
             },
             {
                 'email': 'dr.general@example.com',
-                'first_name': 'Lisa',
-                'last_name': 'Anderson',
-                'specialty': 'General Medicine',
-                'license': 'MD-56789'
+                'name': 'Dr. Lisa Anderson',
+                'specialty': 'General Medicine'
             },
         ]
         
@@ -75,12 +65,12 @@ class Command(BaseCommand):
             doctor, created = Doctor.objects.get_or_create(
                 user=user,
                 defaults={
-                    'specialty': doc_data['specialty'],
-                    'license_number': doc_data['license']
+                    'name': doc_data['name'],
+                    'specialty': doc_data['specialty']
                 }
             )
             if created:
-                self.stdout.write(self.style.SUCCESS(f'Created doctor profile: Dr. {doc_data["first_name"]} {doc_data["last_name"]} ({doc_data["specialty"]})'))
+                self.stdout.write(self.style.SUCCESS(f'Created doctor profile: {doc_data["name"]} ({doc_data["specialty"]})'))
             created_doctors.append(doctor)
         
         # Ensure patient demo account exists
