@@ -1,203 +1,405 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Insights - PhD NexusCare</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-</head>
-<body>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
     <!-- Navigation -->
     <nav class="navbar">
-        <div class="navbar-container">
-            <a href="dashboard.html" class="logo">
-                <div class="logo-icon">🏥</div>
-                <span>NexusCare</span>
-            </a>
-            <ul class="nav-menu">
-                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
-                <li><a href="records.html" class="nav-link">Records</a></li>
-                <li><a href="appointments.html" class="nav-link">Appointments</a></li>
-                <li><a href="ai-insights.html" class="nav-link" style="color: var(--accent-teal);">AI Insights</a></li>
-                <li>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span id="userEmail" style="color: var(--text-secondary); font-size: 0.9rem;">Loading...</span>
-                        <button onclick="logout()" class="btn btn-outline" style="padding: 0.5rem 1rem;">Logout</button>
-                    </div>
-                </li>
-            </ul>
-        </div>
+      <div class="navbar-container">
+        <a href="dashboard.html" class="logo">
+          <div class="logo-icon">🏥</div>
+          <span>NexusCare</span>
+        </a>
+        <ul class="nav-menu">
+          <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+          <li><a href="records.html" class="nav-link">Records</a></li>
+          <li><a href="appointments.html" class="nav-link">Appointments</a></li>
+          <li>
+            <a
+              href="ai-insights.html"
+              class="nav-link"
+              style="color: var(--accent-teal)"
+              >AI Insights</a
+            >
+          </li>
+          <li>
+            <div style="display: flex; align-items: center; gap: 0.5rem">
+              <span
+                id="userEmail"
+                style="color: var(--text-secondary); font-size: 0.9rem"
+                >Loading...</span
+              >
+              <button
+                onclick="logout()"
+                class="btn btn-outline"
+                style="padding: 0.5rem 1rem"
+              >
+                Logout
+              </button>
+            </div>
+          </li>
+        </ul>
+      </div>
     </nav>
 
     <!-- Main Content -->
-    <main style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
-        <!-- Page Header -->
-        <div style="text-align: center; margin-bottom: 3rem;">
-            <h1 style="margin-bottom: 0.5rem;">🤖 AI-Powered Health Insights</h1>
-            <p style="color: var(--text-secondary); max-width: 700px; margin: 0 auto;">
-                Get intelligent analysis of your symptoms, specialist recommendations, and medical record summaries powered by local AI
-            </p>
+    <main style="padding: 2rem; max-width: 1400px; margin: 0 auto">
+      <!-- Page Header -->
+      <div style="text-align: center; margin-bottom: 3rem">
+        <h1 style="margin-bottom: 0.5rem">🤖 AI-Powered Health Insights</h1>
+        <p
+          style="color: var(--text-secondary); max-width: 700px; margin: 0 auto"
+        >
+          Get intelligent analysis of your symptoms, specialist recommendations,
+          and medical record summaries powered by local AI
+        </p>
+      </div>
+
+      <!-- Feature Grid -->
+      <div
+        style="
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+          gap: 2rem;
+          margin-bottom: 3rem;
+        "
+      >
+        <!-- Symptom Analyzer -->
+        <div
+          class="feature-card"
+          style="
+            background: linear-gradient(
+              135deg,
+              var(--secondary-blue),
+              var(--secondary-light)
+            );
+            color: white;
+          "
+        >
+          <div
+            class="feature-icon"
+            style="background: rgba(255, 255, 255, 0.2)"
+          >
+            🩺
+          </div>
+          <h3 style="color: white">Symptom Analyzer</h3>
+          <p style="opacity: 0.95">
+            Describe your symptoms and get AI-powered entity extraction and
+            analysis
+          </p>
         </div>
 
-        <!-- Feature Grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem; margin-bottom: 3rem;">
-            <!-- Symptom Analyzer -->
-            <div class="feature-card" style="background: linear-gradient(135deg, var(--secondary-blue), var(--secondary-light)); color: white;">
-                <div class="feature-icon" style="background: rgba(255,255,255,0.2);">🩺</div>
-                <h3 style="color: white;">Symptom Analyzer</h3>
-                <p style="opacity: 0.95;">Describe your symptoms and get AI-powered entity extraction and analysis</p>
-            </div>
-
-            <!-- Specialist Predictor -->
-            <div class="feature-card" style="background: linear-gradient(135deg, var(--accent-teal), var(--accent-green)); color: white;">
-                <div class="feature-icon" style="background: rgba(255,255,255,0.2);">👨‍⚕️</div>
-                <h3 style="color: white;">Specialist Predictor</h3>
-                <p style="opacity: 0.95;">Get recommendations on which medical specialist to consult (96% accuracy)</p>
-            </div>
-
-            <!-- Medical Summary -->
-            <div class="feature-card" style="background: linear-gradient(135deg, var(--secondary-dark), var(--secondary-blue)); color: white;">
-                <div class="feature-icon" style="background: rgba(255,255,255,0.2);">📊</div>
-                <h3 style="color: white;">Medical Summary</h3>
-                <p style="opacity: 0.95;">AI-generated summaries of your medical history with key highlights</p>
-            </div>
+        <!-- Specialist Predictor -->
+        <div
+          class="feature-card"
+          style="
+            background: linear-gradient(
+              135deg,
+              var(--accent-teal),
+              var(--accent-green)
+            );
+            color: white;
+          "
+        >
+          <div
+            class="feature-icon"
+            style="background: rgba(255, 255, 255, 0.2)"
+          >
+            👨‍⚕️
+          </div>
+          <h3 style="color: white">Specialist Predictor</h3>
+          <p style="opacity: 0.95">
+            Get recommendations on which medical specialist to consult (96%
+            accuracy)
+          </p>
         </div>
 
-        <!-- Symptom Analyzer Section -->
-        <div style="margin-bottom: 3rem;" id="analyze">
-            <div class="auth-card" style="max-width: 100%;">
-                <h2 style="margin-bottom: 1rem; color: var(--secondary-blue);">🩺 Symptom Analyzer & Specialist Predictor</h2>
-                <p style="color: var(--text-secondary); margin-bottom: 2rem;">
-                    Describe your symptoms in detail. Our AI will analyze them and recommend the appropriate medical specialist.
-                </p>
+        <!-- Medical Summary -->
+        <div
+          class="feature-card"
+          style="
+            background: linear-gradient(
+              135deg,
+              var(--secondary-dark),
+              var(--secondary-blue)
+            );
+            color: white;
+          "
+        >
+          <div
+            class="feature-icon"
+            style="background: rgba(255, 255, 255, 0.2)"
+          >
+            📊
+          </div>
+          <h3 style="color: white">Medical Summary</h3>
+          <p style="opacity: 0.95">
+            AI-generated summaries of your medical history with key highlights
+          </p>
+        </div>
+      </div>
 
-                <form id="symptomForm">
-                    <div class="form-group">
-                        <label class="form-label">Describe Your Symptoms</label>
-                        <textarea 
-                            id="symptoms" 
-                            class="form-control" 
-                            rows="5" 
-                            placeholder="Example: I've been experiencing severe chest pain for the past 2 days, along with shortness of breath and dizziness..."
-                            required
-                        ></textarea>
-                        <small style="color: var(--text-light);">Be as detailed as possible for accurate analysis</small>
-                    </div>
+      <!-- Symptom Analyzer Section -->
+      <div style="margin-bottom: 3rem" id="analyze">
+        <div class="auth-card" style="max-width: 100%">
+          <h2 style="margin-bottom: 1rem; color: var(--secondary-blue)">
+            🩺 Symptom Analyzer & Specialist Predictor
+          </h2>
+          <p style="color: var(--text-secondary); margin-bottom: 2rem">
+            Describe your symptoms in detail. Our AI will analyze them and
+            recommend the appropriate medical specialist.
+          </p>
 
-                    <div id="symptomAlert" class="alert alert-error hidden">
-                        <span>⚠️</span>
-                        <span id="symptomAlertText">Error message</span>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" style="width: 100%;" id="analyzeBtn">
-                        <span id="analyzeBtnText">🤖 Analyze Symptoms</span>
-                        <div id="analyzeSpinner" class="spinner hidden" style="width: 20px; height: 20px; border-width: 2px; margin: 0 auto;"></div>
-                    </button>
-                </form>
-
-                <!-- Results Section -->
-                <div id="resultsSection" class="hidden" style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--secondary-gray);">
-                    <h3 style="color: var(--secondary-blue); margin-bottom: 1.5rem;">Analysis Results</h3>
-                    
-                    <!-- Specialist Recommendation -->
-                    <div style="background: linear-gradient(135deg, var(--accent-teal), var(--accent-green)); color: white; padding: 2rem; border-radius: var(--border-radius); margin-bottom: 1.5rem;">
-                        <h4 style="color: white; margin-bottom: 0.5rem;">Recommended Specialist</h4>
-                        <div style="font-size: 2rem; margin: 1rem 0;">
-                            <span id="recommendedSpecialist">Cardiology</span>
-                        </div>
-                        <p style="opacity: 0.95; margin-bottom: 0.5rem;">
-                            Confidence: <strong id="confidence">0%</strong>
-                        </p>
-                        <p style="opacity: 0.9; font-size: 0.9rem;">
-                            Based on AI analysis of your symptoms
-                        </p>
-                    </div>
-
-                    <!-- Extracted Entities -->
-                    <div id="entitiesSection" style="background: var(--primary-light); padding: 1.5rem; border-radius: var(--border-radius); margin-bottom: 1.5rem;">
-                        <h4 style="color: var(--secondary-blue); margin-bottom: 1rem;">Extracted Medical Entities</h4>
-                        <div id="entitiesList" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
-                    </div>
-
-                    <!-- Actions -->
-                    <div style="display: flex; gap: 1rem;">
-                        <a href="appointments.html#book" class="btn btn-primary" style="flex: 1; text-align: center; text-decoration: none;">
-                            📅 Book Appointment
-                        </a>
-                        <button onclick="clearResults()" class="btn btn-outline" style="flex: 1;">
-                            🔄 New Analysis
-                        </button>
-                    </div>
-                </div>
+          <form id="symptomForm">
+            <div class="form-group">
+              <label class="form-label">Describe Your Symptoms</label>
+              <textarea
+                id="symptoms"
+                class="form-control"
+                rows="5"
+                placeholder="Example: I've been experiencing severe chest pain for the past 2 days, along with shortness of breath and dizziness..."
+                required
+              ></textarea>
+              <small style="color: var(--text-light)"
+                >Be as detailed as possible for accurate analysis</small
+              >
             </div>
+
+            <div id="symptomAlert" class="alert alert-error hidden">
+              <span>⚠️</span>
+              <span id="symptomAlertText">Error message</span>
+            </div>
+
+            <button
+              type="submit"
+              class="btn btn-primary"
+              style="width: 100%"
+              id="analyzeBtn"
+            >
+              <span id="analyzeBtnText">🤖 Analyze Symptoms</span>
+              <div
+                id="analyzeSpinner"
+                class="spinner hidden"
+                style="
+                  width: 20px;
+                  height: 20px;
+                  border-width: 2px;
+                  margin: 0 auto;
+                "
+              ></div>
+            </button>
+          </form>
+
+          <!-- Results Section -->
+          <div
+            id="resultsSection"
+            class="hidden"
+            style="
+              margin-top: 2rem;
+              padding-top: 2rem;
+              border-top: 2px solid var(--secondary-gray);
+            "
+          >
+            <h3 style="color: var(--secondary-blue); margin-bottom: 1.5rem">
+              Analysis Results
+            </h3>
+
+            <!-- Specialist Recommendation -->
+            <div
+              style="
+                background: linear-gradient(
+                  135deg,
+                  var(--accent-teal),
+                  var(--accent-green)
+                );
+                color: white;
+                padding: 2rem;
+                border-radius: var(--border-radius);
+                margin-bottom: 1.5rem;
+              "
+            >
+              <h4 style="color: white; margin-bottom: 0.5rem">
+                Recommended Specialist
+              </h4>
+              <div style="font-size: 2rem; margin: 1rem 0">
+                <span id="recommendedSpecialist">Cardiology</span>
+              </div>
+              <p style="opacity: 0.95; margin-bottom: 0.5rem">
+                Confidence: <strong id="confidence">0%</strong>
+              </p>
+              <p style="opacity: 0.9; font-size: 0.9rem">
+                Based on AI analysis of your symptoms
+              </p>
+            </div>
+
+            <!-- Extracted Entities -->
+            <div
+              id="entitiesSection"
+              style="
+                background: var(--primary-light);
+                padding: 1.5rem;
+                border-radius: var(--border-radius);
+                margin-bottom: 1.5rem;
+              "
+            >
+              <h4 style="color: var(--secondary-blue); margin-bottom: 1rem">
+                Extracted Medical Entities
+              </h4>
+              <div
+                id="entitiesList"
+                style="display: flex; flex-wrap: wrap; gap: 0.5rem"
+              ></div>
+            </div>
+
+            <!-- Actions -->
+            <div style="display: flex; gap: 1rem">
+              <a
+                href="appointments.html#book"
+                class="btn btn-primary"
+                style="flex: 1; text-align: center; text-decoration: none"
+              >
+                📅 Book Appointment
+              </a>
+              <button
+                onclick="clearResults()"
+                class="btn btn-outline"
+                style="flex: 1"
+              >
+                🔄 New Analysis
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Medical Summary Section -->
+      <div style="margin-bottom: 3rem">
+        <div class="auth-card" style="max-width: 100%">
+          <h2 style="margin-bottom: 1rem; color: var(--secondary-blue)">
+            📊 Medical History Summary
+          </h2>
+          <p style="color: var(--text-secondary); margin-bottom: 2rem">
+            Generate an AI-powered summary of your medical records, highlighting
+            key information and trends.
+          </p>
+
+          <button
+            onclick="generateSummary()"
+            class="btn btn-primary"
+            style="width: 100%"
+            id="summaryBtn"
+          >
+            <span id="summaryBtnText">🤖 Generate Summary</span>
+            <div
+              id="summarySpinner"
+              class="spinner hidden"
+              style="
+                width: 20px;
+                height: 20px;
+                border-width: 2px;
+                margin: 0 auto;
+              "
+            ></div>
+          </button>
+
+          <div
+            id="summaryAlert"
+            class="alert alert-error hidden"
+            style="margin-top: 1rem"
+          >
+            <span>⚠️</span>
+            <span id="summaryAlertText">Error message</span>
+          </div>
+
+          <!-- Summary Results -->
+          <div
+            id="summarySection"
+            class="hidden"
+            style="
+              margin-top: 2rem;
+              padding-top: 2rem;
+              border-top: 2px solid var(--secondary-gray);
+            "
+          >
+            <h3 style="color: var(--secondary-blue); margin-bottom: 1.5rem">
+              Your Medical Summary
+            </h3>
+
+            <div
+              style="
+                background: var(--primary-light);
+                padding: 2rem;
+                border-radius: var(--border-radius);
+                border-left: 4px solid var(--accent-teal);
+              "
+            >
+              <div id="summaryContent" style="line-height: 1.8"></div>
+            </div>
+
+            <div
+              style="
+                margin-top: 1.5rem;
+                padding: 1rem;
+                background: var(--primary-bg);
+                border-radius: var(--border-radius);
+              "
+            >
+              <small style="color: var(--text-secondary)">
+                <strong>Note:</strong> This summary is generated by AI for
+                informational purposes. Always consult with healthcare
+                professionals for medical decisions.
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info Section -->
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <h4>100% Private</h4>
+          <p style="color: var(--text-secondary)">
+            All AI processing happens locally on your device. No data sent to
+            external servers.
+          </p>
         </div>
 
-        <!-- Medical Summary Section -->
-        <div style="margin-bottom: 3rem;">
-            <div class="auth-card" style="max-width: 100%;">
-                <h2 style="margin-bottom: 1rem; color: var(--secondary-blue);">📊 Medical History Summary</h2>
-                <p style="color: var(--text-secondary); margin-bottom: 2rem;">
-                    Generate an AI-powered summary of your medical records, highlighting key information and trends.
-                </p>
-
-                <button onclick="generateSummary()" class="btn btn-primary" style="width: 100%;" id="summaryBtn">
-                    <span id="summaryBtnText">🤖 Generate Summary</span>
-                    <div id="summarySpinner" class="spinner hidden" style="width: 20px; height: 20px; border-width: 2px; margin: 0 auto;"></div>
-                </button>
-
-                <div id="summaryAlert" class="alert alert-error hidden" style="margin-top: 1rem;">
-                    <span>⚠️</span>
-                    <span id="summaryAlertText">Error message</span>
-                </div>
-
-                <!-- Summary Results -->
-                <div id="summarySection" class="hidden" style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--secondary-gray);">
-                    <h3 style="color: var(--secondary-blue); margin-bottom: 1.5rem;">Your Medical Summary</h3>
-                    
-                    <div style="background: var(--primary-light); padding: 2rem; border-radius: var(--border-radius); border-left: 4px solid var(--accent-teal);">
-                        <div id="summaryContent" style="line-height: 1.8;"></div>
-                    </div>
-
-                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--primary-bg); border-radius: var(--border-radius);">
-                        <small style="color: var(--text-secondary);">
-                            <strong>Note:</strong> This summary is generated by AI for informational purposes. 
-                            Always consult with healthcare professionals for medical decisions.
-                        </small>
-                    </div>
-                </div>
-            </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h4>Real-Time Analysis</h4>
+          <p style="color: var(--text-secondary)">
+            Get instant results powered by spaCy, SentenceTransformers, and
+            scikit-learn.
+          </p>
         </div>
 
-        <!-- Info Section -->
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">🔒</div>
-                <h4>100% Private</h4>
-                <p style="color: var(--text-secondary);">All AI processing happens locally on your device. No data sent to external servers.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">⚡</div>
-                <h4>Real-Time Analysis</h4>
-                <p style="color: var(--text-secondary);">Get instant results powered by spaCy, SentenceTransformers, and scikit-learn.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">🎯</div>
-                <h4>96% Accuracy</h4>
-                <p style="color: var(--text-secondary);">Specialist prediction trained on medical datasets with high accuracy rates.</p>
-            </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎯</div>
+          <h4>96% Accuracy</h4>
+          <p style="color: var(--text-secondary)">
+            Specialist prediction trained on medical datasets with high accuracy
+            rates.
+          </p>
         </div>
+      </div>
     </main>
 
     <!-- Footer -->
     <footer class="footer">
-        <p>&copy; 2025 PhD NexusCare. Your privacy-first healthcare platform.</p>
+      <p>&copy; 2025 PhD NexusCare. Your privacy-first healthcare platform.</p>
     </footer>
 
     <script src="js/ai-insights.js"></script>
-</body>
+  </body>
 </html>

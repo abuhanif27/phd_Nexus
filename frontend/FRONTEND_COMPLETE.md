@@ -3,6 +3,7 @@
 ## 🎉 All Pages Are Now Complete!
 
 All three pages that were "not working" have been created with full functionality:
+
 - ✅ **Medical Records** - Upload, view, and manage medical documents
 - ✅ **Appointments** - Book appointments with doctors and manage schedule
 - ✅ **AI Insights** - Symptom analysis and medical text summarization
@@ -12,7 +13,9 @@ All three pages that were "not working" have been created with full functionalit
 ## 📋 What Was Created
 
 ### 1. Medical Records Page (`records.html`)
+
 **Features:**
+
 - View all medical records in a table format
 - Upload new records (Lab Results, Prescriptions, Imaging, Documents)
 - Filter and search records
@@ -20,12 +23,14 @@ All three pages that were "not working" have been created with full functionalit
 - Stats dashboard (total records, lab results, prescriptions, imaging)
 
 **JavaScript:** `js/records.js`
+
 - File upload with FormData
 - Records listing from API
 - File type categorization
 - View/download functionality
 
 **API Endpoints Used:**
+
 - `GET /api/records/files/` - List all records
 - `POST /api/records/files/upload/` - Upload new record
 - `GET /api/records/files/{id}/link/` - Get download link
@@ -33,7 +38,9 @@ All three pages that were "not working" have been created with full functionalit
 ---
 
 ### 2. Appointments Page (`appointments.html`)
+
 **Features:**
+
 - View upcoming and past appointments
 - Book new appointments with doctor search
 - Filter doctors by specialty and location
@@ -42,12 +49,14 @@ All three pages that were "not working" have been created with full functionalit
 - Stats dashboard (upcoming, completed, cancelled)
 
 **JavaScript:** `js/appointments.js`
+
 - Doctor search with filters
 - Time slot availability checker
 - Appointment booking form
 - Status management
 
 **API Endpoints Used:**
+
 - `GET /api/scheduling/appointments/` - List appointments
 - `POST /api/scheduling/appointments/` - Book appointment
 - `GET /api/doctors/` - Search doctors
@@ -57,8 +66,11 @@ All three pages that were "not working" have been created with full functionalit
 ---
 
 ### 3. AI Insights Page (`ai-insights.html`)
+
 **Features:**
+
 - **Symptom Analyzer:**
+
   - Enter symptoms in natural language
   - Get specialist recommendation with confidence score
   - View alternative specialists
@@ -71,12 +83,14 @@ All three pages that were "not working" have been created with full functionalit
   - Identify medical entities (conditions, medications)
 
 **JavaScript:** `js/ai-insights.js`
+
 - Symptom analysis with confidence visualization
 - Medical text summarization
 - Entity extraction display
 - Example symptoms helper
 
 **API Endpoints Used:**
+
 - `POST /api/ai/specialist/` - Analyze symptoms and predict specialist
 - `POST /api/ai/summary/` - Generate medical summary
 
@@ -85,16 +99,19 @@ All three pages that were "not working" have been created with full functionalit
 ## 🎨 Design System (60-30-10 Color Rule)
 
 ### 60% - Primary Background Colors
+
 - `#f8f9fd` - Main background (soft blue-gray)
 - `#ffffff` - Cards and surfaces (white)
 - `#e8ecf7` - Subtle highlights
 
 ### 30% - Secondary Elements
+
 - `#4a90e2` - Primary blue (buttons, links)
 - `#2c5282` - Dark blue (headers, text)
 - `#cbd5e0` - Borders and dividers
 
 ### 10% - Accent Colors
+
 - `#00d9b5` - Teal (CTAs, highlights)
 - `#48bb78` - Green (success states)
 - `#38b2ac` - Accent teal (hover states)
@@ -104,20 +121,24 @@ All three pages that were "not working" have been created with full functionalit
 ## 🚀 Running the Application
 
 ### Backend Server
+
 The backend is currently running with CORS fixed to allow port 8080.
 
 **Start backend manually:**
+
 ```bash
 cd /home/hn-hanif/Desktop/phd_Nexus/backend
 /home/hn-hanif/Desktop/phd_Nexus/backend/.venv/bin/python manage.py runserver
 ```
 
 **Verify backend is running:**
+
 ```bash
 curl http://localhost:8000/api/
 ```
 
 ### Frontend Server
+
 Start the frontend on port 8080:
 
 ```bash
@@ -126,6 +147,7 @@ python3 -m http.server 8080
 ```
 
 **Access the application:**
+
 - Landing Page: http://localhost:8080/
 - Login: http://localhost:8080/login.html
 - Register: http://localhost:8080/register.html
@@ -139,6 +161,7 @@ python3 -m http.server 8080
 ## 🧪 Testing the New Features
 
 ### Test Medical Records
+
 1. Login to the dashboard
 2. Click "Medical Records" in the navbar
 3. Click "Upload New Record"
@@ -147,6 +170,7 @@ python3 -m http.server 8080
 6. View uploaded records in the table
 
 ### Test Appointments
+
 1. Navigate to Appointments page
 2. Click "Book Appointment"
 3. Filter doctors by specialty (optional)
@@ -159,6 +183,7 @@ python3 -m http.server 8080
 ### Test AI Insights
 
 **Symptom Analysis:**
+
 1. Navigate to AI Insights page
 2. Try example symptoms or enter your own:
    - "severe chest pain, shortness of breath, rapid heartbeat"
@@ -168,6 +193,7 @@ python3 -m http.server 8080
 4. View recommended specialist with confidence score
 
 **Medical Summary:**
+
 1. Scroll to "Medical Summary Generator"
 2. Enter or paste medical text
 3. Click "Generate Summary"
@@ -178,10 +204,12 @@ python3 -m http.server 8080
 ## 🔐 Demo Accounts
 
 **Patient Account:**
+
 - Email: `patient@example.com`
 - Password: `TestPass123!`
 
 **Doctor Account:**
+
 - Email: `doctor@example.com`
 - Password: `TestPass123!`
 
@@ -231,6 +259,7 @@ frontend/
 ## ⚡ New CSS Components Added
 
 **Appointments:**
+
 - `.appointment-card` - Appointment display cards
 - `.doctor-card` - Doctor selection cards
 - `.doctor-avatar` - Doctor profile avatars
@@ -238,12 +267,14 @@ frontend/
 - `.time-slot` - Individual time slot buttons
 
 **AI Insights:**
+
 - `.summary-card` - Summary display containers
 - `.entity-tag` - Extracted entity badges
 - `.condition-tag` - Medical condition badges
 - `.medication-tag` - Medication badges
 
 **General:**
+
 - `.badge-info`, `.badge-success`, `.badge-error` - Status badges
 - Responsive styles for mobile devices
 
@@ -252,6 +283,7 @@ frontend/
 ## 🔧 API Integration
 
 All JavaScript files follow the same pattern:
+
 1. **Authentication Check:** Redirect to login if no token
 2. **Auth Headers:** Include JWT Bearer token in requests
 3. **Error Handling:** Detect CORS, network, and API errors
@@ -259,19 +291,20 @@ All JavaScript files follow the same pattern:
 5. **Response Handling:** Display results or error messages
 
 **Example API Call Pattern:**
+
 ```javascript
 const response = await fetch(`${API_BASE_URL}/endpoint/`, {
-    method: 'POST',
-    headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify(data),
 });
 
 if (response.status === 401) {
-    logout(); // Token expired
-    return;
+  logout(); // Token expired
+  return;
 }
 
 const result = await response.json();
@@ -281,32 +314,36 @@ const result = await response.json();
 
 ## 🎯 Features Overview
 
-| Feature | Status | Page |
-|---------|--------|------|
-| User Registration | ✅ Working | register.html |
-| User Login | ✅ Working | login.html |
-| Dashboard | ✅ Working | dashboard.html |
-| Medical Records Upload | ✅ Working | records.html |
-| Medical Records View | ✅ Working | records.html |
-| Doctor Search | ✅ Working | appointments.html |
-| Appointment Booking | ✅ Working | appointments.html |
+| Feature                | Status     | Page              |
+| ---------------------- | ---------- | ----------------- |
+| User Registration      | ✅ Working | register.html     |
+| User Login             | ✅ Working | login.html        |
+| Dashboard              | ✅ Working | dashboard.html    |
+| Medical Records Upload | ✅ Working | records.html      |
+| Medical Records View   | ✅ Working | records.html      |
+| Doctor Search          | ✅ Working | appointments.html |
+| Appointment Booking    | ✅ Working | appointments.html |
 | Appointment Management | ✅ Working | appointments.html |
-| Symptom Analysis | ✅ Working | ai-insights.html |
-| Medical Summarization | ✅ Working | ai-insights.html |
-| Responsive Design | ✅ Working | All pages |
+| Symptom Analysis       | ✅ Working | ai-insights.html  |
+| Medical Summarization  | ✅ Working | ai-insights.html  |
+| Responsive Design      | ✅ Working | All pages         |
 
 ---
 
 ## 🐛 Troubleshooting
 
 ### Issue: "Cannot connect to server"
+
 **Solution:** Ensure backend is running on port 8000
+
 ```bash
 curl http://localhost:8000/api/
 ```
 
 ### Issue: CORS errors in browser console
+
 **Solution:** Backend already fixed. Restart backend if needed:
+
 ```bash
 pkill -f 'manage.py runserver'
 cd /home/hn-hanif/Desktop/phd_Nexus/backend
@@ -314,15 +351,19 @@ cd /home/hn-hanif/Desktop/phd_Nexus/backend
 ```
 
 ### Issue: 401 Unauthorized
+
 **Solution:** Token expired. Logout and login again.
 
 ### Issue: 404 Not Found for records API
+
 **Solution:** This is expected if the records endpoint isn't fully implemented. The UI handles this gracefully.
 
 ### Issue: No doctors showing in appointments
+
 **Solution:** Create doctor accounts through admin panel or registration.
 
 ### Issue: AI analysis not working
+
 **Solution:** Ensure AI models are loaded in backend. Check backend console for errors.
 
 ---
@@ -330,6 +371,7 @@ cd /home/hn-hanif/Desktop/phd_Nexus/backend
 ## 📝 Next Steps
 
 **Optional Enhancements:**
+
 1. Add pagination for records and appointments
 2. Implement advanced search and filters
 3. Add file preview (PDF viewer, image lightbox)
@@ -340,6 +382,7 @@ cd /home/hn-hanif/Desktop/phd_Nexus/backend
 8. Implement chat/messaging feature
 
 **Testing Checklist:**
+
 - [ ] Upload different file types (PDF, JPG, PNG, DOCX)
 - [ ] Book appointments for different dates
 - [ ] Test symptom analysis with various inputs

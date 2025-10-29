@@ -49,7 +49,7 @@
   --spacing-sm: 1rem;
   --spacing-md: 1.5rem;
   --spacing-lg: 2rem;
-  
+
   /* Backgrounds */
   --bg-light: #f7fafc;
   --spacing-xl: 3rem;
@@ -737,7 +737,11 @@ h4 {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--secondary-blue), var(--accent-teal));
+  background: linear-gradient(
+    135deg,
+    var(--secondary-blue),
+    var(--accent-teal)
+  );
   color: var(--primary-white);
   display: flex;
   align-items: center;
