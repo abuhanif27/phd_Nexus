@@ -1209,18 +1209,27 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// Initialize
-if (checkAuth()) {
-  document.addEventListener("DOMContentLoaded", () => {
-    loadUserInfo();
-    loadAppointments();
-    loadDoctorsMainPage(); // Load doctors on main page
+// Initialize - FIXED: DOMContentLoaded must run first, THEN check auth
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🚀 Page loaded, initializing...");
+  
+  // Check authentication first
+  if (!checkAuth()) {
+    console.log("❌ Auth check failed, redirecting to login...");
+    return; // checkAuth() will redirect to login.html
+  }
+  
+  console.log("✅ Auth check passed, loading data...");
+  
+  // Load all data
+  loadUserInfo();
+  loadAppointments();
+  loadDoctorsMainPage(); // Load doctors on main page
 
-    // Set min date to today
-    const dateInput = document.getElementById("appointmentDate");
-    if (dateInput) {
-      const today = new Date().toISOString().split("T")[0];
-      dateInput.setAttribute("min", today);
-    }
-  });
-}
+  // Set min date to today
+  const dateInput = document.getElementById("appointmentDate");
+  if (dateInput) {
+    const today = new Date().toISOString().split("T")[0];
+    dateInput.setAttribute("min", today);
+  }
+});
