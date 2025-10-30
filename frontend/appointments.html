@@ -11,6 +11,60 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* Doctor card animations */
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .doctor-card {
+        animation: fadeInUp 0.5s ease forwards;
+      }
+
+      .doctor-card:nth-child(1) { animation-delay: 0.1s; }
+      .doctor-card:nth-child(2) { animation-delay: 0.2s; }
+      .doctor-card:nth-child(3) { animation-delay: 0.3s; }
+      .doctor-card:nth-child(4) { animation-delay: 0.4s; }
+      .doctor-card:nth-child(5) { animation-delay: 0.5s; }
+
+      /* Custom scrollbar for doctor results */
+      #doctorResults::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      #doctorResults::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+      }
+
+      #doctorResults::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, var(--primary-blue), var(--accent-teal));
+        border-radius: 10px;
+      }
+
+      #doctorResults::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-blue);
+      }
+
+      /* Spinner animation */
+      .spinner {
+        border: 4px solid rgba(103, 126, 234, 0.1);
+        border-left-color: var(--primary-blue);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
     <!-- Navigation -->

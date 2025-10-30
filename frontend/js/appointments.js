@@ -283,7 +283,9 @@ function displayDoctors(doctors) {
   const countElement = document.getElementById("doctorCount");
 
   if (countElement) {
-    countElement.textContent = `${doctors.length} doctor${doctors.length !== 1 ? "s" : ""} found`;
+    countElement.textContent = `${doctors.length} doctor${
+      doctors.length !== 1 ? "s" : ""
+    } found`;
   }
 
   if (doctors.length === 0) {
@@ -342,16 +344,15 @@ function displayDoctors(doctors) {
   };
 
   container.innerHTML = doctors
-    .map(
-      (doctor) => {
-        const doctorName = doctor.name || doctor.user_name || doctor.email;
-        const specialty = doctor.specialty || "General Medicine";
-        const location = doctor.location || "Location not specified";
-        const rating = doctor.rating || "4.5";
-        const specialtyIcon = getSpecialtyIcon(specialty);
-        const specialtyColor = getSpecialtyColor(specialty);
+    .map((doctor) => {
+      const doctorName = doctor.name || doctor.user_name || doctor.email;
+      const specialty = doctor.specialty || "General Medicine";
+      const location = doctor.location || "Location not specified";
+      const rating = doctor.rating || "4.5";
+      const specialtyIcon = getSpecialtyIcon(specialty);
+      const specialtyColor = getSpecialtyColor(specialty);
 
-        return `
+      return `
         <div 
           class="doctor-card" 
           data-doctor-id="${doctor.id}"
@@ -372,8 +373,8 @@ function displayDoctors(doctors) {
           onmouseover="this.style.transform='translateX(4px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'; this.style.borderColor='${specialtyColor}';"
           onmouseout="if(!this.classList.contains('selected')) { this.style.transform='translateX(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)'; this.style.borderColor='#e8ecef'; }"
           onclick="selectDoctor(${doctor.id}, '${escapeHtml(
-          doctorName
-        )}', '${escapeHtml(specialty)}')"
+        doctorName
+      )}', '${escapeHtml(specialty)}')"
         >
           <!-- Doctor Avatar with Specialty Color -->
           <div style="
@@ -494,8 +495,7 @@ function displayDoctors(doctors) {
           </div>
         </div>
       `;
-      }
-    )
+    })
     .join("");
 }
 
@@ -507,38 +507,112 @@ function selectDoctor(doctorId, doctorName, specialty) {
   selectedDoctorId = doctorId;
   selectedDoctorName = doctorName;
 
+  // Get specialty icon and color
+  const getSpecialtyIcon = (spec) => {
+    const icons = {
+      Cardiology: "❤️",
+      Dermatology: "🧴",
+      Neurology: "🧠",
+      Orthopedics: "🦴",
+      "General Medicine": "🩺",
+      Pediatrics: "👶",
+      Psychiatry: "🧘",
+      ENT: "👂",
+      Ophthalmology: "👁️",
+      Gynecology: "🏥",
+      Urology: "💧",
+      Pulmonology: "🫁",
+      Gastroenterology: "🫀",
+    };
+    return icons[spec] || "👨‍⚕️";
+  };
+
+  const getSpecialtyColor = (spec) => {
+    const colors = {
+      Cardiology: "#e74c3c",
+      Dermatology: "#f39c12",
+      Neurology: "#9b59b6",
+      Orthopedics: "#3498db",
+      "General Medicine": "#2ecc71",
+      Pediatrics: "#ff69b4",
+      Psychiatry: "#1abc9c",
+      ENT: "#e67e22",
+      Ophthalmology: "#34495e",
+      Gynecology: "#e91e63",
+      Urology: "#00bcd4",
+      Pulmonology: "#009688",
+      Gastroenterology: "#ff5722",
+    };
+    return colors[spec] || "#667eea";
+  };
+
+  const specialtyIcon = getSpecialtyIcon(specialty);
+  const specialtyColor = getSpecialtyColor(specialty);
+
   // Update hidden input
   document.getElementById("doctorSelect").value = doctorId;
 
-  // Update selected doctor display
+  // Update selected doctor display with beautiful design
   document.getElementById("selectedDoctorDisplay").innerHTML = `
-    <div style="text-align: left; width: 100%;">
-      <div style="display: flex; align-items: center; gap: 1rem;">
+    <div style="
+      display: flex; 
+      align-items: center; 
+      gap: 1rem;
+      padding: 0.5rem;
+      background: white;
+      border-radius: 8px;
+    ">
+      <div style="
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, ${specialtyColor}, ${specialtyColor}cc);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      ">
+        ${specialtyIcon}
+      </div>
+      <div style="flex: 1;">
         <div style="
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, var(--primary-blue), var(--accent-teal));
-          color: white;
-          display: flex;
+          font-weight: 700; 
+          color: var(--text-primary);
+          font-size: 1.1rem;
+          margin-bottom: 0.25rem;
+        ">
+          ${escapeHtml(doctorName)}
+        </div>
+        <div style="
+          display: inline-flex;
           align-items: center;
-          justify-content: center;
-          font-size: 1.2rem;
+          gap: 0.25rem;
+          padding: 0.25rem 0.75rem;
+          background: ${specialtyColor}15;
+          color: ${specialtyColor};
+          border-radius: 15px;
+          font-size: 0.8rem;
           font-weight: 600;
         ">
-          ${doctorName.charAt(0).toUpperCase()}
+          ${specialtyIcon} ${escapeHtml(specialty)}
         </div>
-        <div>
-          <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(
-            doctorName
-          )}</div>
-          <div style="font-size: 0.9rem; color: var(--text-secondary);">${escapeHtml(
-            specialty
-          )}</div>
-        </div>
-        <div style="margin-left: auto;">
-          <span style="color: var(--status-success); font-weight: 600;">✓ Selected</span>
-        </div>
+      </div>
+      <div style="
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+      ">
+        <span style="font-size: 1.2rem;">✓</span>
+        Selected
       </div>
     </div>
   `;
@@ -546,12 +620,20 @@ function selectDoctor(doctorId, doctorName, specialty) {
   // Highlight selected doctor card
   document.querySelectorAll(".doctor-card").forEach((card) => {
     card.classList.remove("selected");
-    card.style.borderColor = "var(--secondary-gray)";
-    card.style.boxShadow = "none";
+    card.style.borderColor = "#e8ecef";
+    card.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)";
+    card.style.transform = "translateX(0)";
   });
-  event.currentTarget.classList.add("selected");
-  event.currentTarget.style.borderColor = "var(--primary-blue)";
-  event.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+
+  const selectedCard = document.querySelector(
+    `.doctor-card[data-doctor-id="${doctorId}"]`
+  );
+  if (selectedCard) {
+    selectedCard.classList.add("selected");
+    selectedCard.style.borderColor = specialtyColor;
+    selectedCard.style.boxShadow = `0 4px 12px ${specialtyColor}40`;
+    selectedCard.style.transform = "translateX(4px)";
+  }
 
   // Scroll to date selection
   setTimeout(() => {
