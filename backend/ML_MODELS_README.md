@@ -19,6 +19,7 @@ python manage.py train_sklearn
 ```
 
 This creates:
+
 - `ai_models/specialist_clf_sklearn.joblib` - TF-IDF + Logistic Regression model
 - `ai_models/specialist_clf_sklearn_labels.joblib` - Label encoder
 
@@ -30,6 +31,7 @@ python manage.py train_pytorch --epochs 10
 ```
 
 This creates:
+
 - `ai_models/specialist_clf_pytorch.pt` - DistilBERT fine-tuned model
 - `ai_models/specialist_clf_pytorch_labels.joblib` - Label encoder
 
@@ -37,15 +39,15 @@ This creates:
 
 ## 📊 Model Comparison
 
-| Feature | Scikit-learn | PyTorch (DistilBERT) |
-|---------|--------------|----------------------|
-| **Training Time** | ~30 seconds | ~5-15 minutes |
-| **Model Size** | ~1-2 MB | ~250 MB |
-| **Accuracy** | 75-85% | 85-95% |
-| **Inference Speed** | 1-5ms | 20-50ms (CPU), 5-10ms (GPU) |
-| **Memory Usage** | ~50 MB | ~500 MB |
-| **Best For** | Production, fast responses | Higher accuracy, better generalization |
-| **Dependencies** | sklearn, scipy | torch, transformers |
+| Feature             | Scikit-learn               | PyTorch (DistilBERT)                   |
+| ------------------- | -------------------------- | -------------------------------------- |
+| **Training Time**   | ~30 seconds                | ~5-15 minutes                          |
+| **Model Size**      | ~1-2 MB                    | ~250 MB                                |
+| **Accuracy**        | 75-85%                     | 85-95%                                 |
+| **Inference Speed** | 1-5ms                      | 20-50ms (CPU), 5-10ms (GPU)            |
+| **Memory Usage**    | ~50 MB                     | ~500 MB                                |
+| **Best For**        | Production, fast responses | Higher accuracy, better generalization |
+| **Dependencies**    | sklearn, scipy             | torch, transformers                    |
 
 ---
 
@@ -54,11 +56,13 @@ This creates:
 ### 1. Scikit-learn Model (SHORT TASK)
 
 **Architecture:**
+
 - **Text Vectorization**: TF-IDF (max 5000 features, 1-3 word n-grams)
 - **Classifier**: Logistic Regression (L2 regularization, C=1.0, balanced class weights)
 - **Preprocessing**: Lowercase, stopword removal, lemmatization
 
 **Advantages:**
+
 - ✅ Fast training (~30 seconds)
 - ✅ Small model size (~1-2 MB)
 - ✅ Fast inference (1-5ms)
@@ -66,17 +70,20 @@ This creates:
 - ✅ Easy to interpret (feature importance)
 
 **Use Cases:**
+
 - Production deployments with limited resources
 - Quick prototyping
 - Real-time predictions at scale
 - Mobile/edge deployment
 
 **Training Command:**
+
 ```bash
 python manage.py train_sklearn --data data/symptoms_train.csv
 ```
 
 **Advanced Options:**
+
 ```bash
 python manage.py train_sklearn \
     --data data/symptoms_train.csv \
@@ -91,6 +98,7 @@ python manage.py train_sklearn \
 ### 2. PyTorch Model (LONG TASK)
 
 **Architecture:**
+
 - **Base Model**: DistilBERT (distilbert-base-uncased)
 - **Fine-tuning**: Classification head with dropout
 - **Optimizer**: AdamW (lr=2e-5, weight_decay=0.01)
@@ -98,6 +106,7 @@ python manage.py train_sklearn \
 - **Training**: Mixed precision (FP16) for speed
 
 **Advantages:**
+
 - ✅ Higher accuracy (85-95%)
 - ✅ Better generalization to new symptom descriptions
 - ✅ Handles typos, slang, and varied phrasing
@@ -105,17 +114,20 @@ python manage.py train_sklearn \
 - ✅ Transfer learning from 110M parameters
 
 **Use Cases:**
+
 - High-accuracy requirements
 - Complex symptom descriptions
 - Multi-lingual support (with multilingual BERT)
 - Research and development
 
 **Training Command:**
+
 ```bash
 python manage.py train_pytorch --epochs 10
 ```
 
 **Advanced Options:**
+
 ```bash
 python manage.py train_pytorch \
     --data data/symptoms_train.csv \
@@ -128,6 +140,7 @@ python manage.py train_pytorch \
 ```
 
 **GPU Training (Recommended):**
+
 ```bash
 # With CUDA GPU (10x faster)
 CUDA_VISIBLE_DEVICES=0 python manage.py train_pytorch --epochs 10
@@ -259,6 +272,7 @@ curl -X POST http://localhost:8000/api/ai/specialist/ \
 Based on 159 training samples:
 
 ### Scikit-learn Model
+
 - Training time: ~30 seconds (CPU)
 - Test accuracy: ~78%
 - Inference time: 2-5ms per prediction
@@ -266,6 +280,7 @@ Based on 159 training samples:
 - Memory: 50 MB
 
 ### PyTorch Model (DistilBERT)
+
 - Training time: ~8 minutes (CPU), ~2 minutes (GPU)
 - Test accuracy: ~89%
 - Inference time: 35ms (CPU), 8ms (GPU)
@@ -286,11 +301,13 @@ symptom_text,specialist
 ```
 
 **Current Dataset:**
+
 - 159 labeled examples
 - 10+ specialist categories
 - Symptoms range from 3-50 words
 
 **Improving Accuracy:**
+
 - Add more training data (500+ samples recommended)
 - Balance classes (equal examples per specialist)
 - Use domain-specific models (BioBERT, ClinicalBERT)
@@ -300,16 +317,19 @@ symptom_text,specialist
 ## 🚀 Production Deployment
 
 ### Option 1: Use Scikit-learn (Recommended for Most Cases)
+
 - Fast, lightweight, sufficient accuracy
 - No GPU required
 - Easy to deploy
 
 ### Option 2: Use PyTorch with Model Serving
+
 - Higher accuracy for complex cases
 - Requires more resources
 - Consider model serving (TorchServe, ONNX)
 
 ### Option 3: Hybrid Approach
+
 - Use sklearn for 80% of cases (fast path)
 - Route complex/uncertain cases to PyTorch
 - Best of both worlds
@@ -378,6 +398,7 @@ export CUDA_VISIBLE_DEVICES=0
 ## 📚 Further Improvements
 
 ### To Increase Accuracy:
+
 1. **More training data**: Collect 500-1000+ labeled examples
 2. **Better data quality**: Clean duplicates, fix labels
 3. **Domain-specific models**: Use BioCERT, ClinicalBERT, or PubMedBERT
@@ -385,6 +406,7 @@ export CUDA_VISIBLE_DEVICES=0
 5. **Ensemble methods**: Combine sklearn + PyTorch predictions
 
 ### To Improve Speed:
+
 1. **Model quantization**: Convert to INT8 (4x smaller, 2x faster)
 2. **ONNX export**: Convert PyTorch to ONNX runtime
 3. **Caching**: Cache embeddings for repeated queries

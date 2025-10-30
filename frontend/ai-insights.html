@@ -250,16 +250,22 @@
                 margin-bottom: 1.5rem;
               "
             >
-              <h4 style="color: white; margin-bottom: 0.5rem">
-                Recommended Specialist
-              </h4>
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                <h4 style="color: white; margin: 0;">
+                  Recommended Specialist
+                </h4>
+                <div id="modelBadge" style="padding: 0.25rem 0.75rem; background: rgba(255,255,255,0.2); 
+                     border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: none;">
+                  🧠 PyTorch
+                </div>
+              </div>
               <div style="font-size: 2rem; margin: 1rem 0">
                 <span id="recommendedSpecialist">Cardiology</span>
               </div>
               <p style="opacity: 0.95; margin-bottom: 0.5rem">
                 Confidence: <strong id="confidence">0%</strong>
               </p>
-              <p style="opacity: 0.9; font-size: 0.9rem">
+              <p style="opacity: 0.9; font-size: 0.9rem" id="modelDescription">
                 Based on AI analysis of your symptoms
               </p>
             </div>
@@ -387,7 +393,7 @@
       </div>
 
       <!-- Info Section -->
-      <div class="features-grid">
+      <div class="features-grid" style="margin-bottom: 3rem;">
         <div class="feature-card">
           <div class="feature-icon">🔒</div>
           <h4>100% Private</h4>
@@ -408,10 +414,72 @@
 
         <div class="feature-card">
           <div class="feature-icon">🎯</div>
-          <h4>96% Accuracy</h4>
+          <h4>85-95% Accuracy</h4>
           <p style="color: var(--text-secondary)">
-            Specialist prediction trained on medical datasets with high accuracy
-            rates.
+            Specialist prediction using PyTorch deep learning or fast sklearn ML
+            models.
+          </p>
+        </div>
+      </div>
+
+      <!-- ML Models Info Section -->
+      <div class="auth-card" style="max-width: 100%; margin-bottom: 3rem;">
+        <h2 style="margin-bottom: 1rem; color: var(--secondary-blue)">
+          🧠 Powered by Advanced Machine Learning
+        </h2>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+          Our platform uses two state-of-the-art machine learning models for specialist prediction.
+          The system automatically selects the best available model for maximum accuracy.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+          <!-- PyTorch Model -->
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                      color: white; padding: 2rem; border-radius: var(--border-radius);">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+              <span style="font-size: 2.5rem;">🧠</span>
+              <div>
+                <h3 style="color: white; margin: 0;">PyTorch Model</h3>
+                <small style="opacity: 0.9;">Deep Learning (DistilBERT)</small>
+              </div>
+            </div>
+            <ul style="list-style: none; padding: 0; margin: 1rem 0; line-height: 1.8;">
+              <li>✓ 85-95% accuracy</li>
+              <li>✓ Transformer-based (66M parameters)</li>
+              <li>✓ Better generalization</li>
+              <li>✓ Handles complex symptoms</li>
+            </ul>
+            <div style="background: rgba(255,255,255,0.1); padding: 0.75rem; border-radius: 8px; margin-top: 1rem;">
+              <small>Training: ~5-15 minutes | Inference: ~20-50ms</small>
+            </div>
+          </div>
+
+          <!-- Scikit-learn Model -->
+          <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+                      color: white; padding: 2rem; border-radius: var(--border-radius);">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+              <span style="font-size: 2.5rem;">⚡</span>
+              <div>
+                <h3 style="color: white; margin: 0;">Scikit-learn Model</h3>
+                <small style="opacity: 0.9;">Fast ML (TF-IDF + LogReg)</small>
+              </div>
+            </div>
+            <ul style="list-style: none; padding: 0; margin: 1rem 0; line-height: 1.8;">
+              <li>✓ 75-85% accuracy</li>
+              <li>✓ Ultra-fast inference (1-5ms)</li>
+              <li>✓ Lightweight (1-2MB)</li>
+              <li>✓ Production-ready</li>
+            </ul>
+            <div style="background: rgba(255,255,255,0.1); padding: 0.75rem; border-radius: 8px; margin-top: 1rem;">
+              <small>Training: ~30 seconds | Inference: ~1-5ms</small>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 2rem; padding: 1.5rem; background: var(--primary-light); border-radius: 8px; border-left: 4px solid var(--accent-teal);">
+          <p style="color: var(--text-primary); margin: 0;">
+            <strong>🔄 Smart Model Selection:</strong> The system tries PyTorch first for maximum accuracy, 
+            then falls back to Scikit-learn if needed. You'll see which model was used in the results badge.
           </p>
         </div>
       </div>
@@ -422,6 +490,6 @@
       <p>&copy; 2025 PhD NexusCare. Your privacy-first healthcare platform.</p>
     </footer>
 
-    <script src="js/ai-insights.js?v=12.0"></script>
+    <script src="js/ai-insights.js?v=13.0"></script>
   </body>
 </html>

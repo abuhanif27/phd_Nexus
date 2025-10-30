@@ -214,3 +214,62 @@ class HealthAnalysisView(views.APIView):
                 {'error': f'Failed to generate analysis: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class ModelStatusView(views.APIView):
+    """Get status of ML models (which models are trained and available)."""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        import os
+        from django.conf import settings
+        
+        # Check which models exist
+        pytorch_model_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_pytorch.pt')
+        pytorch_labels_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_pytorch_labels.joblib')
+        sklearn_model_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn.joblib')
+        sklearn_labels_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn_labels.joblib')
+        
+        pytorch_available = os.path.exists(pytorch_model_path) and os.path.exists(pytorch_labels_path)
+        sklearn_available = os.path.exists(sklearn_model_path) and os.path.exists(sklearn_labels_path)
+        
+        # Get current model info
+        current_model = ai_service.specialist_classifier_type or 'none'
+        
+        status_info = {
+            'models': {
+                'pytorch': {
+                    'available': pytorch_available,
+                    'name': 'PyTorch DistilBERT',
+                    'accuracy': '85-95%',
+                    'type': 'deep_learning',
+                    'description': 'Transformer-based model with 66M parameters'
+                },
+                'sklearn': {
+                    'available': sklearn_available,
+                    'name': 'Scikit-learn TF-IDF + LogReg',
+                    'accuracy': '75-85%',
+                    'type': 'classical_ml',
+                    'description': 'Lightweight, fast inference model'
+                }
+            },
+            'current_model': current_model,
+            'recommendations': []
+        }
+        
+        # Add recommendations if no models are trained
+        if not pytorch_available and not sklearn_available:
+            status_info['recommendations'].append({
+                'message': 'No ML models are trained yet. Train at least one model to enable specialist prediction.',
+                'commands': [
+                    'python manage.py train_sklearn  # Fast: ~30 seconds',
+                    'python manage.py train_pytorch --epochs 10  # Accurate: ~5-15 minutes'
+                ]
+            })
+        elif not pytorch_available:
+            status_info['recommendations'].append({
+                'message': 'PyTorch model not trained. Train it for higher accuracy (85-95%).',
+                'commands': ['python manage.py train_pytorch --epochs 10']
+            })
+        
+        return Response(status_info)
