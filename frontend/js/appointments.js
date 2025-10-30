@@ -1212,15 +1212,15 @@ function escapeHtml(text) {
 // Initialize - FIXED: DOMContentLoaded must run first, THEN check auth
 document.addEventListener("DOMContentLoaded", () => {
   console.log("🚀 Page loaded, initializing...");
-  
+
   // Check authentication first
   if (!checkAuth()) {
     console.log("❌ Auth check failed, redirecting to login...");
     return; // checkAuth() will redirect to login.html
   }
-  
+
   console.log("✅ Auth check passed, loading data...");
-  
+
   // Load all data
   loadUserInfo();
   loadAppointments();
