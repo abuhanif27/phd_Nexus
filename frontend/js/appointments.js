@@ -202,9 +202,12 @@ function showBookModal() {
 function closeBookModal() {
   document.getElementById("bookModal").classList.add("hidden");
   document.getElementById("bookForm").reset();
-  document.getElementById("doctorResults").innerHTML = "";
+  document.getElementById("doctorResults").innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Loading doctors...</p>';
+  document.getElementById("selectedDoctorDisplay").innerHTML = 'No doctor selected';
   document.getElementById("timeSlotsContainer").innerHTML = "";
   document.getElementById("bookAlert").classList.add("hidden");
+  selectedDoctorId = null;
+  selectedDoctorName = null;
 }
 
 // Close modal when clicking outside
