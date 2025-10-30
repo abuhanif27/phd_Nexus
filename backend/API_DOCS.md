@@ -1,30 +1,18 @@
 # PhD NexusCare API Documentation# PhD NexusCare API Documentation
 
-
-
 Base URL: `http://localhost:8000/api`Base URL: `http://localhost:8000/api`
-
-
 
 All authenticated endpoints require a Bearer token in the Authorization header:All authenticated endpoints require a Bearer token in the Authorization header:
 
-
-
-``````
+```
 
 Authorization: Bearer <access_token>Authorization: Bearer <access_token>
 
-``````
+```
 
-
-
-------
-
-
+---
 
 ## Table of Contents## Authentication
-
-
 
 1. [Authentication](#authentication)### Register
 
@@ -46,31 +34,27 @@ Authorization: Bearer <access_token>Authorization: Bearer <access_token>
 
 {
 
----  "email": "user@example.com",
+--- "email": "user@example.com",
 
-  "phone": "+1234567890",
+"phone": "+1234567890",
 
-## Authentication  "password": "SecurePass123!",
+## Authentication "password": "SecurePass123!",
 
-  "password_confirm": "SecurePass123!",
+"password_confirm": "SecurePass123!",
 
-### Register New User  "role": "patient"
+### Register New User "role": "patient"
 
 }
 
 **POST** `/auth/register/````
 
-
-
 Create a new user account.**Response (201):**
-
-
 
 **Request Body:**```json
 
 {
 
-```json  "user": {
+````json "user": {
 
 {    "id": 1,
 
@@ -88,7 +72,7 @@ Create a new user account.**Response (201):**
 
 ```}
 
-```
+````
 
 **Parameters:**
 
@@ -102,17 +86,13 @@ Create a new user account.**Response (201):**
 
 - `role` (string, required) - Either "patient" or "doctor"Authenticate and receive JWT tokens.
 
+**Response (201 Created):\*\***Request:\*\*
 
-
-**Response (201 Created):****Request:**
-
-
-
-```json```json
+`json`json
 
 {{
 
-  "user": {  "email": "patient@example.com",
+"user": { "email": "patient@example.com",
 
     "id": 1,  "password": "Pass1234!"
 
@@ -122,15 +102,15 @@ Create a new user account.**Response (201):**
 
     "twofa_enabled": false
 
-  },**Response (200):**
+},**Response (200):**
 
-  "access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+"access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
 
-  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc..."```json
+"refresh": "eyJ0eXAiOiJKV1QiLCJhbGc..."```json
 
 }{
 
-```  "user": {
+```"user": {
 
     "id": 1,
 
@@ -160,7 +140,7 @@ Authenticate and receive JWT tokens.
 
 Get a new access token using refresh token.
 
-```json
+````json
 
 {**Request:**
 
@@ -272,7 +252,7 @@ Get a new access token using refresh token.**POST** `/consent/grant/`
 
 ### Get Current User}
 
-```
+````
 
 **GET** `/auth/me/`
 
@@ -284,7 +264,7 @@ Get authenticated user information.
 
 **Headers:**
 
-```_Doctor only_ - Claim consent using OTP and receive scoped token.
+`````_Doctor only_ - Claim consent using OTP and receive scoped token.
 
 Authorization: Bearer <access_token>
 
@@ -342,11 +322,11 @@ Send a 2FA OTP to user's email.### Revoke Consent
 
 **Headers:****POST** `/consent/revoke/<consent_id>/`
 
-```
+`````
 
-Authorization: Bearer <access_token>_Patient only_ - Revoke a previously granted consent.
+Authorization: Bearer <access*token>\_Patient only* - Revoke a previously granted consent.
 
-```
+````
 
 **Response (200):**
 
@@ -362,7 +342,7 @@ Authorization: Bearer <access_token>_Patient only_ - Revoke a previously granted
 
 }```
 
-```
+````
 
 ---
 
@@ -370,7 +350,7 @@ Authorization: Bearer <access_token>_Patient only_ - Revoke a previously granted
 
 ## Medical Records
 
-```json
+````json
 
 {### Upload File
 
@@ -448,9 +428,7 @@ Authorization: Bearer <access_token>  "size": 245678,
 
 }}
 
-``````
-
-
+````
 
 **Errors:**### Records Summary
 
@@ -458,25 +436,19 @@ Authorization: Bearer <access_token>  "size": 245678,
 
 - `401` - Not authenticated**GET** `/records/summary/`
 
-
-
 ---_Patient only_ - Get latest records overview.
 
-
-
 ## Consent Management**Response (200):**
-
-
 
 ### Grant Consent```json
 
 {
 
-**POST** `/consent/grant/`  "labs": [...],
+**POST** `/consent/grant/` "labs": [...],
 
-  "prescriptions": [...],
+"prescriptions": [...],
 
-_Patient only_ - Grant data access to a doctor.  "encounters": [...]
+_Patient only_ - Grant data access to a doctor. "encounters": [...]
 
 }
 
@@ -494,7 +466,7 @@ Authorization: Bearer <access_token>---
 
 ### Analyze Symptoms
 
-```json
+````json
 
 {**POST** `/symptoms/analyze/`
 
@@ -548,7 +520,7 @@ Authorization: Bearer <access_token>---
 
 ```}
 
-```
+````
 
 **Errors:**
 
@@ -558,21 +530,15 @@ Authorization: Bearer <access_token>---
 
 - `403` - Not a patient**POST** `/ai/specialist/`
 
-
-
 ---Predict which specialist to consult.
 
-
-
 ### Claim Consent**Request:**
-
-
 
 **POST** `/consent/claim/````json
 
 {
 
-_Doctor only_ - Claim consent using OTP and receive scoped token.  "text": "Crushing chest pain, sweating, breathless"
+_Doctor only_ - Claim consent using OTP and receive scoped token. "text": "Crushing chest pain, sweating, breathless"
 
 }
 
@@ -584,7 +550,7 @@ Authorization: Bearer <access_token>**Response (200):**
 
 ```
 
-```json
+````json
 
 **Request Body:**{
 
@@ -656,7 +622,7 @@ Authorization: Bearer <access_token>**Response (200):**
 
 ### Revoke Consent}
 
-```
+````
 
 **POST** `/consent/revoke/<consent_id>/`
 
@@ -668,7 +634,7 @@ _Patient only_ - Revoke a previously granted consent.
 
 **Headers:**
 
-```### List Doctors
+````### List Doctors
 
 Authorization: Bearer <access_token>
 
@@ -688,7 +654,7 @@ Authorization: Bearer <access_token>
 
 }- `location` (optional): Filter by location
 
-```
+````
 
 **Response (200):**
 
@@ -698,45 +664,41 @@ Authorization: Bearer <access_token>
 
 - `403` - Not authorized to revoke this consent{
 
-- `404` - Consent not found  "count": 1,
+- `404` - Consent not found "count": 1,
 
   "results": [
 
----    {
+--- {
 
       "id": 2,
 
-### List Consents      "email": "doctor@example.com",
+### List Consents "email": "doctor@example.com",
 
       "name": "Dr. Sarah Smith",
 
-**GET** `/consent/list/`      "specialty": "Cardiology",
+**GET** `/consent/list/` "specialty": "Cardiology",
 
       "qualifications": "MD, Board Certified",
 
-List all consents (patients see granted, doctors see received).      "location": "New York, NY",
+List all consents (patients see granted, doctors see received). "location": "New York, NY",
 
       "rating": 4.8
 
-**Headers:**    }
+**Headers:** }
 
-```  ]
+```]
 
 Authorization: Bearer <access_token>}
 
-``````
-
-
+```
 
 **Response (200 OK):**### Get Available Slots
-
-
 
 ```json**GET** `/scheduling/doctors/<doctor_id>/slots/?date=2025-10-30`
 
 {
 
-  "consents": [Get available appointment slots for a doctor on a specific date.
+"consents": [Get available appointment slots for a doctor on a specific date.
 
     {
 
@@ -764,11 +726,11 @@ Authorization: Bearer <access_token>}
 
     }    },
 
-  ]    {
+] {
 
-}      "start_time": "09:30",
+} "start_time": "09:30",
 
-```      "end_time": "10:00",
+```"end_time": "10:00",
 
       "available": true
 
@@ -790,7 +752,7 @@ _Admin only_ - View consent access audit trail.
 
 **Headers:**
 
-```Book an appointment.
+````Book an appointment.
 
 Authorization: Bearer <access_token>
 
@@ -848,9 +810,7 @@ Authorization: Bearer <access_token>
 
 }}
 
-``````
-
-
+````
 
 **Errors:**### Cancel Appointment
 
@@ -880,11 +840,11 @@ Get current user's patient profile.  "status": "canceled",
 
 **Headers:**}
 
-``````
+```
 
 Authorization: Bearer <access_token>
 
-```---
+````---
 
 
 
@@ -952,13 +912,13 @@ Update patient profile information.  "currency": "USD"
 
 **Headers:**```
 
-```
+````
 
 Authorization: Bearer <access_token>---
 
 Content-Type: application/json
 
-```## Error Responses
+````## Error Responses
 
 
 
@@ -986,9 +946,9 @@ Content-Type: application/json
 
 }**401 Unauthorized:**
 
-```
+````
 
-```json
+````json
 
 **Response (200 OK):**{
 
@@ -1018,7 +978,7 @@ Content-Type: application/json
 
 }**404 Not Found:**
 
-```
+````
 
 ```json
 
@@ -1062,13 +1022,9 @@ No rate limiting is enforced in the local development environment.
 
 - `photo` (file, required) - Image file (JPEG, PNG, max 5MB)## Pagination
 
-
-
 **Response (200 OK):**List endpoints support pagination:
 
-
-
-```json- Default page size: 20 items
+````json- Default page size: 20 items
 
 {- Use `?page=2` to access subsequent pages
 
@@ -1100,7 +1056,7 @@ curl -X POST http://localhost:8000/api/auth/login/ \
 
 ### List Doctors  }'
 
-```
+````
 
 **GET** `/doctors/`
 
@@ -1108,7 +1064,7 @@ curl -X POST http://localhost:8000/api/auth/login/ \
 
 Search and filter doctors.
 
-```bash
+````bash
 
 **Query Parameters:**curl -X GET http://localhost:8000/api/auth/me/ \
 
@@ -1147,7 +1103,7 @@ Search and filter doctors.
     }
   ]
 }
-```
+````
 
 ---
 
@@ -1171,11 +1127,12 @@ Get specific doctor's information.
   "email": "dr.smith@example.com",
   "phone": "+1234567891",
   "available_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-  "consultation_fee": 150.00
+  "consultation_fee": 150.0
 }
 ```
 
 **Errors:**
+
 - `404` - Doctor not found
 
 ---
@@ -1189,12 +1146,14 @@ Get specific doctor's information.
 _Patient only_ - Upload a medical document.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 Content-Type: multipart/form-data
 ```
 
 **Request Body:**
+
 - `file` (file, required) - Medical document (PDF, JPEG, PNG, max 10MB)
 - `kind` (string, required) - File type: "lab", "prescription", "imaging", "encounter", "other"
 - `notes` (string, optional) - Additional notes
@@ -1215,6 +1174,7 @@ Content-Type: multipart/form-data
 ```
 
 **Errors:**
+
 - `400` - Invalid file type, size, or missing kind
 - `401` - Not authenticated
 - `403` - Not a patient
@@ -1228,11 +1188,13 @@ Content-Type: multipart/form-data
 List patient's medical files.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 **Query Parameters:**
+
 - `kind` (string, optional) - Filter by type
 - `search` (string, optional) - Search filename or notes
 - `page` (integer, optional) - Page number
@@ -1268,6 +1230,7 @@ Authorization: Bearer <access_token>
 Get a short-lived signed URL to download a file.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -1283,6 +1246,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Errors:**
+
 - `404` - File not found
 - `403` - Not authorized to access this file
 
@@ -1295,6 +1259,7 @@ Authorization: Bearer <access_token>
 _Patient only_ - Get overview of latest records.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -1337,6 +1302,7 @@ Authorization: Bearer <access_token>
 List structured lab results.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -1373,6 +1339,7 @@ Authorization: Bearer <access_token>
 List prescriptions.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -1408,6 +1375,7 @@ Authorization: Bearer <access_token>
 List clinical encounters/visits.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -1445,6 +1413,7 @@ Authorization: Bearer <access_token>
 Get doctor's available appointment slots for a specific date.
 
 **Query Parameters:**
+
 - `date` (string, required) - Date in YYYY-MM-DD format
 
 **Response (200 OK):**
@@ -1477,6 +1446,7 @@ Get doctor's available appointment slots for a specific date.
 ```
 
 **Errors:**
+
 - `400` - Invalid date format
 - `404` - Doctor not found
 
@@ -1489,6 +1459,7 @@ Get doctor's available appointment slots for a specific date.
 _Patient only_ - Book an appointment with a doctor.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 Content-Type: application/json
@@ -1524,6 +1495,7 @@ Content-Type: application/json
 ```
 
 **Errors:**
+
 - `400` - Invalid date/time, slot not available, or validation errors
 - `401` - Not authenticated
 - `403` - Not a patient
@@ -1538,11 +1510,13 @@ Content-Type: application/json
 List user's appointments (patients see their appointments, doctors see appointments with them).
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 **Query Parameters:**
+
 - `status` (string, optional) - Filter by status: "scheduled", "completed", "cancelled", "no-show"
 - `date_from` (string, optional) - From date (YYYY-MM-DD)
 - `date_to` (string, optional) - To date (YYYY-MM-DD)
@@ -1593,6 +1567,7 @@ Authorization: Bearer <access_token>
 Get specific appointment details.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -1619,6 +1594,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Errors:**
+
 - `404` - Appointment not found
 - `403` - Not authorized to view this appointment
 
@@ -1631,6 +1607,7 @@ Authorization: Bearer <access_token>
 Update appointment status.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 Content-Type: application/json
@@ -1645,6 +1622,7 @@ Content-Type: application/json
 ```
 
 **Allowed status transitions:**
+
 - Patient can: `scheduled` → `cancelled`
 - Doctor can: `scheduled` → `completed`, `cancelled`, `no-show`
 
@@ -1659,6 +1637,7 @@ Content-Type: application/json
 ```
 
 **Errors:**
+
 - `400` - Invalid status or transition
 - `403` - Not authorized to update this appointment
 - `404` - Appointment not found
@@ -1672,6 +1651,7 @@ Content-Type: application/json
 Cancel an appointment (convenience endpoint, same as PATCH with status=cancelled).
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -1679,6 +1659,7 @@ Authorization: Bearer <access_token>
 **Response (204 No Content)**
 
 **Errors:**
+
 - `403` - Not authorized to cancel this appointment
 - `404` - Appointment not found
 
@@ -1693,6 +1674,7 @@ Authorization: Bearer <access_token>
 Analyze symptom text with NLP to extract medical entities.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 Content-Type: application/json
@@ -1743,6 +1725,7 @@ Content-Type: application/json
 Predict which medical specialist to consult based on symptoms.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 Content-Type: application/json
@@ -1777,6 +1760,7 @@ Content-Type: application/json
 ```
 
 **Model types:**
+
 - `pytorch` - PyTorch DistilBERT (85-95% accuracy)
 - `sklearn` - Scikit-learn TF-IDF (75-85% accuracy)
 - `legacy` - Rule-based fallback
@@ -1791,6 +1775,7 @@ Content-Type: application/json
 Generate AI summary of patient's medical records.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 Content-Type: application/json
@@ -1834,6 +1819,7 @@ Content-Type: application/json
 ```
 
 **Errors:**
+
 - `400` - Missing patient_id or query
 - `404` - Patient or records not found
 - `503` - FAISS index not built (need to run build_index command)
@@ -1847,6 +1833,7 @@ Content-Type: application/json
 _Admin only_ - Build or rebuild FAISS vector index for patient records.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 Content-Type: application/json
@@ -1880,6 +1867,7 @@ Content-Type: application/json
 Check which AI models are trained and available.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -1925,6 +1913,7 @@ Authorization: Bearer <access_token>
 List user's invoices.
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -1937,7 +1926,7 @@ Authorization: Bearer <access_token>
     {
       "id": 1,
       "patient_id": 1,
-      "amount": 150.00,
+      "amount": 150.0,
       "description": "Consultation - Dr. Sarah Smith",
       "status": "paid",
       "due_date": "2025-11-15",
@@ -1956,6 +1945,7 @@ Authorization: Bearer <access_token>
 Create a payment checkout session (stub for future payment integration).
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 Content-Type: application/json
@@ -2096,6 +2086,7 @@ X-RateLimit-Reset: 1730379600
 List endpoints support pagination:
 
 **Query Parameters:**
+
 - `page` - Page number (default: 1)
 - `page_size` - Results per page (default: 20, max: 100)
 
@@ -2150,14 +2141,17 @@ curl -X POST http://localhost:8000/api/records/files/upload/ \
 The backend comes with pre-seeded demo accounts:
 
 **Patient:**
+
 - Email: `patient@example.com`
 - Password: `Pass1234!`
 
 **Doctor:**
+
 - Email: `doctor@example.com`
 - Password: `Pass1234!`
 
 **Admin:**
+
 - Email: `admin@nexuscare.com`
 - Password: `Admin1234!`
 
