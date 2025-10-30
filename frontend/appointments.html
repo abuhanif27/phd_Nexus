@@ -4,13 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Appointments - PhD NexusCare</title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -18,77 +21,65 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
-    
+
     <!-- Original styles -->
     <link rel="stylesheet" href="css/style.css" />
+    
     <style>
-      /* Doctor card animations */
-      @keyframes fadeInUp {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .doctor-card {
-        animation: fadeInUp 0.5s ease forwards;
-      }
-
-      .doctor-card:nth-child(1) {
-        animation-delay: 0.1s;
-      }
-      .doctor-card:nth-child(2) {
-        animation-delay: 0.2s;
-      }
-      .doctor-card:nth-child(3) {
-        animation-delay: 0.3s;
-      }
-      .doctor-card:nth-child(4) {
-        animation-delay: 0.4s;
-      }
-      .doctor-card:nth-child(5) {
-        animation-delay: 0.5s;
-      }
-
-      /* Custom scrollbar for doctor results */
-      #doctorResults::-webkit-scrollbar {
+      /* Custom scrollbar */
+      .custom-scrollbar::-webkit-scrollbar {
         width: 8px;
       }
 
-      #doctorResults::-webkit-scrollbar-track {
-        background: #f1f1f1;
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f3f4f6;
         border-radius: 10px;
       }
 
-      #doctorResults::-webkit-scrollbar-thumb {
-        background: linear-gradient(
-          135deg,
-          var(--primary-blue),
-          var(--accent-teal)
-        );
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
         border-radius: 10px;
       }
 
-      #doctorResults::-webkit-scrollbar-thumb:hover {
-        background: var(--primary-blue);
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #2563eb, #4f46e5);
       }
 
-      /* Spinner animation */
-      .spinner {
-        border: 4px solid rgba(103, 126, 234, 0.1);
-        border-left-color: var(--primary-blue);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
+      /* Doctor card hover effect */
+      .doctor-card-hover {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
+      .doctor-card-hover:hover {
+        transform: translateY(-4px) scale(1.01);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+
+      /* Animated gradient */
+      @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+
+      .animate-gradient {
+        background-size: 200% 200%;
+        animation: gradient 3s ease infinite;
+      }
+
+      /* Pulse animation for rating */
+      @keyframes pulse-scale {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+      }
+
+      .pulse-scale {
+        animation: pulse-scale 2s ease-in-out infinite;
+      }
+
+      /* Tailwind spacing utilities */
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       }
     </style>
   </head>
@@ -355,122 +346,115 @@
           </button>
         </div>
 
-        <form id="bookForm">
-          <!-- Doctor Search Section -->
-          <div style="margin-bottom: 2rem">
-            <h4
-              style="
-                color: var(--secondary-blue);
-                margin-bottom: 1rem;
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-              "
-            >
-              <span style="font-size: 1.5rem">🔍</span> Find Your Doctor
-            </h4>
-
-            <!-- Search Bar -->
-            <div class="form-group">
-              <input
-                type="text"
-                id="doctorSearchInput"
-                class="form-control"
-                placeholder="🔎 Search by doctor name, specialty, or location..."
-                style="font-size: 1rem; padding: 0.75rem 1rem"
-                oninput="searchDoctors()"
-              />
+        <form id="bookForm" class="space-y-6">
+          <!-- Doctor Search Section with Tailwind -->
+          <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-200 shadow-sm">
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-5">
+              <div class="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg">
+                <i class="fas fa-search text-white text-xl"></i>
+              </div>
+              <h4 class="text-2xl font-bold text-gray-800">Find Your Doctor</h4>
             </div>
 
-            <!-- Filter Row -->
-            <div
-              style="
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 1rem;
-                margin-bottom: 1rem;
-              "
-            >
-              <div class="form-group" style="margin-bottom: 0">
-                <label class="form-label" style="font-weight: 600">
-                  <span style="margin-right: 0.25rem">🩺</span> Specialty
-                </label>
-                <select
-                  id="specialtyFilter"
-                  class="form-control"
-                  onchange="searchDoctors()"
-                  style="padding: 0.6rem"
-                >
-                  <option value="">All Specialties</option>
-                  <option value="Cardiology">❤️ Cardiology</option>
-                  <option value="Dermatology">🧴 Dermatology</option>
-                  <option value="Neurology">🧠 Neurology</option>
-                  <option value="Orthopedics">🦴 Orthopedics</option>
-                  <option value="General Medicine">🩺 General Medicine</option>
-                  <option value="Pediatrics">👶 Pediatrics</option>
-                  <option value="Psychiatry">🧘 Psychiatry</option>
-                  <option value="ENT">👂 ENT</option>
-                  <option value="Ophthalmology">👁️ Ophthalmology</option>
-                  <option value="Gynecology">🏥 Gynecology</option>
-                  <option value="Urology">💧 Urology</option>
-                  <option value="Pulmonology">🫁 Pulmonology</option>
-                  <option value="Gastroenterology">🫀 Gastroenterology</option>
-                </select>
-              </div>
-
-              <div class="form-group" style="margin-bottom: 0">
-                <label class="form-label" style="font-weight: 600">
-                  <span style="margin-right: 0.25rem">📍</span> Location
-                </label>
+            <!-- Search Bar -->
+            <div class="mb-4">
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                  <i class="fas fa-search text-gray-400"></i>
+                </div>
                 <input
                   type="text"
-                  id="locationFilter"
-                  class="form-control"
-                  placeholder="e.g., New York, NY"
-                  onkeyup="searchDoctors()"
-                  style="padding: 0.6rem"
+                  id="doctorSearchInput"
+                  class="w-full pl-12 pr-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none text-base"
+                  placeholder="Search by doctor name, specialty, or location..."
+                  oninput="searchDoctors()"
                 />
               </div>
             </div>
 
-            <!-- Doctor Results -->
-            <div style="margin-bottom: 1rem">
-              <div
-                style="
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  margin-bottom: 0.5rem;
-                "
-              >
-                <label class="form-label" style="margin: 0; font-weight: 600">
-                  Available Doctors
+            <!-- Filter Row -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+              <!-- Specialty Filter -->
+              <div>
+                <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                  <i class="fas fa-stethoscope text-blue-600"></i>
+                  Specialty
                 </label>
-                <span
-                  id="doctorCount"
-                  style="color: var(--text-secondary); font-size: 0.9rem"
-                >
-                  Loading...
-                </span>
-              </div>
-              <div
-                id="doctorResults"
-                style="
-                  max-height: 350px;
-                  overflow-y: auto;
-                  border: 2px solid var(--secondary-gray);
-                  border-radius: 12px;
-                  padding: 1rem;
-                  background: linear-gradient(to bottom, #f8f9fa, #ffffff);
-                "
-              >
-                <div style="text-align: center; padding: 2rem">
-                  <div
-                    class="spinner"
-                    style="width: 40px; height: 40px; margin: 0 auto 1rem"
-                  ></div>
-                  <p style="color: var(--text-secondary)">Loading doctors...</p>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                    <i class="fas fa-heartbeat text-gray-400"></i>
+                  </div>
+                  <select
+                    id="specialtyFilter"
+                    class="w-full pl-11 pr-10 py-3 bg-white border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none appearance-none cursor-pointer"
+                    onchange="searchDoctors()"
+                  >
+                    <option value="">All Specialties</option>
+                    <option value="Cardiology">❤️ Cardiology</option>
+                    <option value="Dermatology">🧴 Dermatology</option>
+                    <option value="Neurology">🧠 Neurology</option>
+                    <option value="Orthopedics">🦴 Orthopedics</option>
+                    <option value="General Medicine">🩺 General Medicine</option>
+                    <option value="Pediatrics">👶 Pediatrics</option>
+                    <option value="Psychiatry">🧘 Psychiatry</option>
+                    <option value="ENT">👂 ENT</option>
+                    <option value="Ophthalmology">👁️ Ophthalmology</option>
+                    <option value="Gynecology">🏥 Gynecology</option>
+                    <option value="Urology">💧 Urology</option>
+                    <option value="Pulmonology">🫁 Pulmonology</option>
+                    <option value="Gastroenterology">🫀 Gastroenterology</option>
+                  </select>
+                  <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                    <i class="fas fa-chevron-down text-gray-400"></i>
+                  </div>
                 </div>
+              </div>
+
+              <!-- Location Filter -->
+              <div>
+                <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                  <i class="fas fa-map-marker-alt text-red-600"></i>
+                  Location
+                </label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                    <i class="fas fa-location-dot text-gray-400"></i>
+                  </div>
+                  <input
+                    type="text"
+                    id="locationFilter"
+                    class="w-full pl-11 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                    placeholder="e.g., New York, NY"
+                    onkeyup="searchDoctors()"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Results Header -->
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <i class="fas fa-user-doctor text-blue-600"></i>
+                <span class="font-semibold text-gray-800">Available Doctors</span>
+              </div>
+              <span
+                id="doctorCount"
+                class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold"
+              >
+                Loading...
+              </span>
+            </div>
+
+            <!-- Doctor Results Container -->
+            <div
+              id="doctorResults"
+              class="max-h-96 overflow-y-auto bg-white rounded-xl border-2 border-gray-200 p-4 space-y-3 custom-scrollbar"
+            >
+              <!-- Loading State -->
+              <div class="text-center py-12">
+                <div class="inline-block w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                <p class="text-gray-500 font-medium">Loading doctors...</p>
               </div>
             </div>
           </div>
@@ -478,30 +462,19 @@
           <input type="hidden" id="doctorSelect" required />
 
           <!-- Selected Doctor Display -->
-          <div class="form-group" style="margin-bottom: 1.5rem">
-            <label class="form-label" style="font-weight: 600">
-              <span style="margin-right: 0.25rem">✓</span> Selected Doctor
-            </label>
+          <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-2xl border-2 border-green-200">
+            <div class="flex items-center gap-2 mb-3">
+              <i class="fas fa-check-circle text-green-600 text-lg"></i>
+              <span class="font-semibold text-gray-800">Selected Doctor</span>
+            </div>
             <div
               id="selectedDoctorDisplay"
-              style="
-                padding: 1.25rem;
-                background: linear-gradient(
-                  135deg,
-                  var(--primary-light),
-                  var(--bg-light)
-                );
-                border: 2px dashed var(--secondary-gray);
-                border-radius: 12px;
-                color: var(--text-secondary);
-                min-height: 60px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-style: italic;
-              "
+              class="bg-white p-4 rounded-xl border-2 border-dashed border-gray-300 text-center text-gray-500 italic min-h-[70px] flex items-center justify-center"
             >
-              👆 Please select a doctor from the list above
+              <div class="flex items-center gap-2">
+                <i class="fas fa-hand-point-up text-2xl"></i>
+                <span>Please select a doctor from the list above</span>
+              </div>
             </div>
           </div>
 
