@@ -277,89 +277,119 @@
 
         <form id="bookForm">
           <!-- Doctor Search Section -->
-          <div style="margin-bottom: 1.5rem">
-            <h4 style="color: var(--secondary-blue); margin-bottom: 1rem">
-              Search Doctors
+          <div style="margin-bottom: 2rem;">
+            <h4 style="color: var(--secondary-blue); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-size: 1.5rem;">🔍</span> Find Your Doctor
             </h4>
 
-            <div
-              style="
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 1rem;
-                margin-bottom: 1rem;
-              "
-            >
-              <div class="form-group" style="margin-bottom: 0">
-                <label class="form-label">Specialty</label>
+            <!-- Search Bar -->
+            <div class="form-group">
+              <input
+                type="text"
+                id="doctorSearchInput"
+                class="form-control"
+                placeholder="🔎 Search by doctor name, specialty, or location..."
+                style="font-size: 1rem; padding: 0.75rem 1rem;"
+                oninput="searchDoctors()"
+              />
+            </div>
+
+            <!-- Filter Row -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-weight: 600;">
+                  <span style="margin-right: 0.25rem;">🩺</span> Specialty
+                </label>
                 <select
                   id="specialtyFilter"
                   class="form-control"
                   onchange="searchDoctors()"
+                  style="padding: 0.6rem;"
                 >
                   <option value="">All Specialties</option>
-                  <option value="Cardiology">Cardiology</option>
-                  <option value="Dermatology">Dermatology</option>
-                  <option value="Neurology">Neurology</option>
-                  <option value="Orthopedics">Orthopedics</option>
-                  <option value="General Medicine">General Medicine</option>
-                  <option value="Pediatrics">Pediatrics</option>
-                  <option value="Psychiatry">Psychiatry</option>
-                  <option value="ENT">ENT</option>
-                  <option value="Ophthalmology">Ophthalmology</option>
-                  <option value="Gynecology">Gynecology</option>
-                  <option value="Urology">Urology</option>
+                  <option value="Cardiology">❤️ Cardiology</option>
+                  <option value="Dermatology">🧴 Dermatology</option>
+                  <option value="Neurology">🧠 Neurology</option>
+                  <option value="Orthopedics">🦴 Orthopedics</option>
+                  <option value="General Medicine">🩺 General Medicine</option>
+                  <option value="Pediatrics">👶 Pediatrics</option>
+                  <option value="Psychiatry">🧘 Psychiatry</option>
+                  <option value="ENT">👂 ENT</option>
+                  <option value="Ophthalmology">👁️ Ophthalmology</option>
+                  <option value="Gynecology">🏥 Gynecology</option>
+                  <option value="Urology">💧 Urology</option>
+                  <option value="Pulmonology">🫁 Pulmonology</option>
+                  <option value="Gastroenterology">🫀 Gastroenterology</option>
                 </select>
               </div>
 
-              <div class="form-group" style="margin-bottom: 0">
-                <label class="form-label">Location</label>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-weight: 600;">
+                  <span style="margin-right: 0.25rem;">📍</span> Location
+                </label>
                 <input
                   type="text"
                   id="locationFilter"
                   class="form-control"
-                  placeholder="Enter location..."
+                  placeholder="e.g., New York, NY"
                   onkeyup="searchDoctors()"
+                  style="padding: 0.6rem;"
                 />
               </div>
             </div>
 
             <!-- Doctor Results -->
-            <div
-              id="doctorResults"
-              style="
-                max-height: 300px;
-                overflow-y: auto;
-                border: 1px solid var(--secondary-gray);
-                border-radius: 8px;
-                padding: 1rem;
-                background: var(--bg-light);
-              "
-            >
-              <p style="text-align: center; color: var(--text-secondary)">
-                Loading doctors...
-              </p>
+            <div style="margin-bottom: 1rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <label class="form-label" style="margin: 0; font-weight: 600;">
+                  Available Doctors
+                </label>
+                <span id="doctorCount" style="color: var(--text-secondary); font-size: 0.9rem;">
+                  Loading...
+                </span>
+              </div>
+              <div
+                id="doctorResults"
+                style="
+                  max-height: 350px;
+                  overflow-y: auto;
+                  border: 2px solid var(--secondary-gray);
+                  border-radius: 12px;
+                  padding: 1rem;
+                  background: linear-gradient(to bottom, #f8f9fa, #ffffff);
+                "
+              >
+                <div style="text-align: center; padding: 2rem;">
+                  <div class="spinner" style="width: 40px; height: 40px; margin: 0 auto 1rem;"></div>
+                  <p style="color: var(--text-secondary);">Loading doctors...</p>
+                </div>
+              </div>
             </div>
           </div>
 
           <input type="hidden" id="doctorSelect" required />
 
-          <div class="form-group">
-            <label class="form-label">Selected Doctor</label>
+          <!-- Selected Doctor Display -->
+          <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label class="form-label" style="font-weight: 600;">
+              <span style="margin-right: 0.25rem;">✓</span> Selected Doctor
+            </label>
             <div
               id="selectedDoctorDisplay"
               style="
-                padding: 1rem;
-                background: var(--primary-light);
-                border-radius: 8px;
+                padding: 1.25rem;
+                background: linear-gradient(135deg, var(--primary-light), var(--bg-light));
+                border: 2px dashed var(--secondary-gray);
+                border-radius: 12px;
                 color: var(--text-secondary);
-                min-height: 50px;
+                min-height: 60px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                font-style: italic;
               "
             >
-              No doctor selected
+              👆 Please select a doctor from the list above
             </div>
           </div>
 
