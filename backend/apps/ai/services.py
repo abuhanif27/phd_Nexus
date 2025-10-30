@@ -31,11 +31,20 @@ from .models import EmbeddingMeta, AISummary
 class AIService:
     """
     Main AI service for NLP/ML operations.
+    Supports both sklearn and PyTorch models with intelligent fallback.
     """
-    def __init__(self):
+    def __init__(self, model_type: str = 'auto'):
+        """
+        Initialize AI Service.
+        
+        Args:
+            model_type: 'sklearn', 'pytorch', or 'auto' (tries pytorch, falls back to sklearn)
+        """
+        self.model_type = model_type
         self.spacy_model = None
         self.embedding_model = None
         self.specialist_classifier = None
+        self.specialist_classifier_type = None
         self.faiss_index = None
         self._load_models()
     
@@ -53,12 +62,8 @@ class AIService:
         except Exception as e:
             print(f"Warning: Could not load embedding model: {e}")
         
-        # Load specialist classifier if it exists
-        if os.path.exists(settings.SYMPTOM_MODEL_PATH):
-            try:
-                self.specialist_classifier = joblib.load(settings.SYMPTOM_MODEL_PATH)
-            except Exception as e:
-                print(f"Warning: Could not load specialist classifier: {e}")
+        # Load specialist classifier with intelligent model selection
+        self._load_specialist_classifier()
         
         # Load FAISS index if it exists
         if os.path.exists(settings.FAISS_INDEX_PATH):
@@ -66,6 +71,52 @@ class AIService:
                 self.faiss_index = faiss.read_index(str(settings.FAISS_INDEX_PATH))
             except Exception as e:
                 print(f"Warning: Could not load FAISS index: {e}")
+    
+    def _load_specialist_classifier(self):
+        """Load specialist classifier (PyTorch or sklearn with fallback)."""
+        pytorch_model_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_pytorch.pt')
+        pytorch_labels_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_pytorch_labels.joblib')
+        sklearn_model_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn.joblib')
+        sklearn_labels_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn_labels.joblib')
+        
+        # Try PyTorch first if requested or auto
+        if self.model_type in ['pytorch', 'auto']:
+            if os.path.exists(pytorch_model_path) and os.path.exists(pytorch_labels_path):
+                try:
+                    from apps.ai.pytorch_classifier import PyTorchSpecialistClassifier
+                    self.specialist_classifier = PyTorchSpecialistClassifier.load(
+                        pytorch_model_path, pytorch_labels_path
+                    )
+                    self.specialist_classifier_type = 'pytorch'
+                    print(f"✓ Loaded PyTorch specialist classifier")
+                    return
+                except Exception as e:
+                    print(f"Warning: Could not load PyTorch classifier: {e}")
+                    if self.model_type == 'pytorch':
+                        return
+        
+        # Try sklearn (fallback or explicit)
+        if self.model_type in ['sklearn', 'auto']:
+            if os.path.exists(sklearn_model_path) and os.path.exists(sklearn_labels_path):
+                try:
+                    from apps.ai.sklearn_classifier import SklearnSpecialistClassifier
+                    self.specialist_classifier = SklearnSpecialistClassifier.load(
+                        sklearn_model_path, sklearn_labels_path
+                    )
+                    self.specialist_classifier_type = 'sklearn'
+                    print(f"✓ Loaded sklearn specialist classifier")
+                    return
+                except Exception as e:
+                    print(f"Warning: Could not load sklearn classifier: {e}")
+        
+        # Legacy fallback - try old joblib path
+        if os.path.exists(settings.SYMPTOM_MODEL_PATH):
+            try:
+                self.specialist_classifier = joblib.load(settings.SYMPTOM_MODEL_PATH)
+                self.specialist_classifier_type = 'legacy'
+                print(f"✓ Loaded legacy specialist classifier")
+            except Exception as e:
+                print(f"Warning: Could not load legacy classifier: {e}")
     
     def clean_text(self, text: str) -> str:
         """Clean and normalize text."""
@@ -106,17 +157,34 @@ class AIService:
     
     def predict_specialist(self, text: str) -> Dict:
         """
-        Predict specialist from symptom text.
+        Predict specialist from symptom text using loaded classifier.
+        Supports sklearn, PyTorch, and legacy models.
         Returns specialist name, confidence, and top alternatives.
         """
-        if not self.specialist_classifier or not self.embedding_model:
+        if not self.specialist_classifier:
             return {
                 'specialist': 'General Physician',
                 'confidence': 0.5,
-                'alternatives': []
+                'alternatives': [],
+                'model_type': 'fallback'
             }
         
         try:
+            # Use new classifiers (sklearn or pytorch) with predict_single method
+            if self.specialist_classifier_type in ['sklearn', 'pytorch']:
+                result = self.specialist_classifier.predict_single(text, top_k=3)
+                result['model_type'] = self.specialist_classifier_type
+                return result
+            
+            # Legacy model handling (old embedding-based approach)
+            if not self.embedding_model:
+                return {
+                    'specialist': 'General Physician',
+                    'confidence': 0.5,
+                    'alternatives': [],
+                    'model_type': 'fallback'
+                }
+            
             # Generate embedding
             embedding = self.embedding_model.encode([text])[0]
             
@@ -154,14 +222,16 @@ class AIService:
             return {
                 'specialist': specialist,
                 'confidence': confidence,
-                'alternatives': alternatives
+                'alternatives': alternatives,
+                'model_type': 'legacy'
             }
         except Exception as e:
             print(f"Prediction error: {e}")
             return {
                 'specialist': 'General Physician',
                 'confidence': 0.5,
-                'alternatives': []
+                'alternatives': [],
+                'model_type': 'error'
             }
     
     def build_patient_index(self, patient_id: int):
