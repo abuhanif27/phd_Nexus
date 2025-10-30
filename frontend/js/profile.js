@@ -53,55 +53,72 @@ function switchTab(tabName) {
 // Load user profile
 async function loadProfile() {
   try {
-    const response = await fetch(`${API_BASE_URL}/users/profile/`, {
+    // First get user info
+    const userResponse = await fetch(`${API_BASE_URL}/auth/me/`, {
       headers: getAuthHeaders(),
     });
 
-    if (response.ok) {
-      const data = await response.json();
-
-      // Update profile display
-      document.getElementById("profileName").textContent =
-        data.full_name || data.email;
-      document.getElementById("profileEmail").textContent = data.email;
-      document.getElementById("navUserName").textContent =
-        data.full_name || data.email.split("@")[0];
-
-      // Update form fields
-      document.getElementById("fullName").value = data.full_name || "";
-      document.getElementById("email").value = data.email;
-      document.getElementById("phone").value = data.phone || "";
-      document.getElementById("dateOfBirth").value = data.date_of_birth || "";
-      document.getElementById("gender").value = data.gender || "";
-      document.getElementById("bloodGroup").value = data.blood_group || "";
-      document.getElementById("address").value = data.address || "";
-      document.getElementById("medicalConditions").value =
-        data.medical_conditions || "";
-
-      // Member since
-      if (data.created_at) {
-        const date = new Date(data.created_at);
-        document.getElementById("memberSince").textContent = date.getFullYear();
+    if (!userResponse.ok) {
+      if (userResponse.status === 401) {
+        logout();
+        return;
       }
-
-      // Profile photo
-      if (data.profile_photo) {
-        document.getElementById("profilePhoto").src = data.profile_photo;
-        document.getElementById("navUserPhoto").src = data.profile_photo;
-        localStorage.setItem("userPhoto", data.profile_photo);
-      } else {
-        // Set default avatar with first letter
-        const initial = (data.full_name || data.email).charAt(0).toUpperCase();
-        const defaultAvatar = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%234F46E5' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='80' fill='white'%3E${initial}%3C/text%3E%3C/svg%3E`;
-        document.getElementById("profilePhoto").src = defaultAvatar;
-        document.getElementById("navUserPhoto").src = defaultAvatar;
-      }
-
-      // Store user info
-      localStorage.setItem("userName", data.full_name || data.email);
-    } else if (response.status === 401) {
-      logout();
+      throw new Error("Failed to load user info");
     }
+
+    const user = await userResponse.json();
+
+    // Then get patient profile
+    const patientResponse = await fetch(`${API_BASE_URL}/patients/`, {
+      headers: getAuthHeaders(),
+    });
+
+    let patient = null;
+    if (patientResponse.ok) {
+      const patientData = await patientResponse.json();
+      patient = patientData.results?.[0] || patientData[0] || null;
+    }
+
+    // Update profile display
+    const displayName = patient?.name || user.email.split("@")[0];
+    document.getElementById("profileName").textContent = displayName;
+    document.getElementById("profileEmail").textContent = user.email;
+    document.getElementById("navUserName").textContent = displayName;
+
+    // Update form fields
+    document.getElementById("fullName").value = patient?.name || "";
+    document.getElementById("email").value = user.email;
+    document.getElementById("phone").value = patient?.emergency_contact?.phone || "";
+    document.getElementById("dateOfBirth").value = patient?.dob || "";
+    
+    // Set gender dropdown
+    const genderMap = { 'M': 'male', 'F': 'female', 'O': 'other', 'N': 'prefer-not' };
+    document.getElementById("gender").value = genderMap[patient?.gender] || "";
+    
+    document.getElementById("bloodGroup").value = patient?.blood_group || "";
+    document.getElementById("address").value = patient?.emergency_contact?.address || "";
+    document.getElementById("medicalConditions").value = patient?.emergency_contact?.medical_conditions || "";
+
+    // Store patient ID for updates
+    if (patient) {
+      localStorage.setItem("patientId", patient.id);
+    }
+
+    // Member since
+    if (user.created_at) {
+      const date = new Date(user.created_at);
+      document.getElementById("memberSince").textContent = date.getFullYear();
+    }
+
+    // Profile photo - use default avatar for now
+    const initial = displayName.charAt(0).toUpperCase();
+    const defaultAvatar = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%234F46E5' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='80' fill='white'%3E${initial}%3C/text%3E%3C/svg%3E`;
+    document.getElementById("profilePhoto").src = defaultAvatar;
+    document.getElementById("navUserPhoto").src = defaultAvatar;
+
+    // Store user info
+    localStorage.setItem("userName", displayName);
+    localStorage.setItem("userPhoto", defaultAvatar);
   } catch (error) {
     console.error("Error loading profile:", error);
     showNotification("Error loading profile", "error");
@@ -162,34 +179,63 @@ document
   ?.addEventListener("submit", async (e) => {
     e.preventDefault();
 
+    const patientId = localStorage.getItem("patientId");
+    
+    // Map gender values
+    const genderValue = document.getElementById("gender").value;
+    const genderMap = { 'male': 'M', 'female': 'F', 'other': 'O', 'prefer-not': 'N' };
+    
     const data = {
-      full_name: document.getElementById("fullName").value,
-      phone: document.getElementById("phone").value,
-      date_of_birth: document.getElementById("dateOfBirth").value,
-      gender: document.getElementById("gender").value,
+      name: document.getElementById("fullName").value,
+      dob: document.getElementById("dateOfBirth").value || null,
+      gender: genderMap[genderValue] || "",
       blood_group: document.getElementById("bloodGroup").value,
-      address: document.getElementById("address").value,
-      medical_conditions: document.getElementById("medicalConditions").value,
+      emergency_contact: {
+        phone: document.getElementById("phone").value,
+        address: document.getElementById("address").value,
+        medical_conditions: document.getElementById("medicalConditions").value,
+      },
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}/users/profile/`, {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
+      let response;
+      
+      if (patientId) {
+        // Update existing patient
+        response = await fetch(`${API_BASE_URL}/patients/${patientId}/`, {
+          method: "PATCH",
+          headers: getAuthHeaders(),
+          body: JSON.stringify(data),
+        });
+      } else {
+        // Create new patient profile
+        response = await fetch(`${API_BASE_URL}/patients/`, {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify(data),
+        });
+      }
 
       if (response.ok) {
         const updatedData = await response.json();
-        localStorage.setItem(
-          "userName",
-          updatedData.full_name || updatedData.email
-        );
-        document.getElementById("navUserName").textContent =
-          updatedData.full_name || updatedData.email.split("@")[0];
+        
+        // Store patient ID
+        localStorage.setItem("patientId", updatedData.id);
+        
+        // Update display
+        const displayName = updatedData.name || updatedData.email.split("@")[0];
+        localStorage.setItem("userName", displayName);
+        document.getElementById("navUserName").textContent = displayName;
+        document.getElementById("profileName").textContent = displayName;
+        
         showNotification("Profile updated successfully!", "success");
+        
+        // Reload profile to sync everything
+        setTimeout(() => loadProfile(), 500);
       } else {
-        showNotification("Failed to update profile", "error");
+        const errorData = await response.json();
+        console.error("Save error:", errorData);
+        showNotification(`Failed to update profile: ${JSON.stringify(errorData)}`, "error");
       }
     } catch (error) {
       console.error("Error updating profile:", error);
