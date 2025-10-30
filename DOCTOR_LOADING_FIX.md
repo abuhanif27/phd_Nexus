@@ -5,7 +5,7 @@
 Your browser is showing **"Loading doctors..."** but never displaying the doctor cards. This could be due to:
 
 1. **Browser Cache** (most likely)
-2. **API Error** 
+2. **API Error**
 3. **JavaScript Error**
 
 ---
@@ -17,16 +17,19 @@ Your browser is showing **"Loading doctors..."** but never displaying the doctor
 **CRITICAL**: You MUST clear your browser cache!
 
 **Windows/Linux**:
+
 ```
 Press: Ctrl + Shift + R
 ```
 
 **Mac**:
+
 ```
 Press: Cmd + Shift + R
 ```
 
 **Or** use Incognito/Private mode:
+
 - Chrome: `Ctrl+Shift+N` or `Cmd+Shift+N`
 - Firefox: `Ctrl+Shift+P` or `Cmd+Shift+P`
 
@@ -39,6 +42,7 @@ Press: Cmd + Shift + R
 3. Refresh the page
 
 You should see debug messages:
+
 ```
 📅 Opening book modal...
 🔄 Calling searchDoctors...
@@ -59,23 +63,29 @@ Found 6 doctors
 **Look for RED error messages** in the console:
 
 #### **Error: "Failed to fetch"**
+
 **Problem**: Backend not running
-**Solution**: 
+**Solution**:
+
 ```bash
 cd /home/hn-hanif/Desktop/phd_Nexus
 ./start-all.sh
 ```
 
 #### **Error: "401 Unauthorized"**
+
 **Problem**: Not logged in or token expired
-**Solution**: 
+**Solution**:
+
 1. Go to login page
 2. Login again
 3. Try booking appointment
 
 #### **Error: "doctorResults container not found!"**
+
 **Problem**: Old HTML cached
-**Solution**: 
+**Solution**:
+
 1. Hard refresh (Ctrl+Shift+R)
 2. Clear cache completely
 3. Try incognito mode
@@ -110,6 +120,7 @@ curl http://localhost:8080/appointments.html | grep "v2.0"
 ## 🎯 What You Should See (After Cache Clear)
 
 ### 1. **Book Modal Opens**
+
 When you click "Book Appointment":
 
 ```
@@ -135,6 +146,7 @@ When you click "Book Appointment":
 ```
 
 ### 2. **Beautiful Features**
+
 ✅ Font Awesome icons (❤️ heart, 🧠 brain, etc.)
 ✅ Tailwind CSS styling (gradients, shadows)
 ✅ Color-coded specialty cards
@@ -148,17 +160,20 @@ When you click "Book Appointment":
 If hard refresh doesn't work:
 
 ### Chrome/Edge:
+
 1. Press `F12`
 2. Right-click the refresh button
 3. Click "Empty Cache and Hard Reload"
 
 ### Firefox:
+
 1. Press `Ctrl+Shift+Delete`
 2. Select "Cached Web Content"
 3. Click "Clear Now"
 4. Refresh page
 
 ### Safari:
+
 1. Press `Cmd+Option+E`
 2. Reload page
 
@@ -197,6 +212,7 @@ ls -lh /home/hn-hanif/Desktop/phd_Nexus/frontend/js/appointments.js
 Open browser console (F12) and run:
 
 ### Check if elements exist:
+
 ```javascript
 console.log("bookModal:", document.getElementById("bookModal"));
 console.log("doctorResults:", document.getElementById("doctorResults"));
@@ -204,16 +220,19 @@ console.log("specialtyFilter:", document.getElementById("specialtyFilter"));
 ```
 
 ### Check if Tailwind loaded:
+
 ```javascript
 console.log("Tailwind:", window.tailwind);
 ```
 
 ### Check if Font Awesome loaded:
+
 ```javascript
-console.log("FontAwesome:", !!document.querySelector('.fa-search'));
+console.log("FontAwesome:", !!document.querySelector(".fa-search"));
 ```
 
 ### Manually trigger search:
+
 ```javascript
 searchDoctors();
 ```

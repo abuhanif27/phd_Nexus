@@ -264,7 +264,7 @@ async function searchDoctors() {
 
     const data = await response.json();
     console.log("Received data:", data);
-    
+
     let doctors = data.results || data || [];
     console.log(`Found ${doctors.length} doctors`);
 
@@ -296,7 +296,7 @@ async function searchDoctors() {
 // Display doctors
 function displayDoctors(doctors) {
   console.log("🎨 displayDoctors() called with", doctors.length, "doctors");
-  
+
   const container = document.getElementById("doctorResults");
   const countElement = document.getElementById("doctorCount");
 
