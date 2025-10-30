@@ -88,16 +88,16 @@ async function loadProfile() {
     // Update form fields
     document.getElementById("fullName").value = patient?.name || "";
     document.getElementById("email").value = user.email;
-    document.getElementById("phone").value = patient?.emergency_contact?.phone || "";
+    document.getElementById("phone").value = patient?.phone || "";
     document.getElementById("dateOfBirth").value = patient?.dob || "";
-    
+
     // Set gender dropdown
-    const genderMap = { 'M': 'male', 'F': 'female', 'O': 'other', 'N': 'prefer-not' };
+    const genderMap = { M: "male", F: "female", O: "other", N: "prefer-not" };
     document.getElementById("gender").value = genderMap[patient?.gender] || "";
-    
+
     document.getElementById("bloodGroup").value = patient?.blood_group || "";
-    document.getElementById("address").value = patient?.emergency_contact?.address || "";
-    document.getElementById("medicalConditions").value = patient?.emergency_contact?.medical_conditions || "";
+    document.getElementById("address").value = patient?.address || "";
+    document.getElementById("medicalConditions").value = patient?.medical_conditions || "";
 
     // Store patient ID for updates
     if (patient) {
@@ -180,11 +180,11 @@ document
     e.preventDefault();
 
     const patientId = localStorage.getItem("patientId");
-    
+
     // Map gender values
     const genderValue = document.getElementById("gender").value;
-    const genderMap = { 'male': 'M', 'female': 'F', 'other': 'O', 'prefer-not': 'N' };
-    
+    const genderMap = { male: "M", female: "F", other: "O", "prefer-not": "N" };
+
     const data = {
       name: document.getElementById("fullName").value,
       dob: document.getElementById("dateOfBirth").value || null,
@@ -199,7 +199,7 @@ document
 
     try {
       let response;
-      
+
       if (patientId) {
         // Update existing patient
         response = await fetch(`${API_BASE_URL}/patients/${patientId}/`, {
@@ -218,24 +218,27 @@ document
 
       if (response.ok) {
         const updatedData = await response.json();
-        
+
         // Store patient ID
         localStorage.setItem("patientId", updatedData.id);
-        
+
         // Update display
         const displayName = updatedData.name || updatedData.email.split("@")[0];
         localStorage.setItem("userName", displayName);
         document.getElementById("navUserName").textContent = displayName;
         document.getElementById("profileName").textContent = displayName;
-        
+
         showNotification("Profile updated successfully!", "success");
-        
+
         // Reload profile to sync everything
         setTimeout(() => loadProfile(), 500);
       } else {
         const errorData = await response.json();
         console.error("Save error:", errorData);
-        showNotification(`Failed to update profile: ${JSON.stringify(errorData)}`, "error");
+        showNotification(
+          `Failed to update profile: ${JSON.stringify(errorData)}`,
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error updating profile:", error);
