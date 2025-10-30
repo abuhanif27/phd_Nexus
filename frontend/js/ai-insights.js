@@ -131,7 +131,7 @@ function displaySymptomResults(data) {
   if (data.specialist || data.predicted_specialist) {
     const specialist = data.specialist || data.predicted_specialist;
     const confidence = data.confidence || data.confidence_score || 0;
-    const modelType = data.model_type || 'auto';
+    const modelType = data.model_type || "auto";
 
     // Update specialist name with icon
     specialistSpan.innerHTML = `
@@ -144,31 +144,36 @@ function displaySymptomResults(data) {
     // Display model type badge
     if (modelBadge) {
       const modelIcons = {
-        'pytorch': '🧠',
-        'sklearn': '⚡',
-        'legacy': '🤖',
-        'fallback': '🔄'
+        pytorch: "🧠",
+        sklearn: "⚡",
+        legacy: "🤖",
+        fallback: "🔄",
       };
       const modelNames = {
-        'pytorch': 'PyTorch (Deep Learning)',
-        'sklearn': 'Scikit-learn (Fast ML)',
-        'legacy': 'Legacy Model',
-        'fallback': 'Fallback Mode'
+        pytorch: "PyTorch (Deep Learning)",
+        sklearn: "Scikit-learn (Fast ML)",
+        legacy: "Legacy Model",
+        fallback: "Fallback Mode",
       };
-      
-      modelBadge.innerHTML = `${modelIcons[modelType] || '🤖'} ${modelNames[modelType] || modelType}`;
-      modelBadge.style.display = 'block';
+
+      modelBadge.innerHTML = `${modelIcons[modelType] || "🤖"} ${
+        modelNames[modelType] || modelType
+      }`;
+      modelBadge.style.display = "block";
     }
 
     // Update model description
     if (modelDescription) {
       const descriptions = {
-        'pytorch': 'Analyzed using DistilBERT transformer model (85-95% accuracy)',
-        'sklearn': 'Analyzed using TF-IDF + Logistic Regression (75-85% accuracy)',
-        'legacy': 'Analyzed using legacy embedding-based model',
-        'fallback': 'Using fallback prediction due to model unavailability'
+        pytorch:
+          "Analyzed using DistilBERT transformer model (85-95% accuracy)",
+        sklearn:
+          "Analyzed using TF-IDF + Logistic Regression (75-85% accuracy)",
+        legacy: "Analyzed using legacy embedding-based model",
+        fallback: "Using fallback prediction due to model unavailability",
       };
-      modelDescription.textContent = descriptions[modelType] || 'Based on AI analysis of your symptoms';
+      modelDescription.textContent =
+        descriptions[modelType] || "Based on AI analysis of your symptoms";
     }
 
     // Show alternatives if available
