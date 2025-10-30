@@ -341,9 +341,9 @@ function escapeHtml(text) {
 }
 
 // Initialize
-if (checkAuth()) {
-  document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", () => {
+  if (checkAuth()) {
     loadUserInfo();
     loadRecords();
-  });
-}
+  }
+});

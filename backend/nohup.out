@@ -1,2 +1,25 @@
 nohup: ignoring input
 Watching for file changes with StatReloader
+/home/hn-hanif/Desktop/phd_Nexus/backend/apps/ai/views.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+October 30, 2025 - 07:43:47
+Django version 5.0.1, using settings 'nexuscare.settings'
+Starting development server at http://0.0.0.0:8000/
+Quit the server with CONTROL-C.
+
+Watching for file changes with StatReloader
+/home/hn-hanif/Desktop/phd_Nexus/backend/.venv/lib/python3.12/site-packages/rest_framework/pagination.py:200: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.scheduling.models.Appointment'> QuerySet.
+  paginator = self.django_paginator_class(queryset, page_size)
+[30/Oct/2025 07:44:18] "GET /api/auth/me/ HTTP/1.1" 200 147
+[30/Oct/2025 07:44:18] "GET /api/records/ HTTP/1.1" 200 229
+/home/hn-hanif/Desktop/phd_Nexus/backend/.venv/lib/python3.12/site-packages/rest_framework/pagination.py:200: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'apps.patients.models.Patient'> QuerySet.
+  paginator = self.django_paginator_class(queryset, page_size)
+[30/Oct/2025 07:44:18] "GET /api/patients/ HTTP/1.1" 200 52
+[30/Oct/2025 07:44:18] "GET /api/scheduling/appointments/ HTTP/1.1" 200 52
+Not Found: /api/ai/health-analysis/
+[30/Oct/2025 07:44:27] "POST /api/ai/health-analysis/ HTTP/1.1" 404 4204
+[30/Oct/2025 07:44:30] "GET /api/scheduling/appointments/ HTTP/1.1" 200 52
+[30/Oct/2025 07:44:30] "GET /api/doctors/ HTTP/1.1" 200 1404
+[30/Oct/2025 07:44:32] "GET /api/records/files/ HTTP/1.1" 200 52

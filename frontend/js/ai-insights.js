@@ -480,8 +480,8 @@ function clearResults() {
 }
 
 // Initialize
-if (checkAuth()) {
-  document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", () => {
+  if (checkAuth()) {
     loadUserInfo();
 
     // Add example symptoms helper
@@ -513,8 +513,8 @@ if (checkAuth()) {
         symptomForm.nextSibling
       );
     }
-  });
-}
+  }
+});
 
 // Generate Summary Function
 async function generateSummary() {
