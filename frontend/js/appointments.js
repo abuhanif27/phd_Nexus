@@ -1,7 +1,5 @@
 // Appointments JavaScript for NexusCare
-console.log("🎬 appointments.js loaded - version 7.0 EMERGENCY TEST");
 const API_BASE_URL = "http://localhost:8000/api";
-console.log("🔧 API_BASE_URL:", API_BASE_URL);
 
 // Check authentication
 function checkAuth() {
@@ -1228,18 +1226,6 @@ function escapeHtml(text) {
 // Initialize - FIXED: DOMContentLoaded must run first, THEN check auth
 document.addEventListener("DOMContentLoaded", () => {
   console.log("🚀 Page loaded, initializing...");
-  
-  // IMMEDIATE TEST: Can we access the container?
-  const testContainer = document.getElementById("doctorsList");
-  console.log("🧪 TEST: doctorsList element:", testContainer);
-  if (testContainer) {
-    console.log("🧪 TEST: Current innerHTML length:", testContainer.innerHTML.length);
-    // Temporary test - replace with simple text
-    testContainer.innerHTML = '<div class="feature-card" style="padding: 2rem; background: #00ff00; color: #000;"><h2>🧪 JAVASCRIPT IS WORKING!</h2><p>If you see this, JS is running. Doctors should load below...</p></div>';
-    console.log("🧪 TEST: Replaced innerHTML with test message");
-  } else {
-    console.error("🧪 TEST FAILED: doctorsList not found!");
-  }
 
   // Check authentication first
   if (!checkAuth()) {
@@ -1252,11 +1238,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Load all data
   loadUserInfo();
   loadAppointments();
-  
-  // Small delay to let test message show, then load doctors
-  setTimeout(() => {
-    loadDoctorsMainPage(); // Load doctors on main page
-  }, 1000);
+  loadDoctorsMainPage(); // Load doctors on main page
 
   // Set min date to today
   const dateInput = document.getElementById("appointmentDate");
@@ -1265,3 +1247,4 @@ document.addEventListener("DOMContentLoaded", () => {
     dateInput.setAttribute("min", today);
   }
 });
+
