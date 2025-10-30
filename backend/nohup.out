@@ -1,4 +1,2 @@
 nohup: ignoring input
 Watching for file changes with StatReloader
-Unauthorized: /api/auth/me/
-[30/Oct/2025 07:29:24] "GET /api/auth/me/ HTTP/1.1" 401 172

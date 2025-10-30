@@ -132,3 +132,85 @@ class TextSummaryView(views.APIView):
         result = ai_service.summarize_text(text)
         
         return Response(result)
+
+
+class HealthAnalysisView(views.APIView):
+    """Generate comprehensive health analysis for patient."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            # Get patient profile
+            if not hasattr(request.user, 'patient_profile'):
+                return Response(
+                    {'error': 'Patient profile not found. Please complete your profile first.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            patient = request.user.patient_profile
+            
+            # Get patient's health data
+            from apps.records.models import MedicalRecord, Prescription
+            from apps.scheduling.models import Appointment
+            
+            records_count = MedicalRecord.objects.filter(patient=patient).count()
+            prescriptions_count = Prescription.objects.filter(patient=patient).count()
+            appointments_count = Appointment.objects.filter(patient=patient).count()
+            symptoms_count = SymptomLog.objects.filter(patient=patient).count()
+            
+            # Generate analysis
+            analysis = {
+                'health_score': 85,  # Default score
+                'summary': f"Based on your profile, you have {records_count} medical records, {prescriptions_count} prescriptions, and {appointments_count} appointments on file.",
+                'recommendations': [],
+                'risk_factors': [],
+                'statistics': {
+                    'total_records': records_count,
+                    'total_prescriptions': prescriptions_count,
+                    'total_appointments': appointments_count,
+                    'total_symptom_logs': symptoms_count,
+                }
+            }
+            
+            # Add recommendations based on data
+            if records_count == 0:
+                analysis['recommendations'].append({
+                    'title': 'Upload Medical Records',
+                    'description': 'Start by uploading your medical records to get personalized health insights.',
+                    'priority': 'high'
+                })
+            
+            if appointments_count == 0:
+                analysis['recommendations'].append({
+                    'title': 'Schedule Regular Checkups',
+                    'description': 'Regular health checkups are important for preventive care.',
+                    'priority': 'medium'
+                })
+            
+            if patient.medical_conditions:
+                analysis['risk_factors'].append({
+                    'condition': 'Pre-existing Conditions',
+                    'description': patient.medical_conditions,
+                    'level': 'monitor'
+                })
+            
+            # Add general health tips
+            analysis['recommendations'].append({
+                'title': 'Stay Hydrated',
+                'description': 'Drink at least 8 glasses of water daily for optimal health.',
+                'priority': 'low'
+            })
+            
+            analysis['recommendations'].append({
+                'title': 'Regular Exercise',
+                'description': 'Aim for at least 30 minutes of moderate exercise most days of the week.',
+                'priority': 'medium'
+            })
+            
+            return Response(analysis)
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to generate analysis: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
