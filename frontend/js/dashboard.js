@@ -57,15 +57,15 @@ async function loadUserInfo() {
   const navUserName = document.getElementById("navUserName");
   const navUserRole = document.getElementById("navUserRole");
   const navUserPhoto = document.getElementById("navUserPhoto");
-  
+
   if (navUserName) {
     navUserName.textContent = userName || userEmail?.split("@")[0] || "User";
   }
-  
+
   if (navUserRole) {
     navUserRole.textContent = userRole === "doctor" ? "Doctor" : "Patient";
   }
-  
+
   if (navUserPhoto && userPhoto) {
     navUserPhoto.src = userPhoto;
     navUserPhoto.style.display = "block";
@@ -76,11 +76,12 @@ async function loadUserInfo() {
     const defaultAvatar = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%234F46E5' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='80' fill='white'%3E${initial}%3C/text%3E%3C/svg%3E`;
     navUserPhoto.src = defaultAvatar;
   }
-  
+
   // Update page content
   const userNameElement = document.getElementById("userName");
   if (userNameElement) {
-    userNameElement.textContent = userName || userEmail?.split("@")[0] || "User";
+    userNameElement.textContent =
+      userName || userEmail?.split("@")[0] || "User";
   }
 }
 

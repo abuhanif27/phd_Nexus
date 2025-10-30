@@ -956,7 +956,11 @@ h4 {
 .nav-user-photo-placeholder {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, var(--secondary-blue), var(--accent-teal));
+  background: linear-gradient(
+    135deg,
+    var(--secondary-blue),
+    var(--accent-teal)
+  );
   display: flex;
   align-items: center;
   justify-content: center;
