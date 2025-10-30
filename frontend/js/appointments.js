@@ -308,21 +308,107 @@ function displayDoctors(doctors) {
   // Get specialty data with icons and colors
   const getSpecialtyData = (specialty) => {
     const data = {
-      Cardiology: { icon: "fa-heart-pulse", color: "bg-red-500", lightColor: "bg-red-50", textColor: "text-red-700", borderColor: "border-red-400" },
-      Dermatology: { icon: "fa-hand-sparkles", color: "bg-orange-500", lightColor: "bg-orange-50", textColor: "text-orange-700", borderColor: "border-orange-400" },
-      Neurology: { icon: "fa-brain", color: "bg-purple-500", lightColor: "bg-purple-50", textColor: "text-purple-700", borderColor: "border-purple-400" },
-      Orthopedics: { icon: "fa-bone", color: "bg-blue-500", lightColor: "bg-blue-50", textColor: "text-blue-700", borderColor: "border-blue-400" },
-      "General Medicine": { icon: "fa-stethoscope", color: "bg-green-500", lightColor: "bg-green-50", textColor: "text-green-700", borderColor: "border-green-400" },
-      Pediatrics: { icon: "fa-baby", color: "bg-pink-500", lightColor: "bg-pink-50", textColor: "text-pink-700", borderColor: "border-pink-400" },
-      Psychiatry: { icon: "fa-head-side-virus", color: "bg-teal-500", lightColor: "bg-teal-50", textColor: "text-teal-700", borderColor: "border-teal-400" },
-      ENT: { icon: "fa-ear-listen", color: "bg-amber-500", lightColor: "bg-amber-50", textColor: "text-amber-700", borderColor: "border-amber-400" },
-      Ophthalmology: { icon: "fa-eye", color: "bg-slate-500", lightColor: "bg-slate-50", textColor: "text-slate-700", borderColor: "border-slate-400" },
-      Gynecology: { icon: "fa-hospital-user", color: "bg-rose-500", lightColor: "bg-rose-50", textColor: "text-rose-700", borderColor: "border-rose-400" },
-      Urology: { icon: "fa-droplet", color: "bg-cyan-500", lightColor: "bg-cyan-50", textColor: "text-cyan-700", borderColor: "border-cyan-400" },
-      Pulmonology: { icon: "fa-lungs", color: "bg-emerald-500", lightColor: "bg-emerald-50", textColor: "text-emerald-700", borderColor: "border-emerald-400" },
-      Gastroenterology: { icon: "fa-stomach", color: "bg-red-600", lightColor: "bg-red-50", textColor: "text-red-800", borderColor: "border-red-400" },
+      Cardiology: {
+        icon: "fa-heart-pulse",
+        color: "bg-red-500",
+        lightColor: "bg-red-50",
+        textColor: "text-red-700",
+        borderColor: "border-red-400",
+      },
+      Dermatology: {
+        icon: "fa-hand-sparkles",
+        color: "bg-orange-500",
+        lightColor: "bg-orange-50",
+        textColor: "text-orange-700",
+        borderColor: "border-orange-400",
+      },
+      Neurology: {
+        icon: "fa-brain",
+        color: "bg-purple-500",
+        lightColor: "bg-purple-50",
+        textColor: "text-purple-700",
+        borderColor: "border-purple-400",
+      },
+      Orthopedics: {
+        icon: "fa-bone",
+        color: "bg-blue-500",
+        lightColor: "bg-blue-50",
+        textColor: "text-blue-700",
+        borderColor: "border-blue-400",
+      },
+      "General Medicine": {
+        icon: "fa-stethoscope",
+        color: "bg-green-500",
+        lightColor: "bg-green-50",
+        textColor: "text-green-700",
+        borderColor: "border-green-400",
+      },
+      Pediatrics: {
+        icon: "fa-baby",
+        color: "bg-pink-500",
+        lightColor: "bg-pink-50",
+        textColor: "text-pink-700",
+        borderColor: "border-pink-400",
+      },
+      Psychiatry: {
+        icon: "fa-head-side-virus",
+        color: "bg-teal-500",
+        lightColor: "bg-teal-50",
+        textColor: "text-teal-700",
+        borderColor: "border-teal-400",
+      },
+      ENT: {
+        icon: "fa-ear-listen",
+        color: "bg-amber-500",
+        lightColor: "bg-amber-50",
+        textColor: "text-amber-700",
+        borderColor: "border-amber-400",
+      },
+      Ophthalmology: {
+        icon: "fa-eye",
+        color: "bg-slate-500",
+        lightColor: "bg-slate-50",
+        textColor: "text-slate-700",
+        borderColor: "border-slate-400",
+      },
+      Gynecology: {
+        icon: "fa-hospital-user",
+        color: "bg-rose-500",
+        lightColor: "bg-rose-50",
+        textColor: "text-rose-700",
+        borderColor: "border-rose-400",
+      },
+      Urology: {
+        icon: "fa-droplet",
+        color: "bg-cyan-500",
+        lightColor: "bg-cyan-50",
+        textColor: "text-cyan-700",
+        borderColor: "border-cyan-400",
+      },
+      Pulmonology: {
+        icon: "fa-lungs",
+        color: "bg-emerald-500",
+        lightColor: "bg-emerald-50",
+        textColor: "text-emerald-700",
+        borderColor: "border-emerald-400",
+      },
+      Gastroenterology: {
+        icon: "fa-stomach",
+        color: "bg-red-600",
+        lightColor: "bg-red-50",
+        textColor: "text-red-800",
+        borderColor: "border-red-400",
+      },
     };
-    return data[specialty] || { icon: "fa-user-doctor", color: "bg-indigo-500", lightColor: "bg-indigo-50", textColor: "text-indigo-700", borderColor: "border-indigo-400" };
+    return (
+      data[specialty] || {
+        icon: "fa-user-doctor",
+        color: "bg-indigo-500",
+        lightColor: "bg-indigo-50",
+        textColor: "text-indigo-700",
+        borderColor: "border-indigo-400",
+      }
+    );
   };
 
   container.innerHTML = doctors
@@ -336,14 +422,20 @@ function displayDoctors(doctors) {
 
       return `
         <div 
-          class="doctor-card-hover bg-white rounded-xl border-2 ${specialtyData.borderColor} shadow-sm p-4 cursor-pointer opacity-0"
+          class="doctor-card-hover bg-white rounded-xl border-2 ${
+            specialtyData.borderColor
+          } shadow-sm p-4 cursor-pointer opacity-0"
           data-doctor-id="${doctor.id}"
-          onclick="selectDoctor(${doctor.id}, '${escapeHtml(doctorName)}', '${escapeHtml(specialty)}')"
+          onclick="selectDoctor(${doctor.id}, '${escapeHtml(
+        doctorName
+      )}', '${escapeHtml(specialty)}')"
           style="animation: fadeInUp 0.5s ease forwards ${index * 0.1}s;"
         >
           <div class="flex items-start gap-4">
             <!-- Avatar Icon -->
-            <div class="${specialtyData.color} rounded-xl p-4 flex items-center justify-center flex-shrink-0 shadow-lg">
+            <div class="${
+              specialtyData.color
+            } rounded-xl p-4 flex items-center justify-center flex-shrink-0 shadow-lg">
               <i class="fas ${specialtyData.icon} text-white text-2xl"></i>
             </div>
 
@@ -354,7 +446,11 @@ function displayDoctors(doctors) {
               </h3>
               
               <div class="flex items-center gap-2 mb-2 flex-wrap">
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 ${specialtyData.lightColor} ${specialtyData.textColor} rounded-full text-xs font-semibold">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 ${
+                  specialtyData.lightColor
+                } ${
+        specialtyData.textColor
+      } rounded-full text-xs font-semibold">
                   <i class="fas ${specialtyData.icon}"></i>
                   ${escapeHtml(specialty)}
                 </span>
@@ -365,11 +461,17 @@ function displayDoctors(doctors) {
                 </span>
               </div>
 
-              ${qualifications ? `
+              ${
+                qualifications
+                  ? `
                 <p class="text-xs text-gray-500 truncate">
-                  <i class="fas fa-graduation-cap mr-1"></i>${escapeHtml(qualifications)}
+                  <i class="fas fa-graduation-cap mr-1"></i>${escapeHtml(
+                    qualifications
+                  )}
                 </p>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
 
             <!-- Rating & Select -->
@@ -381,7 +483,9 @@ function displayDoctors(doctors) {
               
               <button 
                 type="button"
-                class="${specialtyData.color} hover:opacity-90 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-md transition-all hover:scale-105 flex items-center gap-1.5"
+                class="${
+                  specialtyData.color
+                } hover:opacity-90 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-md transition-all hover:scale-105 flex items-center gap-1.5"
               >
                 <span>Select</span>
                 <i class="fas fa-arrow-right"></i>
@@ -394,9 +498,9 @@ function displayDoctors(doctors) {
     .join("");
 
   // Add fadeInUp animation if not exists
-  if (!document.getElementById('fadeInUpStyle')) {
-    const style = document.createElement('style');
-    style.id = 'fadeInUpStyle';
+  if (!document.getElementById("fadeInUpStyle")) {
+    const style = document.createElement("style");
+    style.id = "fadeInUpStyle";
     style.textContent = `
       @keyframes fadeInUp {
         from { opacity: 0; transform: translateY(20px); }
@@ -444,7 +548,9 @@ function selectDoctor(doctorId, doctorName, specialty) {
   document.getElementById("selectedDoctorDisplay").innerHTML = `
     <div class="flex items-center gap-4 bg-white p-3 rounded-xl shadow-sm">
       <!-- Icon -->
-      <div class="${specialtyData.color} rounded-xl p-3 flex items-center justify-center shadow-md">
+      <div class="${
+        specialtyData.color
+      } rounded-xl p-3 flex items-center justify-center shadow-md">
         <i class="fas ${specialtyData.icon} text-white text-2xl"></i>
       </div>
       
