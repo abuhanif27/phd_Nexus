@@ -231,6 +231,247 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// Load doctors for main page
+async function loadDoctorsMainPage() {
+  console.log("🏥 Loading doctors for main page...");
+  const container = document.getElementById("doctorsList");
+  
+  if (!container) {
+    console.log("ℹ️ doctorsList container not found, skipping main page load");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/doctors/`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (response.status === 401) {
+      logout();
+      return;
+    }
+
+    const data = await response.json();
+    const doctors = data.results || data || [];
+    
+    console.log(`✅ Loaded ${doctors.length} doctors for main page`);
+
+    if (doctors.length === 0) {
+      container.innerHTML = `
+        <div class="feature-card" style="text-align: center; padding: 3rem;">
+          <i class="fas fa-user-md" style="font-size: 4rem; color: var(--text-secondary); opacity: 0.5; margin-bottom: 1rem;"></i>
+          <p style="color: var(--text-secondary); font-size: 1.1rem; font-weight: 600;">
+            No doctors found in the system
+          </p>
+          <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 0.5rem;">
+            Please contact administrator to add doctors
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    // Display doctors as cards
+    container.innerHTML = doctors.map(doctor => {
+      const doctorName = doctor.name || doctor.user_name || doctor.email || 'Unknown Doctor';
+      const specialty = doctor.specialty || 'General Medicine';
+      const location = doctor.location || 'Location not specified';
+      const rating = doctor.rating || '4.5';
+      const qualifications = doctor.qualifications || '';
+
+      return `
+        <div class="feature-card" style="cursor: pointer; transition: all 0.3s ease;" 
+             onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='var(--shadow-lg)';"
+             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow-md)';"
+             onclick="showBookModalWithDoctor(${doctor.id})">
+          <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+            <div style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary-blue), var(--accent-teal)); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; font-weight: bold;">
+              ${doctorName.charAt(0).toUpperCase()}
+            </div>
+            <div style="flex: 1;">
+              <h3 style="margin: 0; color: var(--text-primary); font-size: 1.1rem;">
+                ${escapeHtml(doctorName)}
+              </h3>
+              <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+                ${escapeHtml(specialty)}
+              </p>
+            </div>
+            <div style="text-align: right;">
+              <div style="background: linear-gradient(135deg, #ffd700, #ffed4e); padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: bold; color: #333; font-size: 0.9rem;">
+                ⭐ ${rating}
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.5rem;">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>${escapeHtml(location)}</span>
+          </div>
+          ${qualifications ? `
+            <div style="color: var(--text-light); font-size: 0.8rem; margin-bottom: 1rem;">
+              <i class="fas fa-graduation-cap"></i> ${escapeHtml(qualifications)}
+            </div>
+          ` : ''}
+          <button class="btn btn-primary" style="width: 100%;" onclick="event.stopPropagation(); showBookModalWithDoctor(${doctor.id})">
+            <i class="fas fa-calendar-plus"></i> Book Appointment
+          </button>
+        </div>
+      `;
+    }).join('');
+
+  } catch (error) {
+    console.error("❌ Error loading doctors:", error);
+    container.innerHTML = `
+      <div class="feature-card" style="text-align: center; padding: 3rem;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--status-error); margin-bottom: 1rem;"></i>
+        <p style="color: var(--status-error); font-weight: 600;">
+          Error loading doctors
+        </p>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">
+          ${error.message}
+        </p>
+        <button class="btn btn-secondary" style="margin-top: 1rem;" onclick="loadDoctorsMainPage()">
+          <i class="fas fa-redo"></i> Retry
+        </button>
+      </div>
+    `;
+  }
+}
+
+// Helper function to open modal with pre-selected doctor
+function showBookModalWithDoctor(doctorId) {
+  showBookModal();
+  // Wait for modal to open and doctors to load, then select
+  setTimeout(() => {
+    const doctorCard = document.querySelector(`.doctor-card-hover[data-doctor-id="${doctorId}"]`);
+    if (doctorCard) {
+      doctorCard.click();
+    }
+  }, 500);
+}
+
+// Search doctors on main page with filters
+async function searchDoctorsMainPage() {
+  console.log("🔍 Searching doctors on main page...");
+  const specialty = document.getElementById("mainSpecialtyFilter")?.value || "";
+  const location = document.getElementById("mainLocationFilter")?.value || "";
+  
+  console.log("Main page search params:", { specialty, location });
+
+  const container = document.getElementById("doctorsList");
+  if (!container) return;
+
+  // Show loading
+  container.innerHTML = `
+    <div class="feature-card" style="text-align: center; padding: 3rem">
+      <div class="spinner" style="margin: 0 auto 1rem"></div>
+      <p style="color: var(--text-secondary)">Searching doctors...</p>
+    </div>
+  `;
+
+  try {
+    let url = `${API_BASE_URL}/doctors/`;
+    const params = new URLSearchParams();
+    if (specialty) params.append("specialty", specialty);
+    if (location) params.append("location", location);
+    if (params.toString()) url += `?${params.toString()}`;
+
+    console.log("Fetching from:", url);
+
+    const response = await fetch(url, {
+      headers: getAuthHeaders(),
+    });
+
+    if (response.status === 401) {
+      logout();
+      return;
+    }
+
+    const data = await response.json();
+    const doctors = data.results || data || [];
+    
+    console.log(`Found ${doctors.length} doctors on main page`);
+
+    if (doctors.length === 0) {
+      container.innerHTML = `
+        <div class="feature-card" style="text-align: center; padding: 3rem;">
+          <i class="fas fa-user-md" style="font-size: 4rem; color: var(--text-secondary); opacity: 0.5; margin-bottom: 1rem;"></i>
+          <p style="color: var(--text-secondary); font-size: 1.1rem; font-weight: 600;">
+            No doctors found matching your search
+          </p>
+          <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 0.5rem;">
+            Try different filters or <a href="#" onclick="document.getElementById('mainSpecialtyFilter').value=''; document.getElementById('mainLocationFilter').value=''; searchDoctorsMainPage(); return false;" style="color: var(--primary-blue); text-decoration: underline;">clear filters</a>
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    // Display doctors (reuse the same rendering logic)
+    container.innerHTML = doctors.map(doctor => {
+      const doctorName = doctor.name || doctor.user_name || doctor.email || 'Unknown Doctor';
+      const specialty = doctor.specialty || 'General Medicine';
+      const location = doctor.location || 'Location not specified';
+      const rating = doctor.rating || '4.5';
+      const qualifications = doctor.qualifications || '';
+
+      return `
+        <div class="feature-card" style="cursor: pointer; transition: all 0.3s ease;" 
+             onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='var(--shadow-lg)';"
+             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow-md)';"
+             onclick="showBookModalWithDoctor(${doctor.id})">
+          <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+            <div style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary-blue), var(--accent-teal)); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; font-weight: bold;">
+              ${doctorName.charAt(0).toUpperCase()}
+            </div>
+            <div style="flex: 1;">
+              <h3 style="margin: 0; color: var(--text-primary); font-size: 1.1rem;">
+                ${escapeHtml(doctorName)}
+              </h3>
+              <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+                ${escapeHtml(specialty)}
+              </p>
+            </div>
+            <div style="text-align: right;">
+              <div style="background: linear-gradient(135deg, #ffd700, #ffed4e); padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: bold; color: #333; font-size: 0.9rem;">
+                ⭐ ${rating}
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.5rem;">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>${escapeHtml(location)}</span>
+          </div>
+          ${qualifications ? `
+            <div style="color: var(--text-light); font-size: 0.8rem; margin-bottom: 1rem;">
+              <i class="fas fa-graduation-cap"></i> ${escapeHtml(qualifications)}
+            </div>
+          ` : ''}
+          <button class="btn btn-primary" style="width: 100%;" onclick="event.stopPropagation(); showBookModalWithDoctor(${doctor.id})">
+            <i class="fas fa-calendar-plus"></i> Book Appointment
+          </button>
+        </div>
+      `;
+    }).join('');
+
+  } catch (error) {
+    console.error("❌ Error searching doctors:", error);
+    container.innerHTML = `
+      <div class="feature-card" style="text-align: center; padding: 3rem;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--status-error); margin-bottom: 1rem;"></i>
+        <p style="color: var(--status-error); font-weight: 600;">
+          Error searching doctors
+        </p>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">
+          ${error.message}
+        </p>
+        <button class="btn btn-secondary" style="margin-top: 1rem;" onclick="searchDoctorsMainPage()">
+          <i class="fas fa-redo"></i> Retry
+        </button>
+      </div>
+    `;
+  }
+}
+
 // Search doctors
 async function searchDoctors() {
   console.log("🔍 searchDoctors() called");
@@ -861,6 +1102,7 @@ if (checkAuth()) {
   document.addEventListener("DOMContentLoaded", () => {
     loadUserInfo();
     loadAppointments();
+    loadDoctorsMainPage(); // Load doctors on main page
 
     // Set min date to today
     const dateInput = document.getElementById("appointmentDate");

@@ -220,7 +220,7 @@
           >
             <div>
               <label class="form-label">Specialty</label>
-              <select id="specialtyFilter" class="form-control">
+              <select id="mainSpecialtyFilter" class="form-control" onchange="searchDoctorsMainPage()">
                 <option value="">All Specialties</option>
                 <option value="Cardiology">Cardiology</option>
                 <option value="Neurology">Neurology</option>
@@ -237,12 +237,13 @@
               <label class="form-label">Location</label>
               <input
                 type="text"
-                id="locationFilter"
+                id="mainLocationFilter"
                 class="form-control"
                 placeholder="City or area"
+                onkeyup="searchDoctorsMainPage()"
               />
             </div>
-            <button onclick="searchDoctors()" class="btn btn-secondary">
+            <button onclick="searchDoctorsMainPage()" class="btn btn-secondary">
               Search
             </button>
           </div>
@@ -594,6 +595,6 @@
     </footer>
 
     <!-- Cache-busting version -->
-    <script src="js/appointments.js?v=2.0"></script>
+    <script src="js/appointments.js?v=3.0"></script>
   </body>
 </html>
