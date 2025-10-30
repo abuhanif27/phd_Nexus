@@ -285,17 +285,19 @@ function displayDoctors(doctors) {
   if (countElement) {
     countElement.textContent = `${doctors.length} doctor${
       doctors.length !== 1 ? "s" : ""
-    } found`;
+    }`;
   }
 
   if (doctors.length === 0) {
     container.innerHTML = `
-      <div style="text-align: center; padding: 3rem;">
-        <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.5;">👨‍⚕️</div>
-        <p style="color: var(--text-secondary); font-size: 1.1rem;">
-          No doctors found matching your criteria
+      <div class="text-center py-12">
+        <div class="text-6xl mb-4 opacity-50">
+          <i class="fas fa-user-md text-gray-300"></i>
+        </div>
+        <p class="text-gray-600 text-lg font-semibold mb-2">
+          No doctors found
         </p>
-        <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 0.5rem;">
+        <p class="text-gray-500 text-sm">
           Try adjusting your filters or search query
         </p>
       </div>
@@ -303,200 +305,106 @@ function displayDoctors(doctors) {
     return;
   }
 
-  // Get specialty icon
-  const getSpecialtyIcon = (specialty) => {
-    const icons = {
-      Cardiology: "❤️",
-      Dermatology: "🧴",
-      Neurology: "🧠",
-      Orthopedics: "🦴",
-      "General Medicine": "🩺",
-      Pediatrics: "👶",
-      Psychiatry: "🧘",
-      ENT: "👂",
-      Ophthalmology: "👁️",
-      Gynecology: "🏥",
-      Urology: "💧",
-      Pulmonology: "🫁",
-      Gastroenterology: "🫀",
+  // Get specialty data with icons and colors
+  const getSpecialtyData = (specialty) => {
+    const data = {
+      Cardiology: { icon: "fa-heart-pulse", color: "bg-red-500", lightColor: "bg-red-50", textColor: "text-red-700", borderColor: "border-red-400" },
+      Dermatology: { icon: "fa-hand-sparkles", color: "bg-orange-500", lightColor: "bg-orange-50", textColor: "text-orange-700", borderColor: "border-orange-400" },
+      Neurology: { icon: "fa-brain", color: "bg-purple-500", lightColor: "bg-purple-50", textColor: "text-purple-700", borderColor: "border-purple-400" },
+      Orthopedics: { icon: "fa-bone", color: "bg-blue-500", lightColor: "bg-blue-50", textColor: "text-blue-700", borderColor: "border-blue-400" },
+      "General Medicine": { icon: "fa-stethoscope", color: "bg-green-500", lightColor: "bg-green-50", textColor: "text-green-700", borderColor: "border-green-400" },
+      Pediatrics: { icon: "fa-baby", color: "bg-pink-500", lightColor: "bg-pink-50", textColor: "text-pink-700", borderColor: "border-pink-400" },
+      Psychiatry: { icon: "fa-head-side-virus", color: "bg-teal-500", lightColor: "bg-teal-50", textColor: "text-teal-700", borderColor: "border-teal-400" },
+      ENT: { icon: "fa-ear-listen", color: "bg-amber-500", lightColor: "bg-amber-50", textColor: "text-amber-700", borderColor: "border-amber-400" },
+      Ophthalmology: { icon: "fa-eye", color: "bg-slate-500", lightColor: "bg-slate-50", textColor: "text-slate-700", borderColor: "border-slate-400" },
+      Gynecology: { icon: "fa-hospital-user", color: "bg-rose-500", lightColor: "bg-rose-50", textColor: "text-rose-700", borderColor: "border-rose-400" },
+      Urology: { icon: "fa-droplet", color: "bg-cyan-500", lightColor: "bg-cyan-50", textColor: "text-cyan-700", borderColor: "border-cyan-400" },
+      Pulmonology: { icon: "fa-lungs", color: "bg-emerald-500", lightColor: "bg-emerald-50", textColor: "text-emerald-700", borderColor: "border-emerald-400" },
+      Gastroenterology: { icon: "fa-stomach", color: "bg-red-600", lightColor: "bg-red-50", textColor: "text-red-800", borderColor: "border-red-400" },
     };
-    return icons[specialty] || "👨‍⚕️";
-  };
-
-  // Get specialty color
-  const getSpecialtyColor = (specialty) => {
-    const colors = {
-      Cardiology: "#e74c3c",
-      Dermatology: "#f39c12",
-      Neurology: "#9b59b6",
-      Orthopedics: "#3498db",
-      "General Medicine": "#2ecc71",
-      Pediatrics: "#ff69b4",
-      Psychiatry: "#1abc9c",
-      ENT: "#e67e22",
-      Ophthalmology: "#34495e",
-      Gynecology: "#e91e63",
-      Urology: "#00bcd4",
-      Pulmonology: "#009688",
-      Gastroenterology: "#ff5722",
-    };
-    return colors[specialty] || "#667eea";
+    return data[specialty] || { icon: "fa-user-doctor", color: "bg-indigo-500", lightColor: "bg-indigo-50", textColor: "text-indigo-700", borderColor: "border-indigo-400" };
   };
 
   container.innerHTML = doctors
-    .map((doctor) => {
+    .map((doctor, index) => {
       const doctorName = doctor.name || doctor.user_name || doctor.email;
       const specialty = doctor.specialty || "General Medicine";
       const location = doctor.location || "Location not specified";
       const rating = doctor.rating || "4.5";
-      const specialtyIcon = getSpecialtyIcon(specialty);
-      const specialtyColor = getSpecialtyColor(specialty);
+      const qualifications = doctor.qualifications || "";
+      const specialtyData = getSpecialtyData(specialty);
 
       return `
         <div 
-          class="doctor-card" 
+          class="doctor-card-hover bg-white rounded-xl border-2 ${specialtyData.borderColor} shadow-sm p-4 cursor-pointer opacity-0"
           data-doctor-id="${doctor.id}"
-          style="
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1.25rem;
-            background: white;
-            border: 2px solid #e8ecef;
-            border-left: 4px solid ${specialtyColor};
-            border-radius: 12px;
-            margin-bottom: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-          "
-          onmouseover="this.style.transform='translateX(4px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'; this.style.borderColor='${specialtyColor}';"
-          onmouseout="if(!this.classList.contains('selected')) { this.style.transform='translateX(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)'; this.style.borderColor='#e8ecef'; }"
-          onclick="selectDoctor(${doctor.id}, '${escapeHtml(
-        doctorName
-      )}', '${escapeHtml(specialty)}')"
+          onclick="selectDoctor(${doctor.id}, '${escapeHtml(doctorName)}', '${escapeHtml(specialty)}')"
+          style="animation: fadeInUp 0.5s ease forwards ${index * 0.1}s;"
         >
-          <!-- Doctor Avatar with Specialty Color -->
-          <div style="
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, ${specialtyColor}, ${specialtyColor}cc);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            font-weight: 600;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            flex-shrink: 0;
-          ">
-            ${specialtyIcon}
-          </div>
+          <div class="flex items-start gap-4">
+            <!-- Avatar Icon -->
+            <div class="${specialtyData.color} rounded-xl p-4 flex items-center justify-center flex-shrink-0 shadow-lg">
+              <i class="fas ${specialtyData.icon} text-white text-2xl"></i>
+            </div>
 
-          <!-- Doctor Info -->
-          <div style="flex: 1; min-width: 0;">
-            <h4 style="
-              margin: 0 0 0.5rem 0; 
-              color: var(--text-primary);
-              font-size: 1.1rem;
-              font-weight: 600;
-            ">
-              ${escapeHtml(doctorName)}
-            </h4>
-            
-            <div style="
-              display: flex; 
-              align-items: center; 
-              gap: 0.75rem;
-              flex-wrap: wrap;
-            ">
-              <span style="
-                display: inline-flex;
-                align-items: center;
-                gap: 0.25rem;
-                padding: 0.25rem 0.75rem;
-                background: ${specialtyColor}15;
-                color: ${specialtyColor};
-                border-radius: 20px;
-                font-size: 0.85rem;
-                font-weight: 600;
-              ">
-                ${specialtyIcon} ${escapeHtml(specialty)}
-              </span>
+            <!-- Doctor Info -->
+            <div class="flex-1 min-w-0">
+              <h3 class="text-lg font-bold text-gray-800 mb-1 truncate">
+                ${escapeHtml(doctorName)}
+              </h3>
               
-              <span style="
-                display: inline-flex;
-                align-items: center;
-                gap: 0.25rem;
-                color: var(--text-secondary);
-                font-size: 0.85rem;
-              ">
-                📍 ${escapeHtml(location)}
-              </span>
+              <div class="flex items-center gap-2 mb-2 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 ${specialtyData.lightColor} ${specialtyData.textColor} rounded-full text-xs font-semibold">
+                  <i class="fas ${specialtyData.icon}"></i>
+                  ${escapeHtml(specialty)}
+                </span>
+                
+                <span class="inline-flex items-center gap-1 text-gray-600 text-xs">
+                  <i class="fas fa-location-dot"></i>
+                  ${escapeHtml(location)}
+                </span>
+              </div>
+
+              ${qualifications ? `
+                <p class="text-xs text-gray-500 truncate">
+                  <i class="fas fa-graduation-cap mr-1"></i>${escapeHtml(qualifications)}
+                </p>
+              ` : ''}
             </div>
 
-            ${
-              doctor.qualifications
-                ? `<p style="
-                  margin: 0.5rem 0 0 0; 
-                  color: var(--text-light); 
-                  font-size: 0.8rem;
-                  overflow: hidden;
-                  text-overflow: ellipsis;
-                  white-space: nowrap;
-                ">${escapeHtml(doctor.qualifications)}</p>`
-                : ""
-            }
-          </div>
-
-          <!-- Rating & Select Button -->
-          <div style="
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 0.5rem;
-            flex-shrink: 0;
-          ">
-            <div style="
-              display: flex;
-              align-items: center;
-              gap: 0.25rem;
-              padding: 0.35rem 0.75rem;
-              background: linear-gradient(135deg, #ffd700, #ffed4e);
-              border-radius: 20px;
-              font-weight: 700;
-              color: #333;
-              font-size: 0.9rem;
-              box-shadow: 0 2px 4px rgba(255,215,0,0.3);
-            ">
-              ⭐ ${rating}
+            <!-- Rating & Select -->
+            <div class="flex flex-col items-end gap-2 flex-shrink-0">
+              <div class="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full shadow-md">
+                <i class="fas fa-star text-white text-sm"></i>
+                <span class="text-white font-bold text-sm">${rating}</span>
+              </div>
+              
+              <button 
+                type="button"
+                class="${specialtyData.color} hover:opacity-90 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-md transition-all hover:scale-105 flex items-center gap-1.5"
+              >
+                <span>Select</span>
+                <i class="fas fa-arrow-right"></i>
+              </button>
             </div>
-            
-            <button 
-              type="button"
-              style="
-                padding: 0.5rem 1.25rem;
-                background: ${specialtyColor};
-                color: white;
-                border: none;
-                border-radius: 20px;
-                font-size: 0.85rem;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                white-space: nowrap;
-              "
-              onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)';"
-              onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
-            >
-              Select →
-            </button>
           </div>
         </div>
       `;
     })
     .join("");
+
+  // Add fadeInUp animation if not exists
+  if (!document.getElementById('fadeInUpStyle')) {
+    const style = document.createElement('style');
+    style.id = 'fadeInUpStyle';
+    style.textContent = `
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
 }
 
 // Select doctor and load time slots
@@ -507,137 +415,74 @@ function selectDoctor(doctorId, doctorName, specialty) {
   selectedDoctorId = doctorId;
   selectedDoctorName = doctorName;
 
-  // Get specialty icon and color
-  const getSpecialtyIcon = (spec) => {
-    const icons = {
-      Cardiology: "❤️",
-      Dermatology: "🧴",
-      Neurology: "🧠",
-      Orthopedics: "🦴",
-      "General Medicine": "🩺",
-      Pediatrics: "👶",
-      Psychiatry: "🧘",
-      ENT: "👂",
-      Ophthalmology: "👁️",
-      Gynecology: "🏥",
-      Urology: "💧",
-      Pulmonology: "🫁",
-      Gastroenterology: "🫀",
+  // Get specialty data
+  const getSpecialtyData = (spec) => {
+    const data = {
+      Cardiology: { icon: "fa-heart-pulse", color: "bg-red-500" },
+      Dermatology: { icon: "fa-hand-sparkles", color: "bg-orange-500" },
+      Neurology: { icon: "fa-brain", color: "bg-purple-500" },
+      Orthopedics: { icon: "fa-bone", color: "bg-blue-500" },
+      "General Medicine": { icon: "fa-stethoscope", color: "bg-green-500" },
+      Pediatrics: { icon: "fa-baby", color: "bg-pink-500" },
+      Psychiatry: { icon: "fa-head-side-virus", color: "bg-teal-500" },
+      ENT: { icon: "fa-ear-listen", color: "bg-amber-500" },
+      Ophthalmology: { icon: "fa-eye", color: "bg-slate-500" },
+      Gynecology: { icon: "fa-hospital-user", color: "bg-rose-500" },
+      Urology: { icon: "fa-droplet", color: "bg-cyan-500" },
+      Pulmonology: { icon: "fa-lungs", color: "bg-emerald-500" },
+      Gastroenterology: { icon: "fa-stomach", color: "bg-red-600" },
     };
-    return icons[spec] || "👨‍⚕️";
+    return data[spec] || { icon: "fa-user-doctor", color: "bg-indigo-500" };
   };
 
-  const getSpecialtyColor = (spec) => {
-    const colors = {
-      Cardiology: "#e74c3c",
-      Dermatology: "#f39c12",
-      Neurology: "#9b59b6",
-      Orthopedics: "#3498db",
-      "General Medicine": "#2ecc71",
-      Pediatrics: "#ff69b4",
-      Psychiatry: "#1abc9c",
-      ENT: "#e67e22",
-      Ophthalmology: "#34495e",
-      Gynecology: "#e91e63",
-      Urology: "#00bcd4",
-      Pulmonology: "#009688",
-      Gastroenterology: "#ff5722",
-    };
-    return colors[spec] || "#667eea";
-  };
-
-  const specialtyIcon = getSpecialtyIcon(specialty);
-  const specialtyColor = getSpecialtyColor(specialty);
+  const specialtyData = getSpecialtyData(specialty);
 
   // Update hidden input
   document.getElementById("doctorSelect").value = doctorId;
 
-  // Update selected doctor display with beautiful design
+  // Update selected doctor display with Tailwind
   document.getElementById("selectedDoctorDisplay").innerHTML = `
-    <div style="
-      display: flex; 
-      align-items: center; 
-      gap: 1rem;
-      padding: 0.5rem;
-      background: white;
-      border-radius: 8px;
-    ">
-      <div style="
-        width: 50px;
-        height: 50px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, ${specialtyColor}, ${specialtyColor}cc);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.75rem;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-      ">
-        ${specialtyIcon}
+    <div class="flex items-center gap-4 bg-white p-3 rounded-xl shadow-sm">
+      <!-- Icon -->
+      <div class="${specialtyData.color} rounded-xl p-3 flex items-center justify-center shadow-md">
+        <i class="fas ${specialtyData.icon} text-white text-2xl"></i>
       </div>
-      <div style="flex: 1;">
-        <div style="
-          font-weight: 700; 
-          color: var(--text-primary);
-          font-size: 1.1rem;
-          margin-bottom: 0.25rem;
-        ">
+      
+      <!-- Doctor Info -->
+      <div class="flex-1">
+        <div class="text-lg font-bold text-gray-800 mb-1">
           ${escapeHtml(doctorName)}
         </div>
-        <div style="
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-          padding: 0.25rem 0.75rem;
-          background: ${specialtyColor}15;
-          color: ${specialtyColor};
-          border-radius: 15px;
-          font-size: 0.8rem;
-          font-weight: 600;
-        ">
-          ${specialtyIcon} ${escapeHtml(specialty)}
+        <div class="flex items-center gap-2 text-sm text-gray-600">
+          <i class="fas ${specialtyData.icon}"></i>
+          <span>${escapeHtml(specialty)}</span>
         </div>
       </div>
-      <div style="
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: linear-gradient(135deg, #10b981, #059669);
-        color: white;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 0.9rem;
-        box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
-      ">
-        <span style="font-size: 1.2rem;">✓</span>
-        Selected
+      
+      <!-- Selected Badge -->
+      <div class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl shadow-lg font-bold">
+        <i class="fas fa-check-circle text-lg"></i>
+        <span>Selected</span>
       </div>
     </div>
   `;
 
   // Highlight selected doctor card
-  document.querySelectorAll(".doctor-card").forEach((card) => {
-    card.classList.remove("selected");
-    card.style.borderColor = "#e8ecef";
-    card.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)";
-    card.style.transform = "translateX(0)";
+  document.querySelectorAll(".doctor-card-hover").forEach((card) => {
+    card.classList.remove("selected", "ring-4", "ring-blue-300");
   });
 
   const selectedCard = document.querySelector(
-    `.doctor-card[data-doctor-id="${doctorId}"]`
+    `.doctor-card-hover[data-doctor-id="${doctorId}"]`
   );
   if (selectedCard) {
-    selectedCard.classList.add("selected");
-    selectedCard.style.borderColor = specialtyColor;
-    selectedCard.style.boxShadow = `0 4px 12px ${specialtyColor}40`;
-    selectedCard.style.transform = "translateX(4px)";
+    selectedCard.classList.add("selected", "ring-4", "ring-blue-300");
+    selectedCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   // Scroll to date selection
   setTimeout(() => {
-    document.getElementById("appointmentDate").focus();
+    document.getElementById("appointmentDate")?.focus();
   }, 300);
 }
 

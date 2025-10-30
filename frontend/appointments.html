@@ -24,7 +24,7 @@
 
     <!-- Original styles -->
     <link rel="stylesheet" href="css/style.css" />
-    
+
     <style>
       /* Custom scrollbar */
       .custom-scrollbar::-webkit-scrollbar {
@@ -52,14 +52,21 @@
 
       .doctor-card-hover:hover {
         transform: translateY(-4px) scale(1.01);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+          0 10px 10px -5px rgba(0, 0, 0, 0.04);
       }
 
       /* Animated gradient */
       @keyframes gradient {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
       }
 
       .animate-gradient {
@@ -69,8 +76,13 @@
 
       /* Pulse animation for rating */
       @keyframes pulse-scale {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
       }
 
       .pulse-scale {
@@ -79,7 +91,8 @@
 
       /* Tailwind spacing utilities */
       body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
       }
     </style>
   </head>
@@ -348,10 +361,14 @@
 
         <form id="bookForm" class="space-y-6">
           <!-- Doctor Search Section with Tailwind -->
-          <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-200 shadow-sm">
+          <div
+            class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-200 shadow-sm"
+          >
             <!-- Header -->
             <div class="flex items-center gap-3 mb-5">
-              <div class="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg">
+              <div
+                class="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg"
+              >
                 <i class="fas fa-search text-white text-xl"></i>
               </div>
               <h4 class="text-2xl font-bold text-gray-800">Find Your Doctor</h4>
@@ -360,7 +377,9 @@
             <!-- Search Bar -->
             <div class="mb-4">
               <div class="relative">
-                <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                <div
+                  class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none"
+                >
                   <i class="fas fa-search text-gray-400"></i>
                 </div>
                 <input
@@ -377,12 +396,16 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
               <!-- Specialty Filter -->
               <div>
-                <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                <label
+                  class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2"
+                >
                   <i class="fas fa-stethoscope text-blue-600"></i>
                   Specialty
                 </label>
                 <div class="relative">
-                  <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                  <div
+                    class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none"
+                  >
                     <i class="fas fa-heartbeat text-gray-400"></i>
                   </div>
                   <select
@@ -395,7 +418,9 @@
                     <option value="Dermatology">🧴 Dermatology</option>
                     <option value="Neurology">🧠 Neurology</option>
                     <option value="Orthopedics">🦴 Orthopedics</option>
-                    <option value="General Medicine">🩺 General Medicine</option>
+                    <option value="General Medicine">
+                      🩺 General Medicine
+                    </option>
                     <option value="Pediatrics">👶 Pediatrics</option>
                     <option value="Psychiatry">🧘 Psychiatry</option>
                     <option value="ENT">👂 ENT</option>
@@ -403,9 +428,13 @@
                     <option value="Gynecology">🏥 Gynecology</option>
                     <option value="Urology">💧 Urology</option>
                     <option value="Pulmonology">🫁 Pulmonology</option>
-                    <option value="Gastroenterology">🫀 Gastroenterology</option>
+                    <option value="Gastroenterology">
+                      🫀 Gastroenterology
+                    </option>
                   </select>
-                  <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                  <div
+                    class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none"
+                  >
                     <i class="fas fa-chevron-down text-gray-400"></i>
                   </div>
                 </div>
@@ -413,12 +442,16 @@
 
               <!-- Location Filter -->
               <div>
-                <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                <label
+                  class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2"
+                >
                   <i class="fas fa-map-marker-alt text-red-600"></i>
                   Location
                 </label>
                 <div class="relative">
-                  <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                  <div
+                    class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none"
+                  >
                     <i class="fas fa-location-dot text-gray-400"></i>
                   </div>
                   <input
@@ -436,7 +469,9 @@
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center gap-2">
                 <i class="fas fa-user-doctor text-blue-600"></i>
-                <span class="font-semibold text-gray-800">Available Doctors</span>
+                <span class="font-semibold text-gray-800"
+                  >Available Doctors</span
+                >
               </div>
               <span
                 id="doctorCount"
@@ -453,7 +488,9 @@
             >
               <!-- Loading State -->
               <div class="text-center py-12">
-                <div class="inline-block w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                <div
+                  class="inline-block w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"
+                ></div>
                 <p class="text-gray-500 font-medium">Loading doctors...</p>
               </div>
             </div>
@@ -462,7 +499,9 @@
           <input type="hidden" id="doctorSelect" required />
 
           <!-- Selected Doctor Display -->
-          <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-2xl border-2 border-green-200">
+          <div
+            class="bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-2xl border-2 border-green-200"
+          >
             <div class="flex items-center gap-2 mb-3">
               <i class="fas fa-check-circle text-green-600 text-lg"></i>
               <span class="font-semibold text-gray-800">Selected Doctor</span>
