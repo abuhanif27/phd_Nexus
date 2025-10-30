@@ -1,5 +1,7 @@
 // Appointments JavaScript for NexusCare
+console.log("🎬 appointments.js loaded - version 6.0 DEBUG");
 const API_BASE_URL = "http://localhost:8000/api";
+console.log("🔧 API_BASE_URL:", API_BASE_URL);
 
 // Check authentication
 function checkAuth() {
@@ -237,9 +239,11 @@ async function loadDoctorsMainPage() {
   const container = document.getElementById("doctorsList");
 
   if (!container) {
-    console.log("ℹ️ doctorsList container not found, skipping main page load");
+    console.error("❌ doctorsList container NOT FOUND in DOM!");
     return;
   }
+  
+  console.log("✅ doctorsList container found:", container);
 
   // 🔍 AUTHENTICATION DEBUGGING
   const token = localStorage.getItem("accessToken");
@@ -305,6 +309,8 @@ async function loadDoctorsMainPage() {
     const doctors = data.results || data || [];
 
     console.log("✅ API Success:");
+    console.log("  - Raw data:", data);
+    console.log("  - Doctors array:", doctors);
     console.log("  - Doctors count:", doctors.length);
     if (doctors.length > 0) {
       console.log(
@@ -316,6 +322,7 @@ async function loadDoctorsMainPage() {
     console.log(`✅ Loaded ${doctors.length} doctors for main page`);
 
     if (doctors.length === 0) {
+      console.warn("⚠️ No doctors in response, showing empty state");
       container.innerHTML = `
         <div class="feature-card" style="text-align: center; padding: 3rem;">
           <i class="fas fa-user-md" style="font-size: 4rem; color: var(--text-secondary); opacity: 0.5; margin-bottom: 1rem;"></i>
@@ -331,7 +338,8 @@ async function loadDoctorsMainPage() {
     }
 
     // Display doctors as cards
-    container.innerHTML = doctors
+    console.log("🎨 Rendering", doctors.length, "doctor cards...");
+    const cardsHTML = doctors
       .map((doctor) => {
         const doctorName =
           doctor.name || doctor.user_name || doctor.email || "Unknown Doctor";
@@ -387,6 +395,11 @@ async function loadDoctorsMainPage() {
       `;
       })
       .join("");
+    
+    console.log("📝 Setting container.innerHTML with", cardsHTML.length, "characters of HTML");
+    container.innerHTML = cardsHTML;
+    console.log("✅ DOM updated! Doctors should be visible now.");
+    
   } catch (error) {
     console.error("❌ Error loading doctors:", error);
     console.error("  - Error type:", error.name);
