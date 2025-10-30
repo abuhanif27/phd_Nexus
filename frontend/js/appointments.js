@@ -235,7 +235,7 @@ document.addEventListener("keydown", (e) => {
 async function loadDoctorsMainPage() {
   console.log("🏥 Loading doctors for main page...");
   const container = document.getElementById("doctorsList");
-  
+
   if (!container) {
     console.log("ℹ️ doctorsList container not found, skipping main page load");
     return;
@@ -253,7 +253,7 @@ async function loadDoctorsMainPage() {
 
     const data = await response.json();
     const doctors = data.results || data || [];
-    
+
     console.log(`✅ Loaded ${doctors.length} doctors for main page`);
 
     if (doctors.length === 0) {
@@ -272,14 +272,16 @@ async function loadDoctorsMainPage() {
     }
 
     // Display doctors as cards
-    container.innerHTML = doctors.map(doctor => {
-      const doctorName = doctor.name || doctor.user_name || doctor.email || 'Unknown Doctor';
-      const specialty = doctor.specialty || 'General Medicine';
-      const location = doctor.location || 'Location not specified';
-      const rating = doctor.rating || '4.5';
-      const qualifications = doctor.qualifications || '';
+    container.innerHTML = doctors
+      .map((doctor) => {
+        const doctorName =
+          doctor.name || doctor.user_name || doctor.email || "Unknown Doctor";
+        const specialty = doctor.specialty || "General Medicine";
+        const location = doctor.location || "Location not specified";
+        const rating = doctor.rating || "4.5";
+        const qualifications = doctor.qualifications || "";
 
-      return `
+        return `
         <div class="feature-card" style="cursor: pointer; transition: all 0.3s ease;" 
              onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='var(--shadow-lg)';"
              onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow-md)';"
@@ -306,18 +308,26 @@ async function loadDoctorsMainPage() {
             <i class="fas fa-map-marker-alt"></i>
             <span>${escapeHtml(location)}</span>
           </div>
-          ${qualifications ? `
+          ${
+            qualifications
+              ? `
             <div style="color: var(--text-light); font-size: 0.8rem; margin-bottom: 1rem;">
-              <i class="fas fa-graduation-cap"></i> ${escapeHtml(qualifications)}
+              <i class="fas fa-graduation-cap"></i> ${escapeHtml(
+                qualifications
+              )}
             </div>
-          ` : ''}
-          <button class="btn btn-primary" style="width: 100%;" onclick="event.stopPropagation(); showBookModalWithDoctor(${doctor.id})">
+          `
+              : ""
+          }
+          <button class="btn btn-primary" style="width: 100%;" onclick="event.stopPropagation(); showBookModalWithDoctor(${
+            doctor.id
+          })">
             <i class="fas fa-calendar-plus"></i> Book Appointment
           </button>
         </div>
       `;
-    }).join('');
-
+      })
+      .join("");
   } catch (error) {
     console.error("❌ Error loading doctors:", error);
     container.innerHTML = `
@@ -342,7 +352,9 @@ function showBookModalWithDoctor(doctorId) {
   showBookModal();
   // Wait for modal to open and doctors to load, then select
   setTimeout(() => {
-    const doctorCard = document.querySelector(`.doctor-card-hover[data-doctor-id="${doctorId}"]`);
+    const doctorCard = document.querySelector(
+      `.doctor-card-hover[data-doctor-id="${doctorId}"]`
+    );
     if (doctorCard) {
       doctorCard.click();
     }
@@ -354,7 +366,7 @@ async function searchDoctorsMainPage() {
   console.log("🔍 Searching doctors on main page...");
   const specialty = document.getElementById("mainSpecialtyFilter")?.value || "";
   const location = document.getElementById("mainLocationFilter")?.value || "";
-  
+
   console.log("Main page search params:", { specialty, location });
 
   const container = document.getElementById("doctorsList");
@@ -388,7 +400,7 @@ async function searchDoctorsMainPage() {
 
     const data = await response.json();
     const doctors = data.results || data || [];
-    
+
     console.log(`Found ${doctors.length} doctors on main page`);
 
     if (doctors.length === 0) {
@@ -407,14 +419,16 @@ async function searchDoctorsMainPage() {
     }
 
     // Display doctors (reuse the same rendering logic)
-    container.innerHTML = doctors.map(doctor => {
-      const doctorName = doctor.name || doctor.user_name || doctor.email || 'Unknown Doctor';
-      const specialty = doctor.specialty || 'General Medicine';
-      const location = doctor.location || 'Location not specified';
-      const rating = doctor.rating || '4.5';
-      const qualifications = doctor.qualifications || '';
+    container.innerHTML = doctors
+      .map((doctor) => {
+        const doctorName =
+          doctor.name || doctor.user_name || doctor.email || "Unknown Doctor";
+        const specialty = doctor.specialty || "General Medicine";
+        const location = doctor.location || "Location not specified";
+        const rating = doctor.rating || "4.5";
+        const qualifications = doctor.qualifications || "";
 
-      return `
+        return `
         <div class="feature-card" style="cursor: pointer; transition: all 0.3s ease;" 
              onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='var(--shadow-lg)';"
              onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow-md)';"
@@ -441,18 +455,26 @@ async function searchDoctorsMainPage() {
             <i class="fas fa-map-marker-alt"></i>
             <span>${escapeHtml(location)}</span>
           </div>
-          ${qualifications ? `
+          ${
+            qualifications
+              ? `
             <div style="color: var(--text-light); font-size: 0.8rem; margin-bottom: 1rem;">
-              <i class="fas fa-graduation-cap"></i> ${escapeHtml(qualifications)}
+              <i class="fas fa-graduation-cap"></i> ${escapeHtml(
+                qualifications
+              )}
             </div>
-          ` : ''}
-          <button class="btn btn-primary" style="width: 100%;" onclick="event.stopPropagation(); showBookModalWithDoctor(${doctor.id})">
+          `
+              : ""
+          }
+          <button class="btn btn-primary" style="width: 100%;" onclick="event.stopPropagation(); showBookModalWithDoctor(${
+            doctor.id
+          })">
             <i class="fas fa-calendar-plus"></i> Book Appointment
           </button>
         </div>
       `;
-    }).join('');
-
+      })
+      .join("");
   } catch (error) {
     console.error("❌ Error searching doctors:", error);
     container.innerHTML = `
