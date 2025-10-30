@@ -97,7 +97,8 @@ async function loadProfile() {
 
     document.getElementById("bloodGroup").value = patient?.blood_group || "";
     document.getElementById("address").value = patient?.address || "";
-    document.getElementById("medicalConditions").value = patient?.medical_conditions || "";
+    document.getElementById("medicalConditions").value =
+      patient?.medical_conditions || "";
 
     // Store patient ID for updates
     if (patient) {
@@ -105,20 +106,27 @@ async function loadProfile() {
     }
 
     // Member since
-    if (user.created_at) {
-      const date = new Date(user.created_at);
+    if (patient?.created_at || user.created_at) {
+      const date = new Date(patient?.created_at || user.created_at);
       document.getElementById("memberSince").textContent = date.getFullYear();
     }
 
-    // Profile photo - use default avatar for now
-    const initial = displayName.charAt(0).toUpperCase();
-    const defaultAvatar = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%234F46E5' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='80' fill='white'%3E${initial}%3C/text%3E%3C/svg%3E`;
-    document.getElementById("profilePhoto").src = defaultAvatar;
-    document.getElementById("navUserPhoto").src = defaultAvatar;
+    // Profile photo
+    let photoUrl;
+    if (patient?.profile_photo_url) {
+      photoUrl = patient.profile_photo_url;
+    } else {
+      // Generate default avatar
+      const initial = displayName.charAt(0).toUpperCase();
+      photoUrl = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%234F46E5' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='80' fill='white'%3E${initial}%3C/text%3E%3C/svg%3E`;
+    }
+    
+    document.getElementById("profilePhoto").src = photoUrl;
+    document.getElementById("navUserPhoto").src = photoUrl;
 
     // Store user info
     localStorage.setItem("userName", displayName);
-    localStorage.setItem("userPhoto", defaultAvatar);
+    localStorage.setItem("userPhoto", photoUrl);
   } catch (error) {
     console.error("Error loading profile:", error);
     showNotification("Error loading profile", "error");
@@ -147,7 +155,7 @@ async function uploadProfilePhoto(event) {
 
   try {
     const token = localStorage.getItem("accessToken");
-    const response = await fetch(`${API_BASE_URL}/users/profile/photo/`, {
+    const response = await fetch(`${API_BASE_URL}/patients/upload-photo/`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -159,12 +167,15 @@ async function uploadProfilePhoto(event) {
       const data = await response.json();
 
       // Update photo display
-      document.getElementById("profilePhoto").src = data.profile_photo;
-      document.getElementById("navUserPhoto").src = data.profile_photo;
-      localStorage.setItem("userPhoto", data.profile_photo);
+      const photoUrl = data.profile_photo_url || data.profile_photo;
+      document.getElementById("profilePhoto").src = photoUrl;
+      document.getElementById("navUserPhoto").src = photoUrl;
+      localStorage.setItem("userPhoto", photoUrl);
 
       showNotification("Profile photo updated successfully!", "success");
     } else {
+      const errorData = await response.json();
+      console.error("Upload error:", errorData);
       showNotification("Failed to upload photo", "error");
     }
   } catch (error) {
@@ -187,14 +198,14 @@ document
 
     const data = {
       name: document.getElementById("fullName").value,
+      phone: document.getElementById("phone").value,
       dob: document.getElementById("dateOfBirth").value || null,
       gender: genderMap[genderValue] || "",
       blood_group: document.getElementById("bloodGroup").value,
-      emergency_contact: {
-        phone: document.getElementById("phone").value,
-        address: document.getElementById("address").value,
-        medical_conditions: document.getElementById("medicalConditions").value,
-      },
+      address: document.getElementById("address").value,
+      medical_conditions: document.getElementById("medicalConditions").value,
+      emergency_contact_name: "",
+      emergency_contact_phone: "",
     };
 
     try {
