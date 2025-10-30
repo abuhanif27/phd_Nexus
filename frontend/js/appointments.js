@@ -241,18 +241,77 @@ async function loadDoctorsMainPage() {
     return;
   }
 
+  // 🔍 AUTHENTICATION DEBUGGING
+  const token = localStorage.getItem("accessToken");
+  const userEmail = localStorage.getItem("userEmail");
+  console.log("🔐 Auth Debug:");
+  console.log("  - Token exists:", !!token);
+  console.log("  - User email:", userEmail || "NOT LOGGED IN");
+  if (token) {
+    console.log(
+      "  - Token preview:",
+      token.substring(0, 20) + "..." + token.substring(token.length - 20)
+    );
+  } else {
+    console.error("❌ NO TOKEN FOUND - User not logged in!");
+    container.innerHTML = `
+      <div class="feature-card" style="text-align: center; padding: 3rem; border: 2px solid #dc3545;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545; margin-bottom: 1rem;"></i>
+        <h3 style="color: #dc3545; margin-bottom: 1rem;">Authentication Required</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+          You need to be logged in to view doctors
+        </p>
+        <a href="login.html" class="btn btn-primary">
+          <i class="fas fa-sign-in-alt"></i> Login Now
+        </a>
+      </div>
+    `;
+    return;
+  }
+
   try {
+    console.log("📡 Fetching from:", `${API_BASE_URL}/doctors/`);
     const response = await fetch(`${API_BASE_URL}/doctors/`, {
       headers: getAuthHeaders(),
     });
 
+    console.log("📬 API Response:");
+    console.log("  - Status:", response.status);
+    console.log("  - Status Text:", response.statusText);
+
     if (response.status === 401) {
-      logout();
+      console.error("❌ 401 Unauthorized - Token invalid or expired");
+      container.innerHTML = `
+        <div class="feature-card" style="text-align: center; padding: 3rem; border: 2px solid #ffc107;">
+          <i class="fas fa-clock" style="font-size: 4rem; color: #ffc107; margin-bottom: 1rem;"></i>
+          <h3 style="color: #ffc107; margin-bottom: 1rem;">Session Expired</h3>
+          <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+            Your login session has expired. Please login again.
+          </p>
+          <a href="login.html" class="btn btn-primary">
+            <i class="fas fa-sign-in-alt"></i> Login Again
+          </a>
+        </div>
+      `;
+      // Don't auto-logout, let user see the message
       return;
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const data = await response.json();
     const doctors = data.results || data || [];
+
+    console.log("✅ API Success:");
+    console.log("  - Doctors count:", doctors.length);
+    if (doctors.length > 0) {
+      console.log(
+        "  - First doctor:",
+        doctors[0].name || doctors[0].user_name || doctors[0].email
+      );
+    }
 
     console.log(`✅ Loaded ${doctors.length} doctors for main page`);
 
@@ -330,20 +389,51 @@ async function loadDoctorsMainPage() {
       .join("");
   } catch (error) {
     console.error("❌ Error loading doctors:", error);
-    container.innerHTML = `
-      <div class="feature-card" style="text-align: center; padding: 3rem;">
-        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--status-error); margin-bottom: 1rem;"></i>
-        <p style="color: var(--status-error); font-weight: 600;">
-          Error loading doctors
-        </p>
-        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">
-          ${error.message}
-        </p>
-        <button class="btn btn-secondary" style="margin-top: 1rem;" onclick="loadDoctorsMainPage()">
-          <i class="fas fa-redo"></i> Retry
-        </button>
-      </div>
-    `;
+    console.error("  - Error type:", error.name);
+    console.error("  - Error message:", error.message);
+
+    const token = localStorage.getItem("accessToken");
+    const isAuthError =
+      !token ||
+      error.message.includes("401") ||
+      error.message.includes("Unauthorized");
+
+    if (isAuthError) {
+      container.innerHTML = `
+        <div class="feature-card" style="text-align: center; padding: 3rem; border: 2px solid #dc3545;">
+          <i class="fas fa-lock" style="font-size: 4rem; color: #dc3545; margin-bottom: 1rem;"></i>
+          <h3 style="color: #dc3545; margin-bottom: 1rem;">Authentication Failed</h3>
+          <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+            ${error.message}
+          </p>
+          <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            ${
+              !token
+                ? "No authentication token found"
+                : "Your session may have expired"
+            }
+          </p>
+          <a href="login.html" class="btn btn-primary">
+            <i class="fas fa-sign-in-alt"></i> Login ${!token ? "Now" : "Again"}
+          </a>
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div class="feature-card" style="text-align: center; padding: 3rem;">
+          <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--status-error); margin-bottom: 1rem;"></i>
+          <p style="color: var(--status-error); font-weight: 600;">
+            Error loading doctors
+          </p>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">
+            ${error.message}
+          </p>
+          <button class="btn btn-secondary" style="margin-top: 1rem;" onclick="loadDoctorsMainPage()">
+            <i class="fas fa-redo"></i> Retry
+          </button>
+        </div>
+      `;
+    }
   }
 }
 
