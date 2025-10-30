@@ -32,7 +32,35 @@ function getAuthHeaders() {
 // Load user info
 function loadUserInfo() {
   const userEmail = localStorage.getItem("userEmail");
-  document.getElementById("userEmail").textContent = userEmail || "User";
+  const userRole = localStorage.getItem("userRole");
+  const userName = localStorage.getItem("userName");
+  const userPhoto = localStorage.getItem("userPhoto");
+
+  // Update navigation user info
+  const navUserName = document.getElementById("navUserName");
+  const navUserRole = document.getElementById("navUserRole");
+  const navUserPhoto = document.getElementById("navUserPhoto");
+  
+  if (navUserName) {
+    navUserName.textContent = userName || userEmail?.split("@")[0] || "User";
+  }
+  
+  if (navUserRole) {
+    navUserRole.textContent = userRole === "doctor" ? "Doctor" : "Patient";
+  }
+  
+  if (navUserPhoto && userPhoto) {
+    navUserPhoto.src = userPhoto;
+    navUserPhoto.style.display = "block";
+    if (navUserPhoto.nextElementSibling) {
+      navUserPhoto.nextElementSibling.style.display = "none";
+    }
+  } else if (navUserPhoto) {
+    // Set default avatar with first letter
+    const initial = (userName || userEmail || "U").charAt(0).toUpperCase();
+    const defaultAvatar = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%234F46E5' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='80' fill='white'%3E${initial}%3C/text%3E%3C/svg%3E`;
+    navUserPhoto.src = defaultAvatar;
+  }
 }
 
 // Load appointments
