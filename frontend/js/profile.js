@@ -120,7 +120,7 @@ async function loadProfile() {
       const initial = displayName.charAt(0).toUpperCase();
       photoUrl = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%234F46E5' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='80' fill='white'%3E${initial}%3C/text%3E%3C/svg%3E`;
     }
-    
+
     document.getElementById("profilePhoto").src = photoUrl;
     document.getElementById("navUserPhoto").src = photoUrl;
 
