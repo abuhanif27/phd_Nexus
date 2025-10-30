@@ -40,15 +40,15 @@ function loadUserInfo() {
   const navUserName = document.getElementById("navUserName");
   const navUserRole = document.getElementById("navUserRole");
   const navUserPhoto = document.getElementById("navUserPhoto");
-  
+
   if (navUserName) {
     navUserName.textContent = userName || userEmail?.split("@")[0] || "User";
   }
-  
+
   if (navUserRole) {
     navUserRole.textContent = userRole === "doctor" ? "Doctor" : "Patient";
   }
-  
+
   if (navUserPhoto && userPhoto) {
     navUserPhoto.src = userPhoto;
     navUserPhoto.style.display = "block";
