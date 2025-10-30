@@ -202,8 +202,10 @@ function showBookModal() {
 function closeBookModal() {
   document.getElementById("bookModal").classList.add("hidden");
   document.getElementById("bookForm").reset();
-  document.getElementById("doctorResults").innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Loading doctors...</p>';
-  document.getElementById("selectedDoctorDisplay").innerHTML = 'No doctor selected';
+  document.getElementById("doctorResults").innerHTML =
+    '<p style="text-align: center; color: var(--text-secondary);">Loading doctors...</p>';
+  document.getElementById("selectedDoctorDisplay").innerHTML =
+    "No doctor selected";
   document.getElementById("timeSlotsContainer").innerHTML = "";
   document.getElementById("bookAlert").classList.add("hidden");
   selectedDoctorId = null;
@@ -294,7 +296,9 @@ function displayDoctors(doctors) {
           "
           onmouseover="this.style.borderColor='var(--primary-blue)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';"
           onmouseout="if(!this.classList.contains('selected')) { this.style.borderColor='var(--secondary-gray)'; this.style.boxShadow='none'; }"
-          onclick="selectDoctor(${doctor.id}, '${escapeHtml(doctor.name || doctor.user_name || doctor.email)}', '${escapeHtml(doctor.specialty || 'General Medicine')}')"
+          onclick="selectDoctor(${doctor.id}, '${escapeHtml(
+        doctor.name || doctor.user_name || doctor.email
+      )}', '${escapeHtml(doctor.specialty || "General Medicine")}')"
         >
           <div style="
             width: 50px;
@@ -308,7 +312,9 @@ function displayDoctors(doctors) {
             font-size: 1.5rem;
             font-weight: 600;
           ">
-            ${(doctor.name || doctor.user_name || doctor.email).charAt(0).toUpperCase()}
+            ${(doctor.name || doctor.user_name || doctor.email)
+              .charAt(0)
+              .toUpperCase()}
           </div>
           <div style="flex: 1;">
             <h4 style="margin: 0 0 0.25rem 0; color: var(--text-primary);">
@@ -316,14 +322,20 @@ function displayDoctors(doctors) {
             </h4>
             <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
               ${escapeHtml(doctor.specialty || "General Medicine")}
-              ${doctor.location ? ` • ${escapeHtml(doctor.location)}` : ''}
+              ${doctor.location ? ` • ${escapeHtml(doctor.location)}` : ""}
             </p>
           </div>
           <div style="text-align: right;">
             <div style="color: var(--accent-teal); font-weight: 600;">
               ⭐ ${doctor.rating || "N/A"}
             </div>
-            ${doctor.qualifications ? `<small style="color: var(--text-light); font-size: 0.8rem;">${escapeHtml(doctor.qualifications.substring(0, 20))}...</small>` : ''}
+            ${
+              doctor.qualifications
+                ? `<small style="color: var(--text-light); font-size: 0.8rem;">${escapeHtml(
+                    doctor.qualifications.substring(0, 20)
+                  )}...</small>`
+                : ""
+            }
           </div>
         </div>
       `
@@ -361,8 +373,12 @@ function selectDoctor(doctorId, doctorName, specialty) {
           ${doctorName.charAt(0).toUpperCase()}
         </div>
         <div>
-          <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(doctorName)}</div>
-          <div style="font-size: 0.9rem; color: var(--text-secondary);">${escapeHtml(specialty)}</div>
+          <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(
+            doctorName
+          )}</div>
+          <div style="font-size: 0.9rem; color: var(--text-secondary);">${escapeHtml(
+            specialty
+          )}</div>
         </div>
         <div style="margin-left: auto;">
           <span style="color: var(--status-success); font-weight: 600;">✓ Selected</span>
@@ -373,11 +389,11 @@ function selectDoctor(doctorId, doctorName, specialty) {
 
   // Highlight selected doctor card
   document.querySelectorAll(".doctor-card").forEach((card) => {
-    card.classList.remove('selected');
+    card.classList.remove("selected");
     card.style.borderColor = "var(--secondary-gray)";
-    card.style.boxShadow = 'none';
+    card.style.boxShadow = "none";
   });
-  event.currentTarget.classList.add('selected');
+  event.currentTarget.classList.add("selected");
   event.currentTarget.style.borderColor = "var(--primary-blue)";
   event.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
 
@@ -386,7 +402,6 @@ function selectDoctor(doctorId, doctorName, specialty) {
     document.getElementById("appointmentDate").focus();
   }, 300);
 }
-
 
 // Load time slots
 async function loadTimeSlots(doctorId) {
