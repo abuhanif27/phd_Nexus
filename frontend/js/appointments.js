@@ -190,7 +190,9 @@ function displayPastAppointments(appointments) {
 
 // Show book modal
 function showBookModal() {
+  console.log("📅 Opening book modal...");
   document.getElementById("bookModal").classList.remove("hidden");
+  console.log("🔄 Calling searchDoctors...");
   searchDoctors();
   // Focus first input
   setTimeout(() => {
@@ -231,10 +233,13 @@ document.addEventListener("keydown", (e) => {
 
 // Search doctors
 async function searchDoctors() {
-  const specialty = document.getElementById("specialtyFilter").value;
-  const location = document.getElementById("locationFilter").value;
+  console.log("🔍 searchDoctors() called");
+  const specialty = document.getElementById("specialtyFilter")?.value || "";
+  const location = document.getElementById("locationFilter")?.value || "";
   const searchQuery =
     document.getElementById("doctorSearchInput")?.value.toLowerCase() || "";
+
+  console.log("Search params:", { specialty, location, searchQuery });
 
   let url = `${API_BASE_URL}/doctors/`;
   const params = new URLSearchParams();
@@ -242,18 +247,26 @@ async function searchDoctors() {
   if (location) params.append("location", location);
   if (params.toString()) url += `?${params.toString()}`;
 
+  console.log("Fetching from:", url);
+
   try {
     const response = await fetch(url, {
       headers: getAuthHeaders(),
     });
 
+    console.log("Response status:", response.status);
+
     if (response.status === 401) {
+      console.log("❌ Unauthorized - logging out");
       logout();
       return;
     }
 
     const data = await response.json();
+    console.log("Received data:", data);
+    
     let doctors = data.results || data || [];
+    console.log(`Found ${doctors.length} doctors`);
 
     // Apply client-side search filter
     if (searchQuery) {
@@ -264,23 +277,33 @@ async function searchDoctors() {
           doc.specialty.toLowerCase().includes(searchQuery) ||
           (doc.location && doc.location.toLowerCase().includes(searchQuery))
       );
+      console.log(`After search filter: ${doctors.length} doctors`);
     }
 
     displayDoctors(doctors);
   } catch (error) {
-    console.error("Error searching doctors:", error);
+    console.error("❌ Error searching doctors:", error);
     document.getElementById("doctorResults").innerHTML = `
-            <p style="color: var(--status-error); text-align: center; padding: 1rem;">
-                Error loading doctors. Please try again.
-            </p>
-        `;
+      <div class="text-center py-8">
+        <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-3"></i>
+        <p class="text-red-600 font-semibold">Error loading doctors</p>
+        <p class="text-gray-500 text-sm mt-2">${error.message}</p>
+      </div>
+    `;
   }
 }
 
 // Display doctors
 function displayDoctors(doctors) {
+  console.log("🎨 displayDoctors() called with", doctors.length, "doctors");
+  
   const container = document.getElementById("doctorResults");
   const countElement = document.getElementById("doctorCount");
+
+  if (!container) {
+    console.error("❌ doctorResults container not found!");
+    return;
+  }
 
   if (countElement) {
     countElement.textContent = `${doctors.length} doctor${
@@ -289,6 +312,7 @@ function displayDoctors(doctors) {
   }
 
   if (doctors.length === 0) {
+    console.log("ℹ️ No doctors found, showing empty state");
     container.innerHTML = `
       <div class="text-center py-12">
         <div class="text-6xl mb-4 opacity-50">
@@ -304,6 +328,8 @@ function displayDoctors(doctors) {
     `;
     return;
   }
+
+  console.log("✅ Rendering", doctors.length, "doctor cards");
 
   // Get specialty data with icons and colors
   const getSpecialtyData = (specialty) => {
