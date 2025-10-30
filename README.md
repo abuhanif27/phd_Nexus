@@ -1,10 +1,6 @@
 # 🏥 PhD NexusCare - Healthcare Platform# 🏥 PhD NexusCare - Complete Healthcare Platform
 
-
-
 > Complete medical records management system with AI-powered insights. Works 100% offline on your computer.> Privacy-first medical records management with AI-powered insights. 100% offline, zero subscriptions.
-
-
 
 [![Status](https://img.shields.io/badge/status-ready-green)]()[![Status](https://img.shields.io/badge/status-production--ready-green)]()
 
@@ -32,7 +28,7 @@ All features are implemented and working:
 
 - **[frontend.md](frontend.md)** - Frontend pages, design system, and features- ✅ Beautiful Frontend with 60-30-10 Design
 
-- **[backend.md](backend.md)** - Backend API, database, and setup details  - ✅ Medical Records Upload & Management
+- **[backend.md](backend.md)** - Backend API, database, and setup details - ✅ Medical Records Upload & Management
 
 - **[ai.md](ai.md)** - AI/ML models, training, and features- ✅ Appointment Booking System
 
@@ -44,11 +40,7 @@ All features are implemented and working:
 
 ## 🎯 What is This?- ✅ Full API Integration
 
-
-
 PhD NexusCare is a complete healthcare platform that helps you:**Quick Start:** `./start-all.sh` - Opens http://localhost:8080
-
-
 
 - 📋 **Manage Medical Records** - Upload and organize your medical documents---
 
@@ -148,8 +140,6 @@ Before starting, make sure you have these installed:
 
    - During installation, check "Add Python to PATH"## 🚀 Quick Start
 
-   
-
 2. **Tesseract OCR** - For reading text from images### One-Line Launch:
 
    - **Windows**: Download from https://github.com/UB-Mannheim/tesseract/wiki
@@ -158,7 +148,7 @@ Before starting, make sure you have these installed:
 
    - **Linux**: Open Terminal and run: `sudo apt-get install tesseract-ocr`cd /home/hn-hanif/Desktop/phd_Nexus && ./launch.sh
 
-```
+```````
 
 3. **Git** (optional) - To download the project
 
@@ -192,7 +182,7 @@ cd frontend
 
 ### Step 3: Set Up the Backend./serve.sh
 
-```
+```````
 
 Open a terminal/command prompt in the project folder:
 
@@ -200,7 +190,7 @@ Open a terminal/command prompt in the project folder:
 
 **On Windows:**
 
-```bash- **Frontend:** http://localhost:8080
+````bash- **Frontend:** http://localhost:8080
 
 # Go to backend folder- **Backend API:** http://localhost:8000/api
 
@@ -302,17 +292,17 @@ python manage.py createsuperuser| **Vector DB**      | FAISS                | Se
 
 python manage.py seed_demo| **Tasks**          | Celery + Redis       | Background jobs (optional) |
 
-```
+````
 
 ### Frontend
 
 ### Step 4: Train AI Models (Optional but Recommended)
 
-| Component      | Technology        | Purpose          |
+| Component | Technology | Purpose |
 
 These make the symptom analysis more accurate:| -------------- | ----------------- | ---------------- |
 
-| **HTML5**      | Semantic markup   | Structure        |
+| **HTML5** | Semantic markup | Structure |
 
 ```bash| **CSS3**       | Custom properties | 60-30-10 styling |
 
@@ -340,7 +330,7 @@ python manage.py train_pytorch --epochs 10## 🎨 Design System
 
 Keep the terminal open and run:
 
-```css
+````css
 
 ```bash--primary-bg: #f8f9fd; /* Soft blue background */
 
@@ -348,13 +338,11 @@ Keep the terminal open and run:
 
 python manage.py runserver--primary-light: #e8ecf7; /* Subtle variations */
 
-``````
-
-
+````
 
 You should see:**30% - Secondary (Elements)**
 
-```
+````
 
 Starting development server at http://127.0.0.1:8000/```css
 
@@ -364,7 +352,7 @@ Starting development server at http://127.0.0.1:8000/```css
 
 **Keep this terminal window open!** The backend needs to stay running.--secondary-dark: #2c5282; /* Text, footer */
 
-```
+````
 
 ### Step 6: Start the Frontend (New Terminal)
 
@@ -372,7 +360,7 @@ Starting development server at http://127.0.0.1:8000/```css
 
 Open a **NEW** terminal/command prompt:
 
-```css
+````css
 
 **On Windows:**--accent-teal: #00d9b5; /* Primary buttons */
 
@@ -382,7 +370,7 @@ cd frontend--accent-success: #38b2ac; /* Highlights */
 
 python -m http.server 8080```
 
-```
+````
 
 ### Typography
 
@@ -400,7 +388,7 @@ python3 -m http.server 8080- **Scale:** Harmonious modular scale
 
 You should see:
 
-```## 📊 Key Metrics
+````## 📊 Key Metrics
 
 Serving HTTP on 0.0.0.0 port 8080
 
@@ -596,11 +584,9 @@ curl -X POST http://localhost:8000/api/ai/specialist/ \
 
 python -m http.server 8081```
 
-```
+````
 
 Then open http://localhost:8081 instead### Frontend Tests
-
-
 
 ### Problem: Frontend can't connect to backend1. Open http://localhost:8080
 
@@ -620,19 +606,15 @@ Then open http://localhost:8081 instead### Frontend Tests
 
 4. Press Ctrl+Shift+R in your browser to clear cache## 🎯 Use Cases
 
-
-
 ### Problem: "Tesseract not found" error### For Patients:
-
-
 
 **Solution:**1. **Store Medical Records**
 
 - **Windows**: Download and install from https://github.com/UB-Mannheim/tesseract/wiki
 
-  - After installation, add to PATH or update `settings.py`:   - Upload lab results, prescriptions
+  - After installation, add to PATH or update `settings.py`: - Upload lab results, prescriptions
 
-  ```python   - OCR automatically extracts data
+  ```python - OCR automatically extracts data
 
   TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'   - Search across all documents
 
@@ -642,11 +624,11 @@ Then open http://localhost:8081 instead### Frontend Tests
 
 - **Linux**: `sudo apt-get install tesseract-ocr`
 
-   - Describe symptoms
+  - Describe symptoms
 
-### Problem: Database errors after code changes   - Get specialist recommendations
+### Problem: Database errors after code changes - Get specialist recommendations
 
-   - View medical summaries
+- View medical summaries
 
 **Solution:**
 
@@ -668,11 +650,11 @@ python manage.py migrate   - Track upcoming visits
 
 **Solution:**
 
-The backend already has CORS configured for localhost:8080 and localhost:8000. If you use different ports, update `backend/nexuscare/settings.py`:   - Access shared medical history
+The backend already has CORS configured for localhost:8080 and localhost:8000. If you use different ports, update `backend/nexuscare/settings.py`: - Access shared medical history
 
-   - Review labs and prescriptions
+- Review labs and prescriptions
 
-```python   - See AI-generated summaries
+````python - See AI-generated summaries
 
 CORS_ALLOWED_ORIGINS = [
 
@@ -704,7 +686,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 python manage.py train_sklearn## 🔒 Security & Privacy
 
-```
+````
 
 ### Data Protection
 
@@ -734,7 +716,7 @@ After you've done the initial setup, starting the project is easy:- ✅ Consent-
 
 **Terminal 1 (Backend):**- ✅ Audit logging middleware
 
-```bash- ✅ 2FA support with OTP
+````bash- ✅ 2FA support with OTP
 
 cd backend
 
@@ -1063,7 +1045,7 @@ cd backend && source .venv/bin/activate && python manage.py runserver
 
 # Terminal 2
 cd frontend && python3 -m http.server 8080
-```
+````
 
 ### Then:
 

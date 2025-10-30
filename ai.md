@@ -49,11 +49,13 @@ We have **TWO specialist prediction models** you can train and use:
 **Fast, lightweight classical machine learning model.**
 
 **Architecture:**
+
 - **Vectorization**: TF-IDF (max 5000 features, 1-3 word n-grams)
 - **Classifier**: Logistic Regression (L2 regularization, C=1.0, balanced weights)
 - **Preprocessing**: Lowercase, stopword removal, lemmatization
 
 **Performance:**
+
 - **Training Time**: ~30 seconds
 - **Model Size**: ~1-2 MB
 - **Accuracy**: 75-85%
@@ -61,6 +63,7 @@ We have **TWO specialist prediction models** you can train and use:
 - **Memory Usage**: ~50 MB
 
 **Advantages:**
+
 - ✅ Very fast training
 - ✅ Small model size
 - ✅ Fast inference (real-time)
@@ -69,6 +72,7 @@ We have **TWO specialist prediction models** you can train and use:
 - ✅ Good for production with limited resources
 
 **Use Cases:**
+
 - Production deployments
 - Resource-constrained environments
 - Quick prototyping
@@ -80,6 +84,7 @@ We have **TWO specialist prediction models** you can train and use:
 **Accurate deep learning transformer-based model.**
 
 **Architecture:**
+
 - **Base Model**: DistilBERT (distilbert-base-uncased)
 - **Parameters**: 66 million (distilled from BERT's 110M)
 - **Fine-tuning**: Classification head with dropout
@@ -88,6 +93,7 @@ We have **TWO specialist prediction models** you can train and use:
 - **Training**: Mixed precision (FP16) for speed
 
 **Performance:**
+
 - **Training Time**: ~5-15 minutes (CPU), ~2-5 minutes (GPU)
 - **Model Size**: ~250 MB
 - **Accuracy**: 85-95%
@@ -95,6 +101,7 @@ We have **TWO specialist prediction models** you can train and use:
 - **Memory Usage**: ~500 MB
 
 **Advantages:**
+
 - ✅ Highest accuracy (85-95%)
 - ✅ Better generalization to new symptoms
 - ✅ Handles typos, slang, varied phrasing
@@ -103,6 +110,7 @@ We have **TWO specialist prediction models** you can train and use:
 - ✅ Context-aware (understands word relationships)
 
 **Use Cases:**
+
 - High-accuracy requirements
 - Complex symptom descriptions
 - Research and development
@@ -111,16 +119,16 @@ We have **TWO specialist prediction models** you can train and use:
 
 ### Model Comparison Table
 
-| Feature             | Scikit-learn          | PyTorch (DistilBERT)  |
-| ------------------- | --------------------- | --------------------- |
-| **Training Time**   | ~30 seconds           | ~5-15 minutes         |
-| **Model Size**      | ~1-2 MB               | ~250 MB               |
-| **Accuracy**        | 75-85%                | 85-95%                |
-| **Inference Speed** | 1-5ms                 | 20-50ms (CPU)         |
-| **Memory Usage**    | ~50 MB                | ~500 MB               |
-| **GPU Required**    | No                    | Optional (10x faster) |
-| **Best For**        | Production, speed     | Accuracy, research    |
-| **Dependencies**    | sklearn, scipy        | torch, transformers   |
+| Feature             | Scikit-learn      | PyTorch (DistilBERT)  |
+| ------------------- | ----------------- | --------------------- |
+| **Training Time**   | ~30 seconds       | ~5-15 minutes         |
+| **Model Size**      | ~1-2 MB           | ~250 MB               |
+| **Accuracy**        | 75-85%            | 85-95%                |
+| **Inference Speed** | 1-5ms             | 20-50ms (CPU)         |
+| **Memory Usage**    | ~50 MB            | ~500 MB               |
+| **GPU Required**    | No                | Optional (10x faster) |
+| **Best For**        | Production, speed | Accuracy, research    |
+| **Dependencies**    | sklearn, scipy    | torch, transformers   |
 
 ---
 
@@ -152,6 +160,7 @@ python manage.py train_sklearn \
 ```
 
 **Options:**
+
 - `--data` - Path to training CSV (default: `data/symptoms_train.csv`)
 - `--test-size` - Test set ratio (default: 0.2)
 - `--max-features` - Max TF-IDF features (default: 5000)
@@ -159,6 +168,7 @@ python manage.py train_sklearn \
 - `--c-value` - Logistic Regression regularization (default: 1.0)
 
 **Output:**
+
 ```
 Loading training data...
 Training data shape: (127, 2)
@@ -187,6 +197,7 @@ python manage.py train_pytorch \
 ```
 
 **Options:**
+
 - `--data` - Path to training CSV
 - `--epochs` - Training epochs (default: 10)
 - `--batch-size` - Batch size (default: 16, reduce if OOM)
@@ -196,12 +207,14 @@ python manage.py train_pytorch \
 - `--model-name` - BERT variant (default: distilbert-base-uncased)
 
 **GPU Training (Recommended):**
+
 ```bash
 # 10x faster with GPU
 CUDA_VISIBLE_DEVICES=0 python manage.py train_pytorch --epochs 10
 ```
 
 **Output:**
+
 ```
 Loading training data...
 Training data shape: (127, 2)
@@ -249,6 +262,7 @@ POST /api/symptoms/analyze/
 ```
 
 **Request:**
+
 ```json
 {
   "text": "Severe headache for 2 days, taking ibuprofen"
@@ -256,6 +270,7 @@ POST /api/symptoms/analyze/
 ```
 
 **Response:**
+
 ```json
 {
   "cleaned_text": "severe headache for 2 days taking ibuprofen",
@@ -297,6 +312,7 @@ POST /api/ai/specialist/
 ```
 
 **Request:**
+
 ```json
 {
   "text": "Crushing chest pain, sweating, breathless"
@@ -304,19 +320,21 @@ POST /api/ai/specialist/
 ```
 
 **Response:**
+
 ```json
 {
   "specialist": "Cardiologist",
   "confidence": 0.92,
   "alternatives": [
-    {"specialist": "Pulmonologist", "confidence": 0.05},
-    {"specialist": "General Physician", "confidence": 0.02}
+    { "specialist": "Pulmonologist", "confidence": 0.05 },
+    { "specialist": "General Physician", "confidence": 0.02 }
   ],
   "model_type": "pytorch"
 }
 ```
 
 **Model Types:**
+
 - `pytorch` - PyTorch DistilBERT model (highest accuracy)
 - `sklearn` - Scikit-learn TF-IDF model (fast)
 - `legacy` - Older fallback model
@@ -357,6 +375,7 @@ POST /api/ai/summary/
 ```
 
 **Request:**
+
 ```json
 {
   "patient_id": 1,
@@ -365,6 +384,7 @@ POST /api/ai/summary/
 ```
 
 **Response:**
+
 ```json
 {
   "summary": [
@@ -375,8 +395,8 @@ POST /api/ai/summary/
     "Recommended dietary changes and exercise"
   ],
   "sources": [
-    {"file_id": 12, "filename": "lab_results_oct2024.pdf"},
-    {"file_id": 15, "filename": "prescription_metformin.pdf"}
+    { "file_id": 12, "filename": "lab_results_oct2024.pdf" },
+    { "file_id": 15, "filename": "prescription_metformin.pdf" }
   ]
 }
 ```
@@ -409,12 +429,14 @@ The `AIService` automatically selects the best available model.
 ### Configuration
 
 **Environment Variable:**
+
 ```bash
 # .env or settings.py
 AI_MODEL_TYPE=auto  # Options: auto, pytorch, sklearn
 ```
 
 **Programmatic Control:**
+
 ```python
 from apps.ai.services import AIService
 
@@ -433,11 +455,13 @@ print(f"Model used: {result['model_type']}")
 ### Check Model Status
 
 **API Endpoint:**
+
 ```bash
 GET /api/ai/models/status/
 ```
 
 **Response:**
+
 ```json
 {
   "models": {
@@ -463,6 +487,7 @@ GET /api/ai/models/status/
 ```
 
 **Via Django Shell:**
+
 ```python
 python manage.py shell
 
@@ -488,11 +513,13 @@ print(f"Current model: {ai.specialist_classifier_type}")
 ### Hardware Requirements
 
 **Minimum (Scikit-learn only):**
+
 - CPU: Any modern processor
 - RAM: 2GB
 - Storage: 100MB
 
 **Recommended (Both models):**
+
 - CPU: 4+ cores
 - RAM: 8GB
 - Storage: 1GB
@@ -514,6 +541,7 @@ The AI Insights page shows which model made each prediction.
 ### Educational Section
 
 The AI Insights page includes an educational section explaining:
+
 - How each model works
 - Accuracy ranges
 - Training and inference times
@@ -578,6 +606,7 @@ python test_models.py
 ```
 
 **Output:**
+
 ```
 === Testing PhD NexusCare ML Models ===
 
@@ -605,6 +634,7 @@ All tests passed! ✨
 **Problem:** API returns "fallback" model
 
 **Solution:**
+
 ```bash
 cd backend
 source .venv/bin/activate
@@ -619,10 +649,12 @@ python manage.py train_pytorch --epochs 10
 **Causes & Solutions:**
 
 1. **Not enough training data** (current: 159 samples)
+
    - Add more symptom examples to `data/symptoms_train.csv`
    - Retrain models with new data
 
 2. **Model not trained enough**
+
    - PyTorch: Increase epochs (`--epochs 20`)
    - Check if training completed without errors
 
@@ -635,6 +667,7 @@ python manage.py train_pytorch --epochs 10
 **Problem:** PyTorch training crashes with OOM error
 
 **Solutions:**
+
 ```bash
 # Reduce batch size
 python manage.py train_pytorch --epochs 10 --batch-size 8
@@ -650,11 +683,13 @@ CUDA_VISIBLE_DEVICES="" python manage.py train_pytorch --epochs 10
 **Solutions:**
 
 1. **Use sklearn model for speed:**
+
    ```python
    ai = AIService(model_type='sklearn')
    ```
 
 2. **Use GPU for PyTorch:**
+
    ```bash
    # Install CUDA version of PyTorch
    pip install torch --index-url https://download.pytorch.org/whl/cu118
@@ -671,6 +706,7 @@ CUDA_VISIBLE_DEVICES="" python manage.py train_pytorch --epochs 10
 **Problem:** `ModuleNotFoundError: No module named 'transformers'`
 
 **Solution:**
+
 ```bash
 pip install torch transformers sentence-transformers
 ```

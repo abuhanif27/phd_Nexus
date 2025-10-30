@@ -35,16 +35,19 @@ frontend/
 ### Color Palette
 
 **60% - Primary (Backgrounds & Dominant Areas)**
+
 - Soft Blue/White: `#f8f9fd`, `#ffffff`, `#e8ecf7`
 - Used for: Main backgrounds, cards, content areas
 - Creates calm, clean medical environment
 
 **30% - Secondary (Supporting Elements)**
+
 - Blue Spectrum: `#4a90e2`, `#6ba3e8`, `#2c5282`
 - Used for: Navigation, headers, tables, secondary buttons
 - Professional medical blue theme
 
 **10% - Accent (Call-to-Actions & Highlights)**
+
 - Teal/Green: `#00d9b5`, `#48bb78`, `#38b2ac`
 - Used for: Primary buttons, highlights, active states, borders
 - Draws attention to important actions
@@ -78,6 +81,7 @@ frontend/
 **Purpose**: Marketing page for first-time visitors
 
 **Features**:
+
 - Hero section with gradient design
 - Feature showcase cards
 - Technology stack display
@@ -86,6 +90,7 @@ frontend/
 - Call-to-action buttons
 
 **JavaScript**: `js/main.js`
+
 - Smooth scrolling
 - Navigation highlighting
 - Fade-in animations on scroll
@@ -95,6 +100,7 @@ frontend/
 **Purpose**: User authentication
 
 **Features**:
+
 - Beautiful centered auth card
 - Real-time form validation
 - Loading states with spinners
@@ -104,6 +110,7 @@ frontend/
 - Remember me option
 
 **JavaScript**: `js/auth.js`
+
 - Form validation
 - API authentication
 - Token storage (localStorage)
@@ -116,6 +123,7 @@ frontend/
 **Purpose**: New user signup
 
 **Features**:
+
 - Role selection (Patient/Doctor)
 - Password strength validation
 - Password confirmation matching
@@ -125,6 +133,7 @@ frontend/
 - Success redirect
 
 **JavaScript**: `js/auth.js`
+
 - Password strength checker
 - Form validation
 - API registration
@@ -137,6 +146,7 @@ frontend/
 **Purpose**: Main user interface after login
 
 **Features**:
+
 - Stats cards with animations
 - Recent records table
 - Upcoming appointments list
@@ -145,12 +155,14 @@ frontend/
 - Protected route (requires login)
 
 **JavaScript**: `js/dashboard.js`
+
 - Fetch user stats
 - Load recent records
 - Display appointments
 - Quick navigation
 
 **API Endpoints**:
+
 - `GET /api/auth/me/` - User info
 - `GET /api/records/summary/` - Stats
 - `GET /api/records/files/` - Recent records
@@ -161,6 +173,7 @@ frontend/
 **Purpose**: Upload and manage medical documents
 
 **Features**:
+
 - View all records in table format
 - Upload new records (Lab Results, Prescriptions, Imaging, Documents)
 - Filter and search records
@@ -170,6 +183,7 @@ frontend/
 - Date sorting
 
 **JavaScript**: `js/records.js`
+
 - File upload with FormData
 - Records listing from API
 - File type categorization
@@ -177,6 +191,7 @@ frontend/
 - Search and filter
 
 **API Endpoints**:
+
 - `GET /api/records/files/` - List all records
 - `POST /api/records/files/upload/` - Upload new record
 - `GET /api/records/files/{id}/link/` - Get signed download link
@@ -186,6 +201,7 @@ frontend/
 **Purpose**: Book and manage appointments with doctors
 
 **Features**:
+
 - View upcoming and past appointments
 - Book new appointments with advanced doctor search
 - Filter doctors by specialty (Cardiology, Dermatology, etc.)
@@ -198,6 +214,7 @@ frontend/
 - Beautiful modal with sequential card animations
 
 **JavaScript**: `js/appointments.js`
+
 - Doctor search with real-time filtering
 - Time slot availability checker
 - Appointment booking form
@@ -205,6 +222,7 @@ frontend/
 - Interactive doctor cards with hover effects
 
 **API Endpoints**:
+
 - `GET /api/scheduling/appointments/` - List appointments
 - `POST /api/scheduling/appointments/` - Book appointment
 - `GET /api/doctors/` - Search doctors
@@ -212,6 +230,7 @@ frontend/
 - `PATCH /api/scheduling/appointments/{id}/` - Update status
 
 **Specialty Color Codes**:
+
 - ❤️ Cardiology: Red border
 - 🧴 Dermatology: Orange border
 - 🧠 Neurology: Purple border
@@ -225,6 +244,7 @@ frontend/
 **Features**:
 
 **Symptom Analyzer**:
+
 - Enter symptoms in natural language
 - Get specialist recommendation with confidence score
 - View alternative specialists
@@ -234,18 +254,21 @@ frontend/
 - Confidence visualization with progress bar
 
 **Medical Summary Generator**:
+
 - Input medical text/reports
 - Get AI-generated summary
 - Extract key points
 - Identify medical entities (conditions, medications)
 
 **Educational Section**:
+
 - "Powered by Advanced Machine Learning"
 - PyTorch Model Card (DistilBERT, 66M params, 85-95% accuracy)
 - Scikit-learn Model Card (TF-IDF + LogReg, 75-85% accuracy)
 - Smart model selection explanation
 
 **JavaScript**: `js/ai-insights.js`
+
 - Symptom analysis with confidence visualization
 - Medical text summarization
 - Entity extraction display
@@ -254,6 +277,7 @@ frontend/
 - Model-specific descriptions
 
 **API Endpoints**:
+
 - `POST /api/ai/specialist/` - Analyze symptoms and predict specialist
 - `POST /api/ai/summary/` - Generate medical summary
 - `GET /api/ai/models/status/` - Check which models are trained
@@ -263,6 +287,7 @@ frontend/
 **Purpose**: User profile management
 
 **Features**:
+
 - View and edit personal information
 - Upload profile photo
 - Update contact details
@@ -274,6 +299,7 @@ frontend/
 - Address management
 
 **JavaScript**: `js/profile.js`
+
 - Load patient profile
 - Update profile information
 - Photo upload with preview
@@ -281,6 +307,7 @@ frontend/
 - Success/error notifications
 
 **API Endpoints**:
+
 - `GET /api/patients/` - Get patient profile
 - `PUT /api/patients/` - Update patient profile
 - `POST /api/patients/upload-photo/` - Upload profile photo
@@ -320,8 +347,9 @@ frontend/
 ## 🔗 API Integration
 
 ### Base URL
+
 ```javascript
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = "http://localhost:8000/api";
 ```
 
 ### Authentication Flow
@@ -337,24 +365,24 @@ const API_BASE_URL = 'http://localhost:8000/api';
 
 ```javascript
 // Check if user is authenticated
-checkAuth()
+checkAuth();
 
 // Get current user info
-getCurrentUser()
+getCurrentUser();
 
 // Logout and clear tokens
-logout()
+logout();
 
 // Refresh access token
-refreshToken()
+refreshToken();
 
 // Make authenticated API request
 fetch(url, {
   headers: {
-    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-    'Content-Type': 'application/json'
-  }
-})
+    Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+    "Content-Type": "application/json",
+  },
+});
 ```
 
 ---
@@ -364,10 +392,12 @@ fetch(url, {
 Backend comes pre-seeded with demo accounts:
 
 **Patient Account**:
+
 - Email: `patient@example.com`
 - Password: `Pass1234!`
 
 **Doctor Account**:
+
 - Email: `doctor@example.com`
 - Password: `Pass1234!`
 
@@ -394,16 +424,16 @@ Edit CSS custom properties in `css/style.css`:
   /* 60% - Primary backgrounds */
   --primary-bg: #f8f9fd;
   --white: #ffffff;
-  
+
   /* 30% - Secondary blue */
   --secondary-blue: #4a90e2;
   --secondary-blue-light: #6ba3e8;
   --secondary-blue-dark: #2c5282;
-  
+
   /* 10% - Accent teal/green */
   --accent-teal: #00d9b5;
   --accent-green: #48bb78;
-  
+
   /* Status colors */
   --success: #48bb78;
   --warning: #f59e0b;
@@ -417,7 +447,7 @@ Edit CSS custom properties in `css/style.css`:
 Edit in each JavaScript file:
 
 ```javascript
-const API_BASE_URL = 'http://your-backend:8000/api';
+const API_BASE_URL = "http://your-backend:8000/api";
 ```
 
 Or create a `config.js`:
@@ -425,7 +455,7 @@ Or create a `config.js`:
 ```javascript
 // js/config.js
 window.CONFIG = {
-  API_BASE_URL: 'http://localhost:8000/api'
+  API_BASE_URL: "http://localhost:8000/api",
 };
 ```
 
@@ -440,7 +470,7 @@ window.CONFIG = {
 
 ```javascript
 if (!checkAuth()) {
-  window.location.href = 'login.html';
+  window.location.href = "login.html";
 }
 ```
 
@@ -493,6 +523,7 @@ if (!checkAuth()) {
 ### Manual Testing Checklist
 
 **Authentication**:
+
 - ✅ Register new account
 - ✅ Login with credentials
 - ✅ Logout clears tokens
@@ -500,12 +531,14 @@ if (!checkAuth()) {
 - ✅ Token refresh works
 
 **Navigation**:
+
 - ✅ All links work
 - ✅ Profile widget shows user info
 - ✅ Active page highlighted in nav
 - ✅ Mobile menu toggles
 
 **Records**:
+
 - ✅ Upload file (all types)
 - ✅ View records table
 - ✅ Download file (signed URL)
@@ -513,6 +546,7 @@ if (!checkAuth()) {
 - ✅ Stats update correctly
 
 **Appointments**:
+
 - ✅ Search doctors (name, specialty, location)
 - ✅ Select doctor (card highlights)
 - ✅ Book appointment
@@ -521,6 +555,7 @@ if (!checkAuth()) {
 - ✅ Stats update correctly
 
 **AI Insights**:
+
 - ✅ Symptom analysis returns specialist
 - ✅ Confidence score displays
 - ✅ Model badge shows (PyTorch/Sklearn)
@@ -528,6 +563,7 @@ if (!checkAuth()) {
 - ✅ Example symptoms work
 
 **Profile**:
+
 - ✅ Load profile info
 - ✅ Update profile
 - ✅ Upload photo
@@ -536,6 +572,7 @@ if (!checkAuth()) {
 ### Browser Console Testing
 
 Open browser console (F12) and check:
+
 - No JavaScript errors
 - API calls return 200 (or expected status)
 - Tokens present in localStorage
@@ -606,17 +643,17 @@ Potential improvements:
 async function loadUserProfile() {
   try {
     const response = await fetch(`${API_BASE_URL}/patients/`, {
-      headers: { 'Authorization': `Bearer ${getToken()}` }
+      headers: { Authorization: `Bearer ${getToken()}` },
     });
-    
+
     if (!response.ok) {
-      throw new Error('Failed to load profile');
+      throw new Error("Failed to load profile");
     }
-    
+
     const data = await response.json();
     displayProfile(data);
   } catch (error) {
-    showError('Could not load profile. Please try again.');
+    showError("Could not load profile. Please try again.");
     console.error(error);
   }
 }

@@ -66,16 +66,19 @@ python -m spacy download en_core_web_sm
 ### 2. Install Tesseract OCR
 
 **Ubuntu/Debian:**
+
 ```bash
 sudo apt-get install tesseract-ocr
 ```
 
 **macOS:**
+
 ```bash
 brew install tesseract
 ```
 
 **Windows:**
+
 - Download from: https://github.com/UB-Mannheim/tesseract/wiki
 - Add to PATH or update `settings.py`
 
@@ -90,6 +93,7 @@ nano .env
 ```
 
 **Key environment variables:**
+
 ```bash
 DEBUG=1
 SECRET_KEY=your-secret-key-here
@@ -135,6 +139,7 @@ python manage.py runserver
 ```
 
 Access:
+
 - **API**: http://localhost:8000/api
 - **Admin**: http://localhost:8000/admin
 
@@ -147,11 +152,13 @@ Access:
 **JWT-based authentication** with role-based access control.
 
 **User Roles:**
+
 - `patient` - Can manage own records, book appointments
 - `doctor` - Can claim consent, view patient records
 - `admin` - Full system access
 
 **Endpoints:**
+
 - `POST /api/auth/register/` - Register new user
 - `POST /api/auth/login/` - Login (get JWT tokens)
 - `POST /api/auth/refresh/` - Refresh access token
@@ -160,6 +167,7 @@ Access:
 - `POST /api/auth/2fa/verify/` - Verify 2FA OTP
 
 **JWT Tokens:**
+
 - **Access Token**: Short-lived (1 hour), used for API requests
 - **Refresh Token**: Long-lived (7 days), used to get new access token
 
@@ -168,6 +176,7 @@ Access:
 **Patient-controlled data sharing** with doctors.
 
 **Flow:**
+
 1. Patient grants consent with specific scope (which records to share)
 2. System generates 6-digit OTP
 3. Patient shares OTP with doctor (out-of-band)
@@ -175,12 +184,14 @@ Access:
 5. Doctor receives scoped JWT token with limited access
 
 **Endpoints:**
+
 - `POST /api/consent/grant/` - Patient grants consent
 - `POST /api/consent/claim/` - Doctor claims with OTP
 - `POST /api/consent/revoke/<id>/` - Patient revokes consent
 - `GET /api/consent/audits/` - View audit logs (admin)
 
 **Scoped Token Features:**
+
 - Limited to specific patient data
 - Limited to specific record types (labs, prescriptions, etc.)
 - Automatic expiration (default 48 hours)
@@ -191,6 +202,7 @@ Access:
 **Secure file storage** with signed URLs.
 
 **File Types:**
+
 - Lab Results
 - Prescriptions
 - Imaging (X-rays, MRIs)
@@ -198,6 +210,7 @@ Access:
 - Other Documents
 
 **Endpoints:**
+
 - `POST /api/records/files/upload/` - Upload medical file
 - `GET /api/records/files/` - List patient's files
 - `GET /api/records/files/<id>/link/` - Get signed download URL
@@ -207,6 +220,7 @@ Access:
 - `GET /api/records/encounters/` - List encounters
 
 **Security:**
+
 - Files organized by patient ID in media folder
 - Download URLs are HMAC-signed with 5-minute expiration
 - Signature validation prevents unauthorized access
@@ -219,23 +233,27 @@ See **[ai.md](ai.md)** for detailed AI documentation.
 **Quick Overview:**
 
 **Symptom Analysis:**
+
 - Extracts medical entities using spaCy NER
 - Identifies symptoms, medications, conditions
 - `POST /api/symptoms/analyze/`
 
 **Specialist Prediction:**
+
 - Recommends specialist based on symptoms
 - 75-85% accuracy (sklearn) or 85-95% (PyTorch)
 - Returns confidence score
 - `POST /api/ai/specialist/`
 
 **Medical Summaries:**
+
 - FAISS vector search for relevant records
 - TextRank extractive summarization
 - 5-10 bullet point summary
 - `POST /api/ai/summary/`
 
 **Model Status:**
+
 - Check which models are trained
 - `GET /api/ai/models/status/`
 
@@ -244,6 +262,7 @@ See **[ai.md](ai.md)** for detailed AI documentation.
 **Appointment booking** with conflict detection.
 
 **Features:**
+
 - Doctor availability management (weekly schedules)
 - 30-minute appointment slots
 - Break time support
@@ -251,6 +270,7 @@ See **[ai.md](ai.md)** for detailed AI documentation.
 - Appointment cancellation
 
 **Endpoints:**
+
 - `GET /api/scheduling/doctors/<id>/slots/?date=YYYY-MM-DD` - Available slots
 - `POST /api/scheduling/appointments/` - Book appointment
 - `GET /api/scheduling/appointments/` - List appointments
@@ -258,6 +278,7 @@ See **[ai.md](ai.md)** for detailed AI documentation.
 - `DELETE /api/scheduling/appointments/<id>/` - Cancel appointment
 
 **Appointment Statuses:**
+
 - `scheduled` - Confirmed future appointment
 - `completed` - Past appointment
 - `cancelled` - Cancelled by patient or doctor
@@ -268,12 +289,14 @@ See **[ai.md](ai.md)** for detailed AI documentation.
 **Search and filter doctors.**
 
 **Endpoints:**
+
 - `GET /api/doctors/` - List all doctors
 - `GET /api/doctors/?specialty=Cardiology` - Filter by specialty
 - `GET /api/doctors/?location=New York` - Filter by location
 - `GET /api/doctors/<id>/` - Get doctor details
 
 **Doctor Information:**
+
 - Name, email, phone
 - Specialty (Cardiology, Dermatology, etc.)
 - Location
@@ -285,11 +308,13 @@ See **[ai.md](ai.md)** for detailed AI documentation.
 **Manage patient information.**
 
 **Endpoints:**
+
 - `GET /api/patients/` - Get current patient profile
 - `PUT /api/patients/` - Update profile
 - `POST /api/patients/upload-photo/` - Upload profile photo
 
 **Profile Fields:**
+
 - Basic: Name, email, phone, date of birth
 - Medical: Blood group, medical conditions, allergies
 - Contact: Address
@@ -300,6 +325,7 @@ See **[ai.md](ai.md)** for detailed AI documentation.
 **Track all data access** for compliance.
 
 **Logged Information:**
+
 - Who accessed data (user ID, role)
 - What was accessed (resource type, ID)
 - When (timestamp)
@@ -307,6 +333,7 @@ See **[ai.md](ai.md)** for detailed AI documentation.
 - How (IP address, user agent)
 
 **Endpoint:**
+
 - `GET /api/consent/audits/` - View audit logs (admin only)
 
 ---
@@ -379,7 +406,7 @@ class Appointment(Model):
     reason = TextField()
     status = CharField(choices=['scheduled', 'completed', 'cancelled', 'no-show'])
     created_at = DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         unique_together = ('doctor', 'slot_date', 'slot_time')
 ```
@@ -498,6 +525,7 @@ python manage.py seed_demo
 ```
 
 Creates:
+
 - 2 demo users (patient@example.com, doctor@example.com)
 - 5 doctors with various specialties
 - Sample medical records
@@ -615,17 +643,17 @@ gunicorn nexuscare.wsgi:application --bind 0.0.0.0:8000 --workers 4
 server {
     listen 80;
     server_name your-domain.com;
-    
+
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
-    
+
     location /media/ {
         alias /path/to/media/;
     }
-    
+
     location /static/ {
         alias /path/to/static/;
     }
@@ -676,38 +704,45 @@ See **API_DOCS.md** in the backend folder for complete endpoint documentation wi
 ### Quick API Overview
 
 **Authentication:**
+
 - `POST /api/auth/register/` - Register
 - `POST /api/auth/login/` - Login
 - `POST /api/auth/refresh/` - Refresh token
 - `GET /api/auth/me/` - Current user
 
 **Consent:**
+
 - `POST /api/consent/grant/` - Grant consent
 - `POST /api/consent/claim/` - Claim consent
 - `POST /api/consent/revoke/<id>/` - Revoke consent
 
 **Records:**
+
 - `POST /api/records/files/upload/` - Upload file
 - `GET /api/records/files/` - List files
 - `GET /api/records/files/<id>/link/` - Download link
 - `GET /api/records/summary/` - Records summary
 
 **AI:**
+
 - `POST /api/symptoms/analyze/` - Analyze symptoms
 - `POST /api/ai/specialist/` - Predict specialist
 - `POST /api/ai/summary/` - Generate summary
 - `GET /api/ai/models/status/` - Model status
 
 **Scheduling:**
+
 - `GET /api/scheduling/doctors/<id>/slots/` - Available slots
 - `POST /api/scheduling/appointments/` - Book appointment
 - `GET /api/scheduling/appointments/` - List appointments
 
 **Doctors:**
+
 - `GET /api/doctors/` - List doctors
 - `GET /api/doctors/<id>/` - Doctor details
 
 **Patients:**
+
 - `GET /api/patients/` - Get profile
 - `PUT /api/patients/` - Update profile
 - `POST /api/patients/upload-photo/` - Upload photo
@@ -728,11 +763,13 @@ curl http://localhost:8000/api/auth/me/ \
 ```
 
 **Using Postman:**
+
 1. Import collection from `postman_collection.json`
 2. Set environment variables (base_url, access_token)
 3. Run requests
 
 **Using Django Admin:**
+
 - Browse API at: http://localhost:8000/api/ (with DRF browsable API)
 
 ---
@@ -742,12 +779,14 @@ curl http://localhost:8000/api/auth/me/ \
 ### Database Issues
 
 **Problem**: `no such table` error
+
 ```bash
 # Solution: Run migrations
 python manage.py migrate
 ```
 
 **Problem**: Migration conflicts
+
 ```bash
 # Solution: Reset migrations (dev only!)
 rm db.sqlite3
@@ -757,6 +796,7 @@ python manage.py migrate
 ### Module Import Errors
 
 **Problem**: `ModuleNotFoundError`
+
 ```bash
 # Solution: Install dependencies
 pip install -r requirements.txt
@@ -765,6 +805,7 @@ pip install -r requirements.txt
 ### Tesseract Not Found
 
 **Problem**: `TesseractNotFoundError`
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get install tesseract-ocr
@@ -779,6 +820,7 @@ TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 ### Port Already in Use
 
 **Problem**: `Error: That port is already in use`
+
 ```bash
 # Find process using port 8000
 lsof -i :8000  # Mac/Linux
@@ -791,6 +833,7 @@ python manage.py runserver 8001
 ### CORS Errors
 
 **Problem**: Frontend can't access API
+
 ```python
 # settings.py - add your frontend URL
 CORS_ALLOWED_ORIGINS = [
