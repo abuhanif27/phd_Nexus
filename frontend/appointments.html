@@ -277,9 +277,17 @@
 
         <form id="bookForm">
           <!-- Doctor Search Section -->
-          <div style="margin-bottom: 2rem;">
-            <h4 style="color: var(--secondary-blue); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-              <span style="font-size: 1.5rem;">🔍</span> Find Your Doctor
+          <div style="margin-bottom: 2rem">
+            <h4
+              style="
+                color: var(--secondary-blue);
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+              "
+            >
+              <span style="font-size: 1.5rem">🔍</span> Find Your Doctor
             </h4>
 
             <!-- Search Bar -->
@@ -289,22 +297,29 @@
                 id="doctorSearchInput"
                 class="form-control"
                 placeholder="🔎 Search by doctor name, specialty, or location..."
-                style="font-size: 1rem; padding: 0.75rem 1rem;"
+                style="font-size: 1rem; padding: 0.75rem 1rem"
                 oninput="searchDoctors()"
               />
             </div>
 
             <!-- Filter Row -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-              <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-weight: 600;">
-                  <span style="margin-right: 0.25rem;">🩺</span> Specialty
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 1rem;
+                margin-bottom: 1rem;
+              "
+            >
+              <div class="form-group" style="margin-bottom: 0">
+                <label class="form-label" style="font-weight: 600">
+                  <span style="margin-right: 0.25rem">🩺</span> Specialty
                 </label>
                 <select
                   id="specialtyFilter"
                   class="form-control"
                   onchange="searchDoctors()"
-                  style="padding: 0.6rem;"
+                  style="padding: 0.6rem"
                 >
                   <option value="">All Specialties</option>
                   <option value="Cardiology">❤️ Cardiology</option>
@@ -323,9 +338,9 @@
                 </select>
               </div>
 
-              <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-weight: 600;">
-                  <span style="margin-right: 0.25rem;">📍</span> Location
+              <div class="form-group" style="margin-bottom: 0">
+                <label class="form-label" style="font-weight: 600">
+                  <span style="margin-right: 0.25rem">📍</span> Location
                 </label>
                 <input
                   type="text"
@@ -333,18 +348,28 @@
                   class="form-control"
                   placeholder="e.g., New York, NY"
                   onkeyup="searchDoctors()"
-                  style="padding: 0.6rem;"
+                  style="padding: 0.6rem"
                 />
               </div>
             </div>
 
             <!-- Doctor Results -->
-            <div style="margin-bottom: 1rem;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <label class="form-label" style="margin: 0; font-weight: 600;">
+            <div style="margin-bottom: 1rem">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  margin-bottom: 0.5rem;
+                "
+              >
+                <label class="form-label" style="margin: 0; font-weight: 600">
                   Available Doctors
                 </label>
-                <span id="doctorCount" style="color: var(--text-secondary); font-size: 0.9rem;">
+                <span
+                  id="doctorCount"
+                  style="color: var(--text-secondary); font-size: 0.9rem"
+                >
                   Loading...
                 </span>
               </div>
@@ -359,9 +384,12 @@
                   background: linear-gradient(to bottom, #f8f9fa, #ffffff);
                 "
               >
-                <div style="text-align: center; padding: 2rem;">
-                  <div class="spinner" style="width: 40px; height: 40px; margin: 0 auto 1rem;"></div>
-                  <p style="color: var(--text-secondary);">Loading doctors...</p>
+                <div style="text-align: center; padding: 2rem">
+                  <div
+                    class="spinner"
+                    style="width: 40px; height: 40px; margin: 0 auto 1rem"
+                  ></div>
+                  <p style="color: var(--text-secondary)">Loading doctors...</p>
                 </div>
               </div>
             </div>
@@ -370,15 +398,19 @@
           <input type="hidden" id="doctorSelect" required />
 
           <!-- Selected Doctor Display -->
-          <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label class="form-label" style="font-weight: 600;">
-              <span style="margin-right: 0.25rem;">✓</span> Selected Doctor
+          <div class="form-group" style="margin-bottom: 1.5rem">
+            <label class="form-label" style="font-weight: 600">
+              <span style="margin-right: 0.25rem">✓</span> Selected Doctor
             </label>
             <div
               id="selectedDoctorDisplay"
               style="
                 padding: 1.25rem;
-                background: linear-gradient(135deg, var(--primary-light), var(--bg-light));
+                background: linear-gradient(
+                  135deg,
+                  var(--primary-light),
+                  var(--bg-light)
+                );
                 border: 2px dashed var(--secondary-gray);
                 border-radius: 12px;
                 color: var(--text-secondary);

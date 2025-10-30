@@ -233,6 +233,7 @@ document.addEventListener("keydown", (e) => {
 async function searchDoctors() {
   const specialty = document.getElementById("specialtyFilter").value;
   const location = document.getElementById("locationFilter").value;
+  const searchQuery = document.getElementById("doctorSearchInput")?.value.toLowerCase() || "";
 
   let url = `${API_BASE_URL}/doctors/`;
   const params = new URLSearchParams();
@@ -251,7 +252,18 @@ async function searchDoctors() {
     }
 
     const data = await response.json();
-    const doctors = data.results || data || [];
+    let doctors = data.results || data || [];
+
+    // Apply client-side search filter
+    if (searchQuery) {
+      doctors = doctors.filter(
+        (doc) =>
+          doc.user.first_name.toLowerCase().includes(searchQuery) ||
+          doc.user.last_name.toLowerCase().includes(searchQuery) ||
+          doc.specialty.toLowerCase().includes(searchQuery) ||
+          (doc.location && doc.location.toLowerCase().includes(searchQuery))
+      );
+    }
 
     displayDoctors(doctors);
   } catch (error) {
