@@ -3,20 +3,24 @@
 ## 📋 Testing Steps
 
 ### Step 1: Clear Browser Cache
+
 ```
 Press: Ctrl + Shift + R (Windows/Linux)
 or:    Cmd + Shift + R (Mac)
 ```
 
 ### Step 2: Login
+
 1. Go to: `http://localhost:8080/login.html`
 2. Use your credentials to login
 
 ### Step 3: Go to Appointments
+
 1. Click "Appointments" in the navigation bar
 2. You should see your upcoming appointments
 
 ### Step 4: Open Booking Modal
+
 1. Click the **"+ Book Appointment"** button
 2. A beautiful modal should appear
 
@@ -46,6 +50,7 @@ You should now see:
 ```
 
 ### Step 6: Test Search 🔍
+
 1. Type "Sarah" in the search box
    - Should filter to show only doctors named Sarah
 2. Clear search and select "Cardiology" from dropdown
@@ -54,6 +59,7 @@ You should now see:
    - Should filter by location
 
 ### Step 7: Select a Doctor ✅
+
 1. Click any doctor card
 2. You should see:
    - Card gets highlighted with specialty color
@@ -62,6 +68,7 @@ You should now see:
    - Date field gets focused automatically
 
 ### Step 8: Complete Booking
+
 1. Choose a date
 2. Select a time slot
 3. Add reason (optional)
@@ -70,6 +77,7 @@ You should now see:
 ## 🎨 Visual Features to Notice
 
 ### Color Coding
+
 - **Red border**: Cardiology (❤️)
 - **Orange border**: Dermatology (🧴)
 - **Purple border**: Neurology (🧠)
@@ -77,12 +85,14 @@ You should now see:
 - **Green border**: General Medicine (🩺)
 
 ### Animations
+
 - 📥 Cards fade in sequentially (0.1s delay each)
 - 🎯 Cards slide right and glow on hover
 - ✨ Smooth color transitions
 - 💫 Selected card stays highlighted
 
 ### Interactive Elements
+
 - Hover over any doctor card - see it slide and glow
 - Click to select - see the green confirmation badge
 - Scroll the doctor list - custom themed scrollbar
@@ -91,25 +101,33 @@ You should now see:
 ## ❓ Troubleshooting
 
 ### Problem: Still seeing old dropdown interface
-**Solution**: 
+
+**Solution**:
+
 1. Press `Ctrl + Shift + R` (hard refresh)
 2. Or clear browser cache in settings
 3. Or try incognito/private window
 
 ### Problem: No doctors showing
+
 **Solution**:
+
 1. Check backend is running: `curl http://localhost:8000/api/doctors/`
 2. Check you're logged in (valid token)
 3. Check browser console for errors (F12)
 
 ### Problem: Search not working
+
 **Solution**:
+
 1. Check JavaScript console for errors
 2. Verify appointments.js file is loaded
 3. Try refreshing the page
 
 ### Problem: Cards don't have colors
+
 **Solution**:
+
 1. Hard refresh browser (Ctrl+Shift+R)
 2. Check appointments.js loaded successfully
 3. Verify doctor objects have 'specialty' field
@@ -130,16 +148,19 @@ You should see:
 ## 📸 What You Should See
 
 **Before selecting a doctor:**
+
 - List of beautiful color-coded cards
 - Each card shows: Icon, Name, Specialty, Location, Rating, Select button
 - Cards animate on hover
 
 **After selecting a doctor:**
+
 - Selected card has colored border and shadow
 - "Selected Doctor" area shows doctor with green "✓ Selected" badge
 - Date field is automatically focused
 
 **Empty state (if no matches):**
+
 - Large doctor emoji (👨‍⚕️)
 - "No doctors found" message
 - "Try adjusting filters" hint
