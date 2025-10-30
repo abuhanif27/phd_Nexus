@@ -32,7 +32,36 @@ function getAuthHeaders() {
 // Load user info
 function loadUserInfo() {
   const userEmail = localStorage.getItem("userEmail");
-  document.getElementById("userEmail").textContent = userEmail || "User";
+  const userName = localStorage.getItem("userName");
+  const userPhoto = localStorage.getItem("userPhoto");
+
+  // Update user name
+  const navUserName = document.getElementById("navUserName");
+  if (navUserName) {
+    navUserName.textContent = userName || userEmail?.split("@")[0] || "User";
+  }
+
+  // Update user photo
+  const navUserPhoto = document.getElementById("navUserPhoto");
+  if (navUserPhoto && userPhoto) {
+    navUserPhoto.src = userPhoto;
+    navUserPhoto.style.display = "block";
+    navUserPhoto.nextElementSibling.style.display = "none";
+  } else if (navUserPhoto) {
+    // Generate default avatar with user's initial
+    const initial = (userName || userEmail || "U").charAt(0).toUpperCase();
+    const defaultAvatar = `data:image/svg+xml,${encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="20" fill="#4F46E5"/>
+        <text x="50%" y="50%" text-anchor="middle" dy="0.35em" fill="white" font-size="18" font-family="Inter, sans-serif" font-weight="600">
+          ${initial}
+        </text>
+      </svg>
+    `)}`;
+    navUserPhoto.src = defaultAvatar;
+    navUserPhoto.style.display = "block";
+    navUserPhoto.nextElementSibling.style.display = "none";
+  }
 }
 
 // Analyze symptoms

@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Medical Records - PhD NexusCare</title>
     <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -33,20 +37,38 @@
           <li><a href="appointments.html" class="nav-link">Appointments</a></li>
           <li><a href="ai-insights.html" class="nav-link">AI Insights</a></li>
           <li>
-            <div style="display: flex; align-items: center; gap: 0.5rem">
-              <span
-                id="userEmail"
-                style="color: var(--text-secondary); font-size: 0.9rem"
-                >Loading...</span
-              >
-              <button
-                onclick="logout()"
-                class="btn btn-outline"
-                style="padding: 0.5rem 1rem"
-              >
-                Logout
-              </button>
-            </div>
+            <a
+              href="profile.html"
+              class="nav-user"
+              id="navUser"
+              style="text-decoration: none"
+            >
+              <div class="nav-user-photo">
+                <img
+                  id="navUserPhoto"
+                  src=""
+                  alt="User"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                  style="display: block"
+                />
+                <div class="nav-user-photo-placeholder" style="display: none">
+                  <i class="fas fa-user"></i>
+                </div>
+              </div>
+              <div class="nav-user-info">
+                <span id="navUserName">Loading...</span>
+                <small id="navUserRole">Patient</small>
+              </div>
+            </a>
+          </li>
+          <li>
+            <button
+              onclick="logout()"
+              class="btn btn-outline"
+              style="padding: 0.5rem 1rem"
+            >
+              Logout
+            </button>
           </li>
         </ul>
       </div>
