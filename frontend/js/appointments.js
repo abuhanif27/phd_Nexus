@@ -1247,4 +1247,3 @@ document.addEventListener("DOMContentLoaded", () => {
     dateInput.setAttribute("min", today);
   }
 });
-
