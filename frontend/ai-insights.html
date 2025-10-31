@@ -197,6 +197,25 @@
               >
             </div>
 
+            <!-- Mode & Model selection -->
+            <div class="form-row" style="display:flex; gap:1rem; margin-bottom:1rem; align-items:center;">
+              <div style="flex:1;">
+                <label class="form-label">Analysis Mode</label>
+                <select id="analysisMode" class="form-control">
+                  <option value="short">Short (fast)</option>
+                  <option value="deep">Deep (detailed)</option>
+                </select>
+              </div>
+              <div style="flex:1;">
+                <label class="form-label">Model</label>
+                <select id="modelSelect" class="form-control">
+                  <option value="auto">Auto</option>
+                  <option value="pytorch">PyTorch (Deep)</option>
+                  <option value="sklearn">Sklearn (Fast)</option>
+                </select>
+              </div>
+            </div>
+
             <div id="symptomAlert" class="alert alert-error hidden">
               <span>⚠️</span>
               <span id="symptomAlertText">Error message</span>

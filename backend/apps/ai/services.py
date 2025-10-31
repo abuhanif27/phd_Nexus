@@ -155,12 +155,22 @@ class AIService:
             'entities': entities
         }
     
-    def predict_specialist(self, text: str) -> Dict:
+    def predict_specialist(self, text: str, model_type: str = None) -> Dict:
         """
         Predict specialist from symptom text using loaded classifier.
         Supports sklearn, PyTorch, and legacy models.
         Returns specialist name, confidence, and top alternatives.
         """
+        # If caller requests a specific model type, attempt to load it.
+        if model_type:
+            # Normalize
+            model_type = model_type.lower()
+            # If requested model differs from currently loaded, try to load it
+            if self.specialist_classifier_type != model_type:
+                # update preference and attempt to reload
+                self.model_type = model_type
+                self._load_specialist_classifier()
+
         if not self.specialist_classifier:
             return {
                 'specialist': 'General Physician',

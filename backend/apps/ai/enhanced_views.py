@@ -32,6 +32,7 @@ class EnhancedAIAnalysisView(views.APIView):
         """
         symptoms = request.data.get('symptoms', '').strip()
         mode = request.data.get('mode', 'quick').lower()
+        model = request.data.get('model', 'auto')
         
         if not symptoms:
             return Response({
@@ -60,24 +61,28 @@ class EnhancedAIAnalysisView(views.APIView):
         
         if mode == 'quick':
             # Quick Answer Mode - Simple sklearn analysis
-            return self._quick_analysis(symptoms, patient, disclaimer)
+            return self._quick_analysis(symptoms, patient, disclaimer, model)
         elif mode == 'deep':
             # Deep Analysis Mode - Comprehensive with all data
-            return self._deep_analysis(symptoms, patient, disclaimer, request.data.get('include_history', True))
+            return self._deep_analysis(symptoms, patient, disclaimer, request.data.get('include_history', True), model)
         else:
             return Response({
                 'error': 'Invalid mode. Use "quick" or "deep"'
             }, status=status.HTTP_400_BAD_REQUEST)
     
-    def _quick_analysis(self, symptoms, patient, disclaimer):
+    def _quick_analysis(self, symptoms, patient, disclaimer, model='auto'):
         """
         Quick Answer: Fast symptom analysis using scikit-learn model
         Takes 1-2 seconds
         """
         start_time = time.time()
         
-        # Use sklearn model for quick prediction
-        result = ai_service.predict_specialist(symptoms, model_type='sklearn')
+        # Use requested model for quick prediction (default to sklearn-like behavior)
+        requested = model or 'sklearn'
+        # If user selected 'auto', prefer sklearn for quick mode
+        if requested == 'auto':
+            requested = 'sklearn'
+        result = ai_service.predict_specialist(symptoms, model_type=requested)
         
         # Add NLP entity extraction
         entities = ai_service.analyze_symptoms(symptoms)
@@ -117,7 +122,7 @@ class EnhancedAIAnalysisView(views.APIView):
             }
         })
     
-    def _deep_analysis(self, symptoms, patient, disclaimer, include_history):
+    def _deep_analysis(self, symptoms, patient, disclaimer, include_history, model='auto'):
         """
         Deep Analysis: Comprehensive analysis using:
         - PyTorch deep learning model
@@ -135,7 +140,11 @@ class EnhancedAIAnalysisView(views.APIView):
             'status': 'processing'
         })
         
-        pytorch_result = ai_service.predict_specialist(symptoms, model_type='pytorch')
+        # For deep analysis prefer requested model; default to pytorch
+        requested = model or 'pytorch'
+        if requested == 'auto':
+            requested = 'pytorch'
+        pytorch_result = ai_service.predict_specialist(symptoms, model_type=requested)
         entities = ai_service.analyze_symptoms(symptoms)
         
         analysis_steps[-1]['status'] = 'completed'

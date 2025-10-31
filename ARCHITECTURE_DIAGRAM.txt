@@ -1,0 +1,160 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║          🎯 PhD NexusCare AI Model Selector Architecture             ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                         FRONTEND UI LAYER                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌───────────────────────────────────────────────────────────┐    │
+│  │  AI Insights Page (ai-insights.html)                      │    │
+│  ├───────────────────────────────────────────────────────────┤    │
+│  │  Symptom Input: [text area]                               │    │
+│  │                                                            │    │
+│  │  Analysis Mode:  [Short ▼] [Deep ▼]                       │    │
+│  │  Model:         [Auto ▼] [PyTorch ▼] [Sklearn ▼]         │    │
+│  │                                                            │    │
+│  │  [🤖 Analyze Symptoms]                                     │    │
+│  └───────────────────────────────────────────────────────────┘    │
+│                         ↓                                           │
+│  ┌───────────────────────────────────────────────────────────┐    │
+│  │  ai-insights.js                                            │    │
+│  ├───────────────────────────────────────────────────────────┤    │
+│  │  const mode = uiMode === 'deep' ? 'deep' : 'quick'        │    │
+│  │  const model = modelSelect.value || 'auto'                │    │
+│  │                                                            │    │
+│  │  POST /api/ai/analyze-enhanced/                           │    │
+│  │  {                                                         │    │
+│  │    symptoms: "...",                                        │    │
+│  │    mode: "quick" | "deep",                                 │    │
+│  │    model: "auto" | "pytorch" | "sklearn",                 │    │
+│  │    include_history: true | false                           │    │
+│  │  }                                                         │    │
+│  └───────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                        BACKEND API LAYER                            │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌───────────────────────────────────────────────────────────┐    │
+│  │  enhanced_views.py - EnhancedAIAnalysisView              │    │
+│  ├───────────────────────────────────────────────────────────┤    │
+│  │                                                            │    │
+│  │  mode = request.data.get('mode')  # 'quick' or 'deep'     │    │
+│  │  model = request.data.get('model') # 'auto' | 'pytorch' | │    │
+│  │                                    # 'sklearn'             │    │
+│  │                                                            │    │
+│  │  if mode == 'quick':                                       │    │
+│  │    ├─ Default model preference: sklearn                   │    │
+│  │    ├─ Fast analysis (1-2s)                                │    │
+│  │    └─ No history review                                   │    │
+│  │                                                            │    │
+│  │  elif mode == 'deep':                                      │    │
+│  │    ├─ Default model preference: pytorch                   │    │
+│  │    ├─ Comprehensive analysis (5-15s)                      │    │
+│  │    ├─ Medical history review                              │    │
+│  │    └─ Knowledge base lookup                               │    │
+│  └───────────────────────────────────────────────────────────┘    │
+│                         ↓                                           │
+│  ┌───────────────────────────────────────────────────────────┐    │
+│  │  services.py - AIService                                   │    │
+│  ├───────────────────────────────────────────────────────────┤    │
+│  │                                                            │    │
+│  │  predict_specialist(text, model_type=None)                │    │
+│  │                                                            │    │
+│  │  ├─ If model_type specified and different from current:   │    │
+│  │  │  └─ Reload classifier with requested model             │    │
+│  │  │                                                          │    │
+│  │  └─ If model_type is None:                                │    │
+│  │     └─ Use currently loaded model                          │    │
+│  └───────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                      MODEL SELECTION LOGIC                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌────────────────┐  ┌────────────────┐  ┌─────────────────┐     │
+│  │   model='auto' │  │ model='pytorch'│  │ model='sklearn' │     │
+│  └────────┬───────┘  └────────┬───────┘  └────────┬────────┘     │
+│           │                   │                    │               │
+│           ↓                   ↓                    ↓               │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │ Quick Mode:     │  │ Force PyTorch   │  │ Force Sklearn   │  │
+│  │ ├─ Try Sklearn  │  │ ├─ Load PyTorch │  │ ├─ Load Sklearn │  │
+│  │ └─ Fallback↓    │  │ └─ Fallback↓    │  │ └─ Fallback↓    │  │
+│  │                 │  │                 │  │                 │  │
+│  │ Deep Mode:      │  │ If unavailable: │  │ If unavailable: │  │
+│  │ ├─ Try PyTorch  │  │ ├─ Try Sklearn  │  │ ├─ Try PyTorch  │  │
+│  │ └─ Fallback↓    │  │ └─ Legacy       │  │ └─ Legacy       │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
+│           │                   │                    │               │
+│           └───────────────────┴────────────────────┘               │
+│                               ↓                                     │
+│                   ┌────────────────────┐                           │
+│                   │ Ultimate Fallback: │                           │
+│                   │ General Physician  │                           │
+│                   └────────────────────┘                           │
+└─────────────────────────────────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                         ML MODEL LAYER                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌────────────────────────────┐  ┌──────────────────────────────┐ │
+│  │  PyTorch Classifier         │  │  Sklearn Classifier          │ │
+│  ├────────────────────────────┤  ├──────────────────────────────┤ │
+│  │  Model: DistilBERT         │  │  Model: Logistic Regression  │ │
+│  │  Accuracy: 95-96%          │  │  Accuracy: 85-90%            │ │
+│  │  Speed: Slower (2-15s)     │  │  Speed: Faster (1-7s)        │ │
+│  │  File: specialist_clf_     │  │  File: specialist_clf_       │ │
+│  │        pytorch.pt          │  │        sklearn.joblib        │ │
+│  │                            │  │                              │ │
+│  │  Features:                 │  │  Features:                   │ │
+│  │  ├─ Transformer embeddings │  │  ├─ TF-IDF vectorization    │ │
+│  │  ├─ Context understanding  │  │  ├─ Fast inference          │ │
+│  │  ├─ High accuracy          │  │  └─ Low resource usage      │ │
+│  │  └─ Resource intensive     │  │                              │ │
+│  │                            │  │                              │ │
+│  │  Best for:                 │  │  Best for:                   │ │
+│  │  ├─ Complex symptoms       │  │  ├─ Simple symptoms          │ │
+│  │  ├─ Deep analysis          │  │  ├─ Quick triage             │ │
+│  │  └─ High-stakes decisions  │  │  └─ Initial assessment       │ │
+│  └────────────────────────────┘  └──────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+                                 ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                        RESPONSE FORMAT                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  {                                                                  │
+│    "mode": "quick" | "deep",                                        │
+│    "analysis": {                                                    │
+│      "recommended_specialist": "Cardiologist",                      │
+│      "confidence": 0.92,                                            │
+│      "model_type": "pytorch",  ← 🧠 or ⚡ badge in UI              │
+│      "processing_time": "2.3s",                                     │
+│      "reasoning": "Based on symptoms: chest pain, shortness..."     │
+│    },                                                               │
+│    "recommendations": [...],                                        │
+│    "next_steps": {...}                                              │
+│  }                                                                  │
+└─────────────────────────────────────────────────────────────────────┘
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                      COMPARISON TABLE                                 ║
+╠═══════════════════════════════════════════════════════════════════════╣
+║                                                                       ║
+║  ┌──────────┬──────────┬───────────┬──────────┬─────────────────┐   ║
+║  │ Scenario │   Mode   │   Model   │   Time   │   Best For      │   ║
+║  ├──────────┼──────────┼───────────┼──────────┼─────────────────┤   ║
+║  │ 1        │ Short    │ Sklearn   │ 1-2s     │ Urgent triage   │   ║
+║  │ 2        │ Short    │ PyTorch   │ 2-4s     │ Better accuracy │   ║
+║  │ 3        │ Short    │ Auto      │ 1-4s     │ Balanced        │   ║
+║  │ 4        │ Deep     │ Sklearn   │ 3-7s     │ Fast + history  │   ║
+║  │ 5        │ Deep     │ PyTorch   │ 5-15s    │ Comprehensive   │   ║
+║  │ 6        │ Deep     │ Auto      │ 5-15s    │ Best available  │   ║
+║  └──────────┴──────────┴───────────┴──────────┴─────────────────┘   ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝

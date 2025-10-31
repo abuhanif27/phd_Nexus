@@ -47,9 +47,13 @@ class SpecialistPredictView(views.APIView):
         serializer.is_valid(raise_exception=True)
         
         text = serializer.validated_data['text']
-        
+        # Optional model override (e.g., 'pytorch', 'sklearn', 'auto')
+        model = request.data.get('model') or request.query_params.get('model')
         # Predict specialist
-        result = ai_service.predict_specialist(text)
+        if model:
+            result = ai_service.predict_specialist(text, model_type=model)
+        else:
+            result = ai_service.predict_specialist(text)
         
         return Response(result)
 
