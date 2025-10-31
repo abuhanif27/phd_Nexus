@@ -369,7 +369,7 @@
           // Get response text first to debug
           const responseText = await response.text();
           console.log("Response text:", responseText);
-          
+
           // Try to parse JSON
           let data;
           try {
@@ -378,7 +378,9 @@
           } catch (parseError) {
             console.error("JSON Parse Error:", parseError);
             console.error("Raw response:", responseText);
-            throw new Error(`Invalid JSON response: ${responseText.substring(0, 200)}`);
+            throw new Error(
+              `Invalid JSON response: ${responseText.substring(0, 200)}`
+            );
           }
 
           // Hide thinking animation
@@ -418,17 +420,28 @@
 
           // Better error message with more details
           let errorMsg = "Failed to analyze symptoms.\n\n";
-          
+
           if (error.message && error.message.includes("Failed to fetch")) {
-            errorMsg = "Cannot connect to backend server.\n\nPlease ensure:\n1. Backend is running (python3 manage.py runserver)\n2. CORS is configured\n3. URL is correct: http://localhost:8000";
+            errorMsg =
+              "Cannot connect to backend server.\n\nPlease ensure:\n1. Backend is running (python3 manage.py runserver)\n2. CORS is configured\n3. URL is correct: http://localhost:8000";
           } else if (error.message && error.message.includes("Invalid JSON")) {
-            errorMsg = "Backend returned invalid response.\n\n" + error.message + "\n\nCheck browser console for the raw response.";
-          } else if (error.message && error.message.includes("Unexpected token")) {
-            errorMsg = "Backend returned invalid JSON.\n\nThis usually means:\n1. Backend crashed or returned HTML error page\n2. CORS issue\n3. Wrong endpoint\n\nCheck browser console for raw response.";
+            errorMsg =
+              "Backend returned invalid response.\n\n" +
+              error.message +
+              "\n\nCheck browser console for the raw response.";
+          } else if (
+            error.message &&
+            error.message.includes("Unexpected token")
+          ) {
+            errorMsg =
+              "Backend returned invalid JSON.\n\nThis usually means:\n1. Backend crashed or returned HTML error page\n2. CORS issue\n3. Wrong endpoint\n\nCheck browser console for raw response.";
           } else {
-            errorMsg += "Error: " + error.message + "\n\nCheck browser console for full details.";
+            errorMsg +=
+              "Error: " +
+              error.message +
+              "\n\nCheck browser console for full details.";
           }
-          
+
           alert(errorMsg);
         }
       }
