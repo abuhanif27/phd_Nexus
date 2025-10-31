@@ -399,13 +399,23 @@ class EnhancedAIAnalysisView(views.APIView):
         return knowledge
     
     def _assess_urgency(self, entities):
-        """Assess urgency level based on symptoms"""
-        symptoms = entities.get('symptoms', [])
+        """Assess urgency level based on symptoms - handles list or dict"""
+        # Handle if entities is a list of dicts (spaCy format)
+        if isinstance(entities, list):
+            symptoms = [e.get('text', str(e)) if isinstance(e, dict) else str(e) for e in entities]
+        # Handle if entities is a dict with 'symptoms' key
+        elif isinstance(entities, dict):
+            symptoms = entities.get('symptoms', [])
+            # If symptoms are dicts, extract text
+            if symptoms and isinstance(symptoms[0], dict):
+                symptoms = [s.get('text', str(s)) for s in symptoms]
+        else:
+            symptoms = []
         
         emergency_keywords = ['chest pain', 'difficulty breathing', 'severe', 'blood', 'unconscious']
         urgent_keywords = ['high fever', 'persistent pain', 'vomiting', 'dizziness']
         
-        symptoms_text = ' '.join(symptoms).lower()
+        symptoms_text = ' '.join(str(s) for s in symptoms).lower()
         
         if any(keyword in symptoms_text for keyword in emergency_keywords):
             return 'EMERGENCY - Seek immediate medical attention'
@@ -512,13 +522,17 @@ class EnhancedAIAnalysisView(views.APIView):
         
         # Handle if entities_data is a list of dicts (spaCy entities format)
         elif isinstance(entities_data, list) and len(entities_data) > 0:
+            # Check if list is not empty first
+            if not entities_data:
+                return 'Based on symptom pattern matching'
+            
             # Extract text from entity dicts
-            if all(isinstance(e, dict) for e in entities_data):
-                symptoms_text = [e.get('text', str(e)) for e in entities_data]
+            if isinstance(entities_data[0], dict):
+                symptoms_text = [e.get('text', str(e)) for e in entities_data if isinstance(e, dict)]
                 if symptoms_text:
                     return f"Based on identified entities: {', '.join(symptoms_text)}"
             # If it's a list of strings
-            elif all(isinstance(e, str) for e in entities_data):
+            elif isinstance(entities_data[0], str):
                 return f"Based on symptoms: {', '.join(entities_data)}"
         
         return 'Based on symptom pattern matching'
