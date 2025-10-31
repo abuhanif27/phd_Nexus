@@ -1080,13 +1080,16 @@ cd frontend && python3 -m http.server 8080
 ## 📸 Screenshots
 
 ### Landing Page
+
 ![PhD NexusCare Landing Page](image-2.png)
 
 ### Dashboard
+
 ![Patient Dashboard Overview](image.png)
 ![Dashboard Features](image-4.png)
 
 ### Login/Register
+
 ![Login Screen](image-3.png)
 ![Registration Screen](image-1.png)
 
