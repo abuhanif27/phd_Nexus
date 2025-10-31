@@ -490,20 +490,36 @@ class EnhancedAIAnalysisView(views.APIView):
     def _generate_reasoning(self, entities_data):
         """
         Generate reasoning text from entities data.
-        Handles both dict and list formats safely.
+        Handles various entity formats safely.
         """
         if not entities_data:
             return 'Based on symptom pattern matching'
         
-        # Handle if entities_data is a dict with 'symptoms' key
+        symptoms_text = []
+        
+        # Handle if entities_data is a dict with 'symptoms' key (string list)
         if isinstance(entities_data, dict):
             symptoms_list = entities_data.get('symptoms', [])
-            if symptoms_list and len(symptoms_list) > 0:
-                return f"Based on symptoms analysis: {', '.join(symptoms_list)}"
+            if symptoms_list:
+                # If symptoms are strings
+                if all(isinstance(s, str) for s in symptoms_list):
+                    return f"Based on symptoms analysis: {', '.join(symptoms_list)}"
+                # If symptoms are dicts with 'text' key
+                elif all(isinstance(s, dict) for s in symptoms_list):
+                    symptoms_text = [s.get('text', str(s)) for s in symptoms_list]
+                    if symptoms_text:
+                        return f"Based on symptoms analysis: {', '.join(symptoms_text)}"
         
-        # Handle if entities_data is a list
+        # Handle if entities_data is a list of dicts (spaCy entities format)
         elif isinstance(entities_data, list) and len(entities_data) > 0:
-            return f"Based on symptoms analysis: {', '.join(entities_data)}"
+            # Extract text from entity dicts
+            if all(isinstance(e, dict) for e in entities_data):
+                symptoms_text = [e.get('text', str(e)) for e in entities_data]
+                if symptoms_text:
+                    return f"Based on identified entities: {', '.join(symptoms_text)}"
+            # If it's a list of strings
+            elif all(isinstance(e, str) for e in entities_data):
+                return f"Based on symptoms: {', '.join(entities_data)}"
         
         return 'Based on symptom pattern matching'
 
