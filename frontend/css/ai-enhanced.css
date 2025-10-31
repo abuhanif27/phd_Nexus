@@ -599,3 +599,136 @@
   color: var(--accent-teal);
   font-weight: bold;
 }
+
+/* Example Symptoms Dropdown Styles */
+#exampleSymptomsSection {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 217, 181, 0.03),
+    rgba(74, 144, 226, 0.03)
+  );
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+}
+
+#exampleSymptomsSection .dropdown-toggle {
+  background: white;
+  border: 2px solid var(--border-color);
+  color: var(--text-primary);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+#exampleSymptomsSection .dropdown-toggle:hover {
+  border-color: var(--secondary-blue);
+  background: rgba(74, 144, 226, 0.05);
+}
+
+#exampleSymptomsSection .dropdown-toggle:focus {
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+  border-color: var(--secondary-blue);
+}
+
+#exampleSymptomsSection .dropdown-menu {
+  border: 2px solid var(--secondary-blue);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-xl);
+  padding: 0.5rem 0;
+}
+
+#exampleSymptomsSection .dropdown-header {
+  color: var(--secondary-blue);
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem 0.5rem;
+  text-transform: none;
+}
+
+#exampleSymptomsSection .dropdown-header i {
+  color: var(--accent-teal);
+  margin-right: 0.5rem;
+}
+
+#exampleSymptomsSection .dropdown-item {
+  padding: 0.75rem 1.5rem;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+
+#exampleSymptomsSection .dropdown-item:hover {
+  background: linear-gradient(90deg, rgba(0, 217, 181, 0.08), transparent);
+  border-left-color: var(--accent-teal);
+  color: var(--secondary-blue);
+}
+
+#exampleSymptomsSection .dropdown-item small {
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+#exampleSymptomsSection .dropdown-item:hover small {
+  color: var(--text-primary);
+}
+
+#exampleSymptomsSection .dropdown-divider {
+  margin: 0.5rem 0;
+  border-top-color: var(--border-color);
+}
+
+#closeExamplesBtn {
+  transition: all 0.2s ease;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+#closeExamplesBtn:hover {
+  background: rgba(255, 0, 0, 0.1);
+  color: #dc3545;
+}
+
+/* Model Selector Styling */
+#modelSelectEnhanced {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234A90E2' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 12px;
+}
+
+#modelSelectEnhanced:hover {
+  border-color: var(--accent-teal) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 217, 181, 0.08),
+    rgba(74, 144, 226, 0.08)
+  );
+  box-shadow: 0 0 0 3px rgba(0, 217, 181, 0.1);
+}
+
+#modelSelectEnhanced:focus {
+  outline: none;
+  border-color: var(--accent-teal) !important;
+  box-shadow: 0 0 0 4px rgba(0, 217, 181, 0.15);
+}
+
+#modelSelectorGroup {
+  background: white;
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+#modelSelectorGroup:hover {
+  border-color: var(--secondary-blue);
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.1);
+}

@@ -4,46 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Health Analysis - PhD NexusCare</title>
-
-    <!-- Font Awesome -->
+    <link rel="stylesheet" href="css/style.css?v=4.0" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
-
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap"
       rel="stylesheet"
     />
-
-    <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=4.0" />
     <link rel="stylesheet" href="css/ai-enhanced.css" />
 
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-    <style>
-      /* Remove default active styling - use simple teal color like ai-insights */
-      .nav-link.active {
-        color: var(--accent-teal) !important;
-        font-weight: 600;
-      }
-
-      .nav-link {
-        transition: all 0.3s ease;
-      }
-
-      .nav-link:hover {
-        color: var(--accent-teal) !important;
-      }
-    </style>
+    <!-- Bootstrap JS (for dropdown) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
   </head>
   <body>
-    <!-- Navigation (Same as Dashboard) -->
+    <!-- Navigation -->
     <nav class="navbar">
       <div class="navbar-container">
         <a href="dashboard.html" class="logo">
@@ -55,8 +36,11 @@
           <li><a href="records.html" class="nav-link">Records</a></li>
           <li><a href="appointments.html" class="nav-link">Appointments</a></li>
           <li>
-            <a href="ai-analysis-enhanced.html" class="nav-link active"
-              >🤖 AI Analysis</a
+            <a
+              href="ai-insights.html"
+              class="nav-link"
+              style="color: var(--accent-teal)"
+              >AI Insights</a
             >
           </li>
           <li>
@@ -338,7 +322,7 @@
             history.
           </p>
           <ul class="mode-features">
-            <li>Deep learning model (PyTorch)</li>
+            <li>Nexus-Pro AI (Deep Thinking)</li>
             <li>Reviews all medical records</li>
             <li>Cross-references knowledge base</li>
             <li>Detailed recommendations</li>
@@ -422,18 +406,60 @@
           <div
             class="form-group"
             id="modelSelectorGroup"
-            style="margin-top: 0.5rem"
+            style="margin-top: 0.5rem; margin-bottom: 1rem"
           >
-            <label class="form-label">Model</label>
+            <label
+              class="form-label"
+              style="
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 0.5rem;
+                display: block;
+                font-size: 0.95rem;
+              "
+            >
+              <i class="fas fa-microchip"></i> AI Model
+            </label>
             <select
               id="modelSelectEnhanced"
               class="form-control"
-              style="width: 220px"
+              style="
+                width: 100%;
+                max-width: 280px;
+                padding: 0.25rem;
+                font-size: 0.85rem;
+                height: 2.5rem;
+                font-weight: 600;
+                text-align: center;
+                border: 2px solid var(--secondary-blue);
+                border-radius: var(--border-radius);
+                background: linear-gradient(
+                  135deg,
+                  rgba(74, 144, 226, 0.05),
+                  rgba(0, 217, 181, 0.05)
+                );
+                color: var(--secondary-blue);
+                cursor: pointer;
+                transition: all 0.3s ease;
+              "
+              onchange="updateModelDisplay()"
             >
-              <option value="auto">Auto</option>
-              <option value="pytorch">PyTorch (Deep)</option>
-              <option value="sklearn">Sklearn (Fast)</option>
+              <option value="auto">🤖 Nexus-Auto (Smart Selection)</option>
+              <option value="pytorch">🧠 Nexus-Pro (Deep Thinking)</option>
+              <option value="sklearn">⚡ Nexus-Lite (Fast)</option>
             </select>
+            <small
+              style="
+                display: block;
+                margin-top: 0.4rem;
+                color: var(--text-secondary);
+                font-size: 0.85rem;
+              "
+            >
+              <span id="modelDescription"
+                >Automatically selects the best model for your symptoms</span
+              >
+            </small>
           </div>
 
           <button
@@ -445,6 +471,110 @@
             <span id="btnText">🔍 Analyze Symptoms</span>
           </button>
         </form>
+
+        <!-- Example Symptoms Dropdown -->
+        <div
+          id="exampleSymptomsSection"
+          style="margin-top: 1.5rem; position: relative; display: none"
+        >
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 0.75rem;
+            "
+          >
+            <span
+              style="
+                font-weight: 600;
+                color: var(--text-secondary);
+                font-size: 0.9rem;
+              "
+            >
+              <i class="fas fa-lightbulb"></i> Try Example Symptoms
+            </span>
+            <button
+              id="closeExamplesBtn"
+              onclick="closeExamplesSection()"
+              style="
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--text-secondary);
+                font-size: 1.2rem;
+                padding: 0;
+                line-height: 1;
+              "
+              title="Close examples"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <!-- Simple Example Buttons -->
+          <div style="display: flex; flex-wrap: wrap; gap: 0.75rem">
+            <button
+              type="button"
+              class="btn btn-outline-primary"
+              onclick="fillSimpleExample('chest1')"
+              style="
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+                border: 2px solid var(--secondary-blue);
+                color: var(--secondary-blue);
+                background: white;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+              "
+              onmouseover="this.style.background='var(--secondary-blue)'; this.style.color='white';"
+              onmouseout="this.style.background='white'; this.style.color='var(--secondary-blue)';"
+            >
+              Chest pain example
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-outline-primary"
+              onclick="fillSimpleExample('skin1')"
+              style="
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+                border: 2px solid var(--secondary-blue);
+                color: var(--secondary-blue);
+                background: white;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+              "
+              onmouseover="this.style.background='var(--secondary-blue)'; this.style.color='white';"
+              onmouseout="this.style.background='white'; this.style.color='var(--secondary-blue)';"
+            >
+              Skin issues example
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-outline-primary"
+              onclick="fillSimpleExample('neuro1')"
+              style="
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+                border: 2px solid var(--secondary-blue);
+                color: var(--secondary-blue);
+                background: white;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+              "
+              onmouseover="this.style.background='var(--secondary-blue)'; this.style.color='white';"
+              onmouseout="this.style.background='white'; this.style.color='var(--secondary-blue)';"
+            >
+              Neurological example
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Results Container -->
@@ -495,6 +625,104 @@
           $details.slideUp(300);
           $btn.html('Show details <i class="fas fa-chevron-down"></i>');
         }
+      }
+
+      // Example symptoms functions
+      function closeExamplesSection() {
+        $("#exampleSymptomsSection").fadeOut(300, function () {
+          $(this).slideUp(200);
+        });
+        // Save to localStorage that user has closed the examples
+        localStorage.setItem("aiAnalysisExamplesClosed", "true");
+      }
+
+      // Check if this is first visit and show examples accordingly
+      function initializeExamplesSection() {
+        const hasClosed = localStorage.getItem("aiAnalysisExamplesClosed");
+        if (!hasClosed) {
+          // First time visitor - show the examples
+          $("#exampleSymptomsSection").fadeIn(400);
+        }
+      }
+
+      // Initialize on page load
+      $(document).ready(function () {
+        initializeExamplesSection();
+        updateModelDisplay(); // Initialize model description
+      });
+
+      // Update model description based on selection
+      function updateModelDisplay() {
+        const modelSelect = document.getElementById("modelSelectEnhanced");
+        const modelDescription = document.getElementById("modelDescription");
+        const selectedValue = modelSelect.value;
+
+        const descriptions = {
+          auto: "Automatically selects the best model for your symptoms",
+          pytorch: "Advanced deep learning for comprehensive analysis (5-15s)",
+          sklearn: "Ultra-fast machine learning for quick results (1-2s)",
+        };
+
+        modelDescription.textContent = descriptions[selectedValue] || "";
+
+        // Add visual feedback
+        $(modelSelect).css("border-color", "var(--accent-teal)");
+        setTimeout(() => {
+          $(modelSelect).css("border-color", "var(--secondary-blue)");
+        }, 300);
+      }
+
+      const exampleTexts = {
+        chest1:
+          "I have sharp chest pain on my left side that started 2 hours ago. It gets worse when I breathe deeply or cough. Also feeling short of breath and sweating.",
+        chest2:
+          "Experiencing tightness in my chest for the past hour, radiating to my left arm and jaw. Feeling nauseous and dizzy.",
+        skin1:
+          "I have a red, itchy rash on my arms and legs that appeared 3 days ago. The affected areas are slightly swollen and warm to touch. No fever but very uncomfortable.",
+        skin2:
+          "Noticed small, red bumps on my torso yesterday. They are very itchy, especially at night. Some have started to form blisters.",
+        neuro1:
+          "Severe throbbing headache on the right side of my head for 6 hours. Sensitive to light and sound. Feeling nauseous and have had two episodes of vomiting.",
+        neuro2:
+          "Experiencing sudden dizziness and difficulty maintaining balance for the past 2 hours. Room feels like it's spinning. Also have slight numbness in my left hand.",
+        flu1: "I have fever, headache, and body aches for 3 days. Temperature around 101°F. Also feeling tired, loss of appetite, and mild sore throat.",
+        flu2: "Experiencing chills, severe body aches, and dry cough for 2 days. Feel exhausted and have been sweating at night. Throat is scratchy and slightly painful.",
+      };
+
+      function fillExample(event, exampleKey) {
+        event.preventDefault();
+        const textarea = document.getElementById("symptoms");
+        textarea.value = exampleTexts[exampleKey];
+
+        // Highlight the textarea briefly
+        $(textarea).css("border-color", "var(--secondary-blue)");
+        setTimeout(() => {
+          $(textarea).css("border-color", "var(--border-color)");
+        }, 1000);
+
+        // Close dropdown
+        $("#examplesDropdown").dropdown("hide");
+
+        // Scroll to textarea
+        textarea.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      // Simple button example filler (without dropdown)
+      function fillSimpleExample(exampleKey) {
+        const textarea = document.getElementById("symptoms");
+        textarea.value = exampleTexts[exampleKey];
+
+        // Highlight the textarea briefly
+        $(textarea).css("border-color", "var(--accent-teal)");
+        $(textarea).css("box-shadow", "0 0 0 4px rgba(0, 217, 181, 0.15)");
+        setTimeout(() => {
+          $(textarea).css("border-color", "var(--border-color)");
+          $(textarea).css("box-shadow", "none");
+        }, 1000);
+
+        // Scroll to textarea
+        textarea.scrollIntoView({ behavior: "smooth", block: "center" });
+        textarea.focus();
       }
 
       let selectedMode = "quick"; // default mode
@@ -809,9 +1037,18 @@
                                     })
                                 </span>
                             </h2>
-                            <span class="confidence-badge ${confidenceClass}">
-                                ${confidenceText}
-                            </span>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <span class="confidence-badge ${confidenceClass}">
+                                    ${confidenceText}
+                                </span>
+                                <span style="padding: 0.35rem 0.75rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
+                                    🤖 ${
+                                      data.mode === "deep"
+                                        ? "Nexus-Pro"
+                                        : "Nexus-Lite"
+                                    }
+                                </span>
+                            </div>
                         </div>
                         
                         <div class="urgency-indicator ${urgencyClass}">

@@ -228,12 +228,7 @@ class EnhancedAIAnalysisView(views.APIView):
             'primary_recommendation': pytorch_result.get('specialist'),
             'confidence': pytorch_result.get('confidence'),
             'top_predictions': pytorch_result.get('top_predictions', []),
-            'model_reasoning': self._generate_reasoning(
-                entities.get('entities', {}),
-                pytorch_result,
-                historical_data,
-                knowledge_insights
-            ),
+            'model_reasoning': self._generate_reasoning(entities.get('entities', {})),
             'historical_context': historical_data if historical_data else 'No medical history available',
             'medical_knowledge': knowledge_insights,
             'processing_time': f"{processing_time}s",
