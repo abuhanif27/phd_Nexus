@@ -208,17 +208,24 @@ if (document.getElementById("registerForm")) {
 // Check if user is already logged in
 function checkAuth() {
   const token = localStorage.getItem("accessToken");
-  const protectedPages = ["dashboard", "appointments", "profile", "records", "ai-insights", "ai-analysis"];
+  const protectedPages = [
+    "dashboard",
+    "appointments",
+    "profile",
+    "records",
+    "ai-insights",
+    "ai-analysis",
+  ];
   const currentPath = window.location.pathname;
-  
+
   // Check if current page is protected
-  const isProtected = protectedPages.some(page => currentPath.includes(page));
-  
+  const isProtected = protectedPages.some((page) => currentPath.includes(page));
+
   if (!token && isProtected) {
     alert("Please login to access this page");
     window.location.href = "login.html";
   }
-  
+
   return !!token;
 }
 
