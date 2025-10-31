@@ -167,9 +167,17 @@
             </label>
           </div>
 
-          <div class="form-group" id="modelSelectorGroup" style="margin-top: 0.5rem;">
+          <div
+            class="form-group"
+            id="modelSelectorGroup"
+            style="margin-top: 0.5rem"
+          >
             <label class="form-label">Model</label>
-            <select id="modelSelectEnhanced" class="form-control" style="width: 220px;">
+            <select
+              id="modelSelectEnhanced"
+              class="form-control"
+              style="width: 220px"
+            >
               <option value="auto">Auto</option>
               <option value="pytorch">PyTorch (Deep)</option>
               <option value="sklearn">Sklearn (Fast)</option>
@@ -293,7 +301,8 @@
           }
 
           // Call API
-          const model = document.getElementById('modelSelectEnhanced')?.value || 'auto';
+          const model =
+            document.getElementById("modelSelectEnhanced")?.value || "auto";
           const response = await fetch(
             "http://localhost:8000/api/ai/analyze-enhanced/",
             {
@@ -306,7 +315,7 @@
                 symptoms: symptoms,
                 mode: selectedMode,
                 include_history: includeHistory,
-                model: model
+                model: model,
               }),
             }
           );

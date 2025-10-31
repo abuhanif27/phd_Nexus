@@ -83,17 +83,22 @@ document
 
     try {
       // New: read mode and model from UI (short/deep and auto/pytorch/sklearn)
-      const uiMode = document.getElementById('analysisMode')?.value || 'short';
-      const model = document.getElementById('modelSelect')?.value || 'auto';
+      const uiMode = document.getElementById("analysisMode")?.value || "short";
+      const model = document.getElementById("modelSelect")?.value || "auto";
 
       // Map UI mode to backend mode
-      const mode = uiMode === 'deep' ? 'deep' : 'quick';
-      const include_history = uiMode === 'deep' ? true : false;
+      const mode = uiMode === "deep" ? "deep" : "quick";
+      const include_history = uiMode === "deep" ? true : false;
 
       const response = await fetch(`${API_BASE_URL}/ai/analyze-enhanced/`, {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ symptoms: symptoms, mode: mode, include_history: include_history, model: model }),
+        body: JSON.stringify({
+          symptoms: symptoms,
+          mode: mode,
+          include_history: include_history,
+          model: model,
+        }),
       });
 
       if (response.status === 401) {
@@ -109,12 +114,17 @@ document
           // Convert enhanced response to legacy-friendly shape for displaySymptomResults
           const out = {};
           const analysis = data.analysis || {};
-          out.specialist = analysis.recommended_specialist || analysis.primary_recommendation || null;
+          out.specialist =
+            analysis.recommended_specialist ||
+            analysis.primary_recommendation ||
+            null;
           out.confidence = analysis.confidence || 0;
-          out.model_type = data.model || analysis.model_type || 'auto';
-          out.alternatives = analysis.top_predictions || data.recommendations || [];
+          out.model_type = data.model || analysis.model_type || "auto";
+          out.alternatives =
+            analysis.top_predictions || data.recommendations || [];
           // Pass through entities if present
-          out.entities = analysis.extracted_symptoms || analysis.extracted_entities || {};
+          out.entities =
+            analysis.extracted_symptoms || analysis.extracted_entities || {};
           displaySymptomResults(out);
         } else {
           displaySymptomResults(data);
