@@ -32,6 +32,8 @@ All features are implemented and working:
 
 - **[ai.md](ai.md)** - AI/ML models, training, and features- ✅ Appointment Booking System
 
+- **[TIMEZONE.md](TIMEZONE.md)** - Timezone configuration (Bangladesh time + international support)
+
 - ✅ AI-Powered Symptom Analysis
 
 ---- ✅ Medical Text Summarization

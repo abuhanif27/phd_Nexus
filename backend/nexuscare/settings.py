@@ -104,9 +104,14 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+
+# Timezone Settings - Server time set to Bangladesh (Asia/Dhaka)
+# USE_TZ=True enables timezone-aware datetimes
+# All times stored in DB as UTC, displayed as Bangladesh time in admin
+# Frontend can convert to user's local timezone using JavaScript
+TIME_ZONE = 'Asia/Dhaka'  # Bangladesh Standard Time (BST = UTC+6)
 USE_I18N = True
-USE_TZ = True
+USE_TZ = True  # Store UTC in DB, convert to TIME_ZONE for display
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
