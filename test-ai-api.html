@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test AI API</title>
+</head>
+<body>
+    <h1>Test AI API Response</h1>
+    <button onclick="testAPI()">Test API</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testAPI() {
+            const output = document.getElementById('output');
+            output.textContent = 'Testing...';
+            
+            try {
+                // Get token from localStorage
+                const token = localStorage.getItem('accessToken');
+                
+                if (!token) {
+                    output.textContent = 'ERROR: No token found. Please login first.';
+                    return;
+                }
+                
+                output.textContent += '\n\nToken found: ' + token.substring(0, 50) + '...';
+                
+                // Make request
+                output.textContent += '\n\nSending request...';
+                
+                const response = await fetch('http://localhost:8000/api/ai/analyze-enhanced/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        symptoms: 'headache and fever',
+                        mode: 'quick',
+                        model: 'auto'
+                    })
+                });
+                
+                output.textContent += '\n\nResponse status: ' + response.status;
+                output.textContent += '\nResponse headers: ' + JSON.stringify([...response.headers.entries()]);
+                
+                // Get raw text first
+                const responseText = await response.text();
+                output.textContent += '\n\nRaw response (first 500 chars):\n' + responseText.substring(0, 500);
+                
+                // Try to parse JSON
+                try {
+                    const data = JSON.parse(responseText);
+                    output.textContent += '\n\n=== PARSED JSON ===\n' + JSON.stringify(data, null, 2);
+                } catch (e) {
+                    output.textContent += '\n\n=== JSON PARSE ERROR ===\n' + e.message;
+                }
+                
+            } catch (error) {
+                output.textContent += '\n\n=== FETCH ERROR ===\n' + error.message + '\n' + error.stack;
+            }
+        }
+    </script>
+</body>
+</html>
