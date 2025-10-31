@@ -1090,8 +1090,7 @@ cd frontend && python3 -m http.server 8080
 
 ### Login/Register
 
-![Login Screen](image-3.png)
-![Registration Screen](image-1.png)
+![Registration Overview](image-3.png)
 
 ---
 
