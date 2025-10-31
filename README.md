@@ -25,7 +25,6 @@ This project has organized documentation:
 - **[frontend.md](frontend.md)** - Frontend pages, design system, and features
 - **[backend.md](backend.md)** - Backend API, database, and setup details
 - **[ai.md](ai.md)** - AI/ML models, training, and features
-- **[TIMEZONE.md](TIMEZONE.md)** - Timezone configuration (Bangladesh time + international support)
 
 ## ⚠️ IMPORTANT for First-Time Users
 
@@ -36,6 +35,7 @@ This project has organized documentation:
 - **How?** See **[SETUP.md](SETUP.md)** for complete instructions
 
 **Quick command:**
+
 ```bash
 cd backend
 source .venv/bin/activate

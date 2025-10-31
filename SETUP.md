@@ -3,6 +3,7 @@
 ## ⚠️ IMPORTANT: AI Models Not Included
 
 **Why are AI model files missing?**
+
 - GitHub has a 100 MB file size limit per file
 - Our trained PyTorch model is 253 MB (too large!)
 - The scikit-learn model files (.joblib) are also excluded
@@ -13,10 +14,12 @@
 Before starting, make sure you have:
 
 1. **Python 3.10 or newer**
+
    - Download: https://www.python.org/downloads/
    - ✅ During installation, check "Add Python to PATH"
 
 2. **Tesseract OCR** (for reading text from medical documents)
+
    - **Windows**: https://github.com/UB-Mannheim/tesseract/wiki
    - **Mac**: Open Terminal → `brew install tesseract`
    - **Linux**: Open Terminal → `sudo apt-get install tesseract-ocr`
@@ -39,6 +42,7 @@ cd phd_Nexus
 ### Step 2: Set Up Backend
 
 **On Windows:**
+
 ```bash
 # Go to backend folder
 cd backend
@@ -66,6 +70,7 @@ python manage.py seed_demo
 ```
 
 **On Mac/Linux:**
+
 ```bash
 # Go to backend folder
 cd backend
@@ -115,6 +120,7 @@ chmod +x train_all_models.sh  # On Mac/Linux
 ```
 
 **What to expect:**
+
 ```
 Training specialist classifier...
 Loading data from: /path/to/backend/data/symptoms_train.csv
@@ -127,6 +133,7 @@ Model saved to: /path/to/backend/ai_models/specialist_clf_sklearn.joblib
 ```
 
 **After successful training, you'll see:**
+
 - Files created in `backend/ai_models/` directory
 - `specialist_clf_sklearn.joblib` (scikit-learn model)
 - OR `specialist_clf_pytorch.pt` (PyTorch model)
@@ -140,6 +147,7 @@ python manage.py runserver
 ```
 
 **You should see:**
+
 ```
 ✓ Loaded specialist classifier
 System check identified no issues (0 silenced).
@@ -175,6 +183,7 @@ Open your browser and visit:
 - **🔌 API Docs:** http://localhost:8000/api
 
 **Demo Accounts (if you loaded demo data):**
+
 - Patient: `patient@example.com` / `Pass1234!`
 - Doctor: `doctor@example.com` / `Pass1234!`
 
@@ -183,17 +192,20 @@ Open your browser and visit:
 Instead of running each command separately, use our quick-start scripts:
 
 **All-in-One Launch:**
+
 ```bash
 # From project root directory
 ./start-all.sh
 ```
 
 This will:
+
 - ✅ Start backend server
 - ✅ Start frontend server
 - ✅ Open browser automatically
 
 **Stop All Services:**
+
 ```bash
 ./stop-all.sh
 ```
@@ -205,6 +217,7 @@ This will:
 **Problem:** You haven't trained the AI models yet.
 
 **Solution:**
+
 ```bash
 cd backend
 source .venv/bin/activate  # or .venv\Scripts\activate on Windows
@@ -216,6 +229,7 @@ python manage.py train_sklearn
 **Problem:** Virtual environment not activated.
 
 **Solution:**
+
 ```bash
 cd backend
 source .venv/bin/activate  # or .venv\Scripts\activate on Windows
@@ -232,6 +246,7 @@ source .venv/bin/activate  # or .venv\Scripts\activate on Windows
 **Problem:** Another application is using the port.
 
 **Solution:**
+
 ```bash
 # Find and kill the process
 # On Linux/Mac:
@@ -248,6 +263,7 @@ taskkill /PID <PID_NUMBER> /F
 **Problem:** Model files are missing or not loaded.
 
 **Solution:**
+
 1. Check if files exist in `backend/ai_models/`
 2. If missing, train the models (Step 3)
 3. Restart the backend server
@@ -273,12 +289,14 @@ phd_Nexus/
 ## 🎓 Understanding the Training Data
 
 The AI models are trained on:
+
 - **File:** `backend/data/symptoms_train.csv`
 - **Size:** ~1200 medical symptom records
 - **Specialists:** 11 categories (Cardiologist, Dermatologist, etc.)
 - **Format:** Symptom text → Recommended specialist
 
 **Example:**
+
 ```
 symptom,specialist
 "chest pain shortness of breath","Cardiologist"
@@ -315,7 +333,6 @@ If all the above checks pass, congratulations! Your PhD NexusCare installation i
 - **[backend.md](backend.md)** - Backend API documentation
 - **[frontend.md](frontend.md)** - Frontend features guide
 - **[ai.md](ai.md)** - AI models detailed explanation
-- **[TIMEZONE.md](TIMEZONE.md)** - Timezone configuration
 - **[API_DOCS.md](backend/API_DOCS.md)** - Complete API reference
 
 ## 🆘 Still Having Issues?
