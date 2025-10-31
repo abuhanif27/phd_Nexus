@@ -1,4 +1,4 @@
-# PhD NexusCare API Documentation# PhD NexusCare API Documentation
+# PhD NexusCare API Documentation
 
 Base URL: `http://localhost:8000/api`Base URL: `http://localhost:8000/api`
 

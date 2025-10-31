@@ -1,0 +1,97 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | PhD NexusCare{% endblock %}
+
+{% block branding %}
+<div id="site-name" style="padding: 10px 20px;">
+    <h1 style="margin: 0; font-size: 24px; color: #4a90e2; font-weight: 600;">
+        🏥 PhD NexusCare
+    </h1>
+    <p style="margin: 5px 0 0 0; font-size: 12px; color: #6b7280;">
+        Healthcare Platform Administration
+    </p>
+</div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    /* Custom PhD NexusCare Admin Styles */
+    #header {
+        background: linear-gradient(135deg, #4a90e2 0%, #2c5282 100%);
+        color: white;
+    }
+    
+    #branding h1 {
+        color: white !important;
+    }
+    
+    .module h2, .module caption, .inline-group h2 {
+        background: #4a90e2;
+        color: white;
+    }
+    
+    a:link, a:visited {
+        color: #4a90e2;
+    }
+    
+    .button, input[type=submit], input[type=button], .submit-row input, button {
+        background: #4a90e2;
+        color: white;
+    }
+    
+    .button:hover, input[type=submit]:hover, input[type=button]:hover {
+        background: #2c5282;
+    }
+    
+    .button.default, input[type=submit].default, .submit-row input.default {
+        background: #00d9b5;
+    }
+    
+    .button.default:hover {
+        background: #00c4a3;
+    }
+    
+    .app-icon {
+        display: inline-block;
+        margin-right: 8px;
+        font-size: 18px;
+    }
+    
+    /* Customize breadcrumbs */
+    div.breadcrumbs {
+        background: #f8f9fd;
+        color: #2c5282;
+    }
+    
+    div.breadcrumbs a {
+        color: #4a90e2;
+    }
+    
+    /* Customize sidebar */
+    #content-related h3 {
+        background: #4a90e2;
+        color: white;
+    }
+    
+    /* Footer customization */
+    #footer {
+        color: #6b7280;
+        padding: 20px;
+        text-align: center;
+        border-top: 1px solid #e5e7eb;
+    }
+</style>
+{% endblock %}
+
+{% block footer %}
+<div id="footer">
+    <p style="margin: 0;">
+        <strong>PhD NexusCare</strong> - Healthcare Platform Administration<br>
+        <small style="color: #9ca3af;">Version 1.0 | Powered by Django</small>
+    </p>
+</div>
+{% endblock %}

@@ -6,6 +6,11 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+# Customize Django Admin
+admin.site.site_header = "PhD NexusCare Administration"
+admin.site.site_title = "PhD NexusCare Admin Portal"
+admin.site.index_title = "Welcome to PhD NexusCare Healthcare Platform"
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('apps.users.urls')),

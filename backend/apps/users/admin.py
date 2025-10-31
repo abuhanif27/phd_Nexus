@@ -48,16 +48,16 @@ class UserAdmin(BaseUserAdmin):
     form = UserChangeForm
     add_form = UserCreationForm
 
-    list_display = ('email', 'role', 'is_staff', 'is_active', 'created_at')
-    list_filter = ('role', 'is_staff', 'is_active', 'twofa_enabled')
+    list_display = ('email', 'role', 'phone', 'is_active', 'is_staff', 'twofa_enabled', 'created_at')
+    list_filter = ('role', 'is_staff', 'is_active', 'twofa_enabled', 'created_at')
     fieldsets = (
-        (None, {'fields': ('email', 'password')}),
-        ('Personal info', {'fields': ('phone', 'role', 'twofa_enabled', 'twofa_secret')}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-        ('Important dates', {'fields': ('created_at', 'last_login')}),
+        ('🔐 Authentication', {'fields': ('email', 'password')}),
+        ('👤 Personal Information', {'fields': ('phone', 'role', 'twofa_enabled', 'twofa_secret')}),
+        ('🛡️ Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('📅 Important Dates', {'fields': ('created_at', 'last_login')}),
     )
     add_fieldsets = (
-        (None, {
+        ('Create New User', {
             'classes': ('wide',),
             'fields': ('email', 'role', 'phone', 'password1', 'password2', 'is_staff', 'is_superuser'),
         }),
@@ -66,14 +66,30 @@ class UserAdmin(BaseUserAdmin):
     search_fields = ('email', 'phone')
     ordering = ('-created_at',)
     filter_horizontal = ('groups', 'user_permissions')
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related()
 
 
 @admin.register(OTPToken)
 class OTPTokenAdmin(admin.ModelAdmin):
-    list_display = ('user', 'code', 'purpose', 'used', 'created_at', 'expires_at')
-    list_filter = ('purpose', 'used')
+    list_display = ('user', 'code_masked', 'purpose', 'used', 'is_expired', 'created_at', 'expires_at')
+    list_filter = ('purpose', 'used', 'created_at')
     search_fields = ('user__email', 'code')
     readonly_fields = ('created_at',)
+    
+    def code_masked(self, obj):
+        """Mask OTP code for security"""
+        return f"***{obj.code[-3:]}"
+    code_masked.short_description = 'OTP Code'
+    
+    def is_expired(self, obj):
+        """Check if OTP is expired"""
+        from django.utils import timezone
+        expired = obj.expires_at < timezone.now()
+        return "✅ Valid" if not expired and not obj.used else "❌ Expired"
+    is_expired.short_description = 'Status'
 
 
 admin.site.register(User, UserAdmin)
