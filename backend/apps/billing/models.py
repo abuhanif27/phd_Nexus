@@ -12,16 +12,17 @@ class Invoice(models.Model):
     Payment invoices (stub for local demo).
     """
     STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('paid', 'Paid'),
-        ('void', 'Void'),
+        ('pending', 'Pending'),
+        ('hold', 'Hold'),
+        ('cancelled', 'Cancelled'),
+        ('complete', 'Complete'),
     ]
     
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='invoices')
     doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
     amount_cents = models.IntegerField()
     currency = models.CharField(max_length=3, default='USD')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     external_ref = models.CharField(max_length=100, blank=True, null=True)
     ts = models.DateTimeField(default=timezone.now)
     
