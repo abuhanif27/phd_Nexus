@@ -106,7 +106,7 @@ class EnhancedAIAnalysisView(views.APIView):
                 'extracted_symptoms': entities.get('entities', {}),
                 'recommended_specialist': result.get('specialist'),
                 'confidence': result.get('confidence'),
-                'reasoning': f"Based on symptoms analysis: {', '.join(entities.get('entities', {}).get('symptoms', []))}" if entities.get('entities') else 'Based on symptom pattern matching',
+                'reasoning': self._generate_reasoning(entities.get('entities', {})),
                 'processing_time': f"{processing_time}s"
             },
             'recommendations': [
@@ -486,6 +486,26 @@ class EnhancedAIAnalysisView(views.APIView):
             'warnings': warnings if warnings else ['No immediate emergency warnings'],
             'next_steps': next_steps
         }
+    
+    def _generate_reasoning(self, entities_data):
+        """
+        Generate reasoning text from entities data.
+        Handles both dict and list formats safely.
+        """
+        if not entities_data:
+            return 'Based on symptom pattern matching'
+        
+        # Handle if entities_data is a dict with 'symptoms' key
+        if isinstance(entities_data, dict):
+            symptoms_list = entities_data.get('symptoms', [])
+            if symptoms_list and len(symptoms_list) > 0:
+                return f"Based on symptoms analysis: {', '.join(symptoms_list)}"
+        
+        # Handle if entities_data is a list
+        elif isinstance(entities_data, list) and len(entities_data) > 0:
+            return f"Based on symptoms analysis: {', '.join(entities_data)}"
+        
+        return 'Based on symptom pattern matching'
 
 
 # Register the new view
