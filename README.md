@@ -18,33 +18,33 @@
 
 ## 📚 Documentation
 
-## 🎉 **COMPLETE & READY TO USE!**
-
 This project has organized documentation:
 
-All features are implemented and working:
-
-- **README.md** (this file) - Getting started guide
-
-- **[frontend.md](frontend.md)** - Frontend pages, design system, and features- ✅ Beautiful Frontend with 60-30-10 Design
-
-- **[backend.md](backend.md)** - Backend API, database, and setup details - ✅ Medical Records Upload & Management
-
-- **[ai.md](ai.md)** - AI/ML models, training, and features- ✅ Appointment Booking System
-
+- **🚀 [SETUP.md](SETUP.md)** - **START HERE!** Complete beginner-friendly setup guide
+- **README.md** (this file) - Project overview and features
+- **[frontend.md](frontend.md)** - Frontend pages, design system, and features
+- **[backend.md](backend.md)** - Backend API, database, and setup details
+- **[ai.md](ai.md)** - AI/ML models, training, and features
 - **[TIMEZONE.md](TIMEZONE.md)** - Timezone configuration (Bangladesh time + international support)
 
-- ✅ AI-Powered Symptom Analysis
+## ⚠️ IMPORTANT for First-Time Users
 
----- ✅ Medical Text Summarization
+**AI model files (.pt, .joblib) are NOT included in this repository!**
 
-- ✅ CORS Configured & Working
+- **Why?** They're too large for GitHub (253 MB, limit is 100 MB)
+- **What to do?** Train the models on your computer (takes 30 seconds)
+- **How?** See **[SETUP.md](SETUP.md)** for complete instructions
 
-## 🎯 What is This?- ✅ Full API Integration
+**Quick command:**
+```bash
+cd backend
+source .venv/bin/activate
+python manage.py train_sklearn
+```
 
-PhD NexusCare is a complete healthcare platform that helps you:**Quick Start:** `./start-all.sh` - Opens http://localhost:8080
+---
 
-- 📋 **Manage Medical Records** - Upload and organize your medical documents---
+## 🎯 What is This?
 
 - 📅 **Book Appointments** - Schedule appointments with doctors
 
