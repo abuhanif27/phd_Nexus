@@ -1081,20 +1081,15 @@ cd frontend && python3 -m http.server 8080
 
 ```
 [Landing Page]
-- Hero with gradient design
-- Feature cards showcase
-- Technology stack display
+![alt text](image-2.png)
 
 [Dashboard]
-- Stats cards with animations
-- Recent records table
-- Upcoming appointments
-- Quick action cards
+![alt text](image.png)
+![alt text](image-4.png)
 
 [Login/Register]
-- Centered auth cards
-- Demo credentials
-- Loading states
+![alt text](image-3.png)
+![alt text](image-1.png)
 ```
 
 ---
