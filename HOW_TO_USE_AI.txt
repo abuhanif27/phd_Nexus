@@ -1,0 +1,144 @@
+╔══════════════════════════════════════════════════════════════════╗
+║         🎯 HOW TO USE AI ANALYSIS - STEP BY STEP                 ║
+╚══════════════════════════════════════════════════════════════════╝
+
+⚠️  IMPORTANT: YOU MUST LOGIN FIRST! ⚠️
+
+┌──────────────────────────────────────────────────────────────────┐
+│ STEP 1: LOGIN                                                    │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. Open: http://localhost:8080/login.html                      │
+│  2. Enter your email and password                               │
+│  3. Click "Login"                                               │
+│  4. Wait for redirect to dashboard                              │
+│                                                                  │
+│  ✅ You're now logged in!                                        │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│ STEP 2: OPEN AI ANALYSIS PAGE                                   │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. Open: http://localhost:8080/ai-analysis-enhanced.html       │
+│                                                                  │
+│  ✅ If you see yellow banner "Not Logged In":                    │
+│     → Click the login link and go back to STEP 1                │
+│                                                                  │
+│  ✅ If NO banner appears:                                        │
+│     → You're good to go! Continue to STEP 3                     │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│ STEP 3: SELECT ANALYSIS MODE                                    │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Choose ONE:                                                    │
+│                                                                  │
+│  ⚡ Quick Answer                                                 │
+│  ├─ Fast results (1-2 seconds)                                  │
+│  ├─ Good for simple symptoms                                    │
+│  └─ Click the Quick Answer card                                 │
+│                                                                  │
+│  �� Deep Analysis                                                │
+│  ├─ Comprehensive (5-15 seconds)                                │
+│  ├─ Includes medical history                                    │
+│  └─ Click the Deep Analysis card                                │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│ STEP 4: ENTER SYMPTOMS                                          │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  In the text area, describe your symptoms:                      │
+│                                                                  │
+│  Example:                                                       │
+│  "I have fever for 2 days, headache, and body aches.           │
+│   Also feeling tired and loss of appetite."                     │
+│                                                                  │
+│  💡 Tip: Be specific about:                                     │
+│     - Duration (how long?)                                      │
+│     - Severity (mild/moderate/severe?)                          │
+│     - Any triggers or patterns                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│ STEP 5: SELECT MODEL (Optional)                                 │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Model dropdown (default: Auto):                                │
+│                                                                  │
+│  • Auto        → System picks best model                        │
+│  • PyTorch     → Deep learning (more accurate, slower)          │
+│  • Sklearn     → Fast ML (quicker, good accuracy)               │
+│                                                                  │
+│  💡 Tip: Leave on "Auto" if unsure                              │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│ STEP 6: ANALYZE                                                  │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. Click the green button:                                     │
+│     - "⚡ Quick Analysis" or                                     │
+│     - "🧠 Deep Analysis"                                         │
+│                                                                  │
+│  2. Wait for analysis:                                          │
+│     - Animation appears                                         │
+│     - Progress steps shown (for Deep mode)                      │
+│                                                                  │
+│  3. View results:                                               │
+│     - Recommended specialist                                    │
+│     - Confidence score                                          │
+│     - Recommendations                                           │
+│     - Next steps                                                │
+└──────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════╗
+║                    TROUBLESHOOTING                               ║
+╚══════════════════════════════════════════════════════════════════╝
+
+❌ Error: "Failed to analyze symptoms"
+   → You're not logged in
+   → Solution: Go back to STEP 1 and login
+
+❌ Yellow banner appears saying "Not Logged In"
+   → Your session expired
+   → Solution: Click the login link
+
+❌ Nothing happens when clicking analyze
+   → Check browser console (F12 → Console tab)
+   → Look for red error messages
+   → Contact support with screenshot
+
+❌ Backend error
+   → Make sure backend is running:
+     cd backend && python3 manage.py runserver
+   → Check: http://localhost:8000
+
+╔══════════════════════════════════════════════════════════════════╗
+║                    QUICK TEST                                    ║
+╚══════════════════════════════════════════════════════════════════╝
+
+Test if you're logged in:
+1. Press F12 (open developer tools)
+2. Go to Console tab
+3. Type: localStorage.getItem('accessToken')
+4. Press Enter
+
+Result:
+• If shows a long string → ✅ You're logged in
+• If shows "null"       → ❌ You need to login
+
+╔══════════════════════════════════════════════════════════════════╗
+║                        SUMMARY                                   ║
+╚══════════════════════════════════════════════════════════════════╝
+
+✅ Login → Open AI page → Select mode → Enter symptoms → Analyze
+
+⚠️  THE #1 REASON FOR ERRORS: NOT LOGGED IN!
+
+💡 Always check the yellow banner at the top of the page.
+   If you see it, you need to login first!
+
+🎉 That's it! Enjoy using the AI analysis!
