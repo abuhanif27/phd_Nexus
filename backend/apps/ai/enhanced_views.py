@@ -118,7 +118,18 @@ class EnhancedAIAnalysisView(views.APIView):
             'next_steps': {
                 'action': 'Book appointment with recommended specialist',
                 'urgency': self._assess_urgency(entities.get('entities', {})),
-                'preparation': 'Note down: When symptoms started, severity, any triggers'
+                'preparation': [
+                    'Note when symptoms started',
+                    'Track symptom severity',
+                    'List any triggers or patterns',
+                    'Prepare list of current medications'
+                ],
+                'monitoring': [
+                    'Track symptom changes daily',
+                    'Note any worsening symptoms',
+                    'Record symptom intensity (1-10 scale)',
+                    'Seek immediate care if symptoms worsen'
+                ]
             }
         })
     
