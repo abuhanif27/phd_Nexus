@@ -7,6 +7,7 @@ from .views import (
     PatientSummaryView, BuildIndexView, TextSummaryView, HealthAnalysisView,
     ModelStatusView
 )
+from .enhanced_views import enhanced_ai_analysis
 
 urlpatterns = [
     path('symptoms/analyze/', SymptomAnalyzeView.as_view(), name='symptoms_analyze'),
@@ -16,4 +17,6 @@ urlpatterns = [
     path('ai/build-index/', BuildIndexView.as_view(), name='ai_build_index'),
     path('health-analysis/', HealthAnalysisView.as_view(), name='health_analysis'),
     path('models/status/', ModelStatusView.as_view(), name='model_status'),
+    # New enhanced AI analysis endpoint
+    path('ai/analyze-enhanced/', enhanced_ai_analysis, name='ai_analyze_enhanced'),
 ]

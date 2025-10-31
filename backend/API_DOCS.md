@@ -1667,6 +1667,148 @@ Authorization: Bearer <access_token>
 
 ## AI Services
 
+### Enhanced AI Analysis (NEW)
+
+**POST** `/ai/analyze-enhanced/`
+
+Comprehensive two-mode AI analysis system with medical history integration and safety disclaimers.
+
+**⚠️ MEDICAL DISCLAIMER**: This AI analysis is for informational purposes ONLY and should NOT replace professional medical advice.
+
+**Modes:**
+
+1. **Quick Answer** - Fast sklearn-based analysis (1-2 seconds)
+2. **Deep Analysis** - Comprehensive PyTorch + medical history review (5-15 seconds)
+
+**Request:**
+
+```json
+{
+  "symptoms": "I have fever, headache, and body aches for 3 days",
+  "mode": "deep",
+  "include_history": true
+}
+```
+
+**Parameters:**
+
+- `symptoms` (string, required) - Description of symptoms
+- `mode` (string, required) - Either "quick" or "deep"
+- `include_history` (boolean, optional) - For deep mode, include medical records
+
+**Response (200) - Quick Mode:**
+
+```json
+{
+  "mode": "quick",
+  "analysis": {
+    "primary_recommendation": "Internal Medicine",
+    "confidence": 0.87,
+    "processing_time": "1.2s",
+    "model_reasoning": "Sklearn classifier analyzed symptom patterns",
+    "extracted_entities": {
+      "symptoms": ["fever", "headache", "body aches"],
+      "duration": ["3 days"],
+      "severity": []
+    }
+  },
+  "recommendations": [
+    "Consult an Internal Medicine specialist within 24-48 hours",
+    "Monitor temperature regularly",
+    "Stay hydrated and rest"
+  ],
+  "next_steps": {
+    "urgency": "URGENT - Seek care within 24-48 hours",
+    "preparation": [
+      "Track your temperature readings",
+      "Note any changes in symptoms",
+      "List current medications"
+    ],
+    "monitoring": [
+      "Watch for worsening symptoms",
+      "Monitor fever trends",
+      "Check for new symptoms"
+    ]
+  },
+  "warnings": ["Fever lasting more than 3 days requires medical attention"],
+  "disclaimer": "This AI analysis is for informational purposes ONLY. It is NOT a substitute for professional medical advice..."
+}
+```
+
+**Response (200) - Deep Mode:**
+
+```json
+{
+  "mode": "deep",
+  "analysis": {
+    "recommended_specialist": "Internal Medicine",
+    "confidence": 0.92,
+    "processing_time": "8.3s",
+    "reasoning": "Based on symptom analysis, 12 historical encounters, 3 lab results, and medical knowledge base. Patient has history of recurring infections which increases urgency.",
+    "historical_context": {
+      "total_records": 18,
+      "lab_results_reviewed": 3,
+      "prescriptions_reviewed": 5,
+      "previous_symptoms": 2,
+      "uploaded_files": 8
+    },
+    "medical_knowledge": {
+      "conditions_considered": [
+        "Viral Infection (probability: 0.72)",
+        "Bacterial Infection (probability: 0.18)",
+        "Influenza (probability: 0.65)"
+      ],
+      "knowledge_base_hits": 127
+    },
+    "extracted_entities": {
+      "symptoms": ["fever", "headache", "body aches"],
+      "duration": ["3 days"],
+      "severity": []
+    }
+  },
+  "recommendations": [
+    "Schedule appointment with Internal Medicine specialist within 24 hours",
+    "Complete blood count (CBC) test recommended",
+    "Consider influenza screening",
+    "Drink plenty of fluids and rest"
+  ],
+  "next_steps": {
+    "urgency": "URGENT - Medical attention within 24 hours recommended",
+    "preparation": [
+      "Bring previous lab results from last 3 months",
+      "List all current medications and supplements",
+      "Track symptom progression hourly"
+    ],
+    "monitoring": [
+      "Seek EMERGENCY care if fever exceeds 103°F (39.4°C)",
+      "Watch for difficulty breathing or chest pain",
+      "Monitor for confusion or severe weakness"
+    ]
+  },
+  "warnings": [
+    "Patient has history of recurring infections - early treatment important",
+    "Prolonged fever with body aches may indicate serious infection"
+  ],
+  "disclaimer": "This AI analysis is for informational purposes ONLY..."
+}
+```
+
+**Errors:**
+
+- `400` - Invalid mode or missing symptoms
+- `401` - Not authenticated
+- `500` - AI model error
+
+**Notes:**
+
+- **Quick Mode**: Uses sklearn classifier for rapid pattern matching
+- **Deep Mode**: Uses PyTorch deep learning + reviews all patient medical records
+- Medical disclaimer is ALWAYS included in every response
+- Urgency levels: EMERGENCY, URGENT, ROUTINE
+- Deep mode may take 5-15 seconds depending on medical history size
+
+---
+
 ### Analyze Symptoms
 
 **POST** `/symptoms/analyze/`

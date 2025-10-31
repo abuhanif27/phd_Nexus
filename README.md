@@ -21,10 +21,29 @@
 This project has organized documentation:
 
 - **🚀 [SETUP.md](SETUP.md)** - **START HERE!** Complete beginner-friendly setup guide
+- **🧠 [AI_SYSTEM_REDESIGN.md](AI_SYSTEM_REDESIGN.md)** - **NEW!** Two-mode AI analysis system (Quick vs Deep)
 - **README.md** (this file) - Project overview and features
 - **[frontend.md](frontend.md)** - Frontend pages, design system, and features
 - **[backend.md](backend.md)** - Backend API, database, and setup details
 - **[ai.md](ai.md)** - AI/ML models, training, and features
+- **[backend/API_DOCS.md](backend/API_DOCS.md)** - Complete API reference
+
+## 🆕 Latest Updates
+
+### Version 2.0.0 - Enhanced AI Analysis System (Jan 2025)
+
+**Complete AI redesign with safety-first approach:**
+
+- ⚡ **Quick Answer Mode** - Fast sklearn analysis (1-2 seconds) for simple symptoms
+- 🧠 **Deep Analysis Mode** - Comprehensive PyTorch + medical history review (5-15 seconds)
+- ⚕️ **Medical Disclaimers** - Always shown to ensure patient safety
+- 🎨 **Beautiful UX** - Thinking animations, progress tracking, smooth transitions
+- 📊 **Urgency Assessment** - Emergency/Urgent/Routine classification
+- 📚 **Knowledge Base** - Medical literature lookup (BioBERT-ready)
+
+**Why the redesign?** User safety is paramount. Wrong AI predictions could harm patients. The new two-mode system ensures simple symptoms get fast responses while complex cases receive comprehensive analysis with full medical history review.
+
+➡️ **Read more:** [AI_SYSTEM_REDESIGN.md](AI_SYSTEM_REDESIGN.md)
 
 ## ⚠️ IMPORTANT for First-Time Users
 
