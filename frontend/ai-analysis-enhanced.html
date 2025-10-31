@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Health Analysis - PhD NexusCare</title>
 
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,33 +20,254 @@
     />
 
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/style.css?v=4.0" />
     <link rel="stylesheet" href="css/ai-enhanced.css" />
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+      /* Remove default active styling - use simple teal color like ai-insights */
+      .nav-link.active {
+        color: var(--accent-teal) !important;
+        font-weight: 600;
+      }
+
+      .nav-link {
+        transition: all 0.3s ease;
+      }
+
+      .nav-link:hover {
+        color: var(--accent-teal) !important;
+      }
+    </style>
   </head>
   <body>
-    <!-- Medical Disclaimer -->
-    <div class="medical-disclaimer">
-      <div class="disclaimer-header">
-        <div class="disclaimer-icon">⚕️</div>
-        <h3 class="disclaimer-title">⚠️ IMPORTANT MEDICAL DISCLAIMER</h3>
+    <!-- Navigation (Same as Dashboard) -->
+    <nav class="navbar">
+      <div class="navbar-container">
+        <a href="dashboard.html" class="logo">
+          <div class="logo-icon">🏥</div>
+          <span>NexusCare</span>
+        </a>
+        <ul class="nav-menu">
+          <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+          <li><a href="records.html" class="nav-link">Records</a></li>
+          <li><a href="appointments.html" class="nav-link">Appointments</a></li>
+          <li>
+            <a href="ai-analysis-enhanced.html" class="nav-link active"
+              >🤖 AI Analysis</a
+            >
+          </li>
+          <li>
+            <a
+              href="profile.html"
+              class="nav-user"
+              id="navUser"
+              style="text-decoration: none"
+            >
+              <div class="nav-user-photo">
+                <img
+                  id="navUserPhoto"
+                  src=""
+                  alt="User"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                  style="display: block"
+                />
+                <div class="nav-user-photo-placeholder" style="display: none">
+                  <i class="fas fa-user"></i>
+                </div>
+              </div>
+              <div class="nav-user-info">
+                <span id="navUserName">Loading...</span>
+                <small id="navUserRole">Patient</small>
+              </div>
+            </a>
+          </li>
+          <li>
+            <button
+              onclick="logout()"
+              class="btn btn-outline"
+              style="padding: 0.5rem 1rem"
+            >
+              Logout
+            </button>
+          </li>
+        </ul>
       </div>
-      <p class="disclaimer-text">
-        <strong>This AI analysis is for informational purposes ONLY.</strong> It
-        is NOT a substitute for professional medical advice, diagnosis, or
-        treatment. Always seek the advice of your physician or qualified health
-        provider with any questions you may have regarding a medical condition.
-      </p>
-      <ul class="disclaimer-list">
-        <li>AI predictions may be incorrect or incomplete</li>
-        <li>
-          Medical emergencies require immediate professional care (Call
-          911/999/112)
-        </li>
-        <li>AI cannot examine you physically or run diagnostic tests</li>
-        <li>
-          Individual medical history significantly affects diagnosis accuracy
-        </li>
-      </ul>
+    </nav>
+
+    <!-- Medical Disclaimer Banner -->
+    <div
+      id="medicalDisclaimer"
+      style="
+        background: linear-gradient(135deg, #fff9e6 0%, #ffeaa7 100%);
+        border-bottom: 3px solid #ffc107;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      "
+    >
+      <div
+        style="
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 1rem 2rem;
+          position: relative;
+        "
+      >
+        <button
+          onclick="closeDisclaimer()"
+          style="
+            position: absolute;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          "
+          onmouseover="this.style.background='#d63031'; this.style.transform='translateY(-50%) scale(1.1)'"
+          onmouseout="this.style.background='#ff6b6b'; this.style.transform='translateY(-50%) scale(1)'"
+          title="Close disclaimer (will reappear on page refresh)"
+        >
+          <i class="fas fa-times"></i>
+        </button>
+        <div
+          style="
+            display: flex;
+            align-items: start;
+            gap: 1rem;
+            padding-right: 3rem;
+          "
+        >
+          <span style="font-size: 2rem; line-height: 1">⚠️</span>
+          <div style="flex: 1">
+            <p
+              style="
+                margin: 0;
+                color: #795548;
+                font-size: 0.95rem;
+                line-height: 1.5;
+              "
+            >
+              <strong style="color: #d35400; font-weight: 700"
+                >MEDICAL DISCLAIMER:</strong
+              >
+              This AI analysis is for informational purposes ONLY. Not a
+              substitute for professional medical advice. Always consult with
+              qualified healthcare providers.
+              <button
+                onclick="toggleDisclaimerDetails()"
+                id="expandBtn"
+                style="
+                  margin-left: 0.5rem;
+                  background: transparent;
+                  border: none;
+                  color: #2c5282;
+                  cursor: pointer;
+                  font-weight: 600;
+                  text-decoration: underline;
+                  font-size: 0.9rem;
+                  transition: color 0.2s;
+                "
+                onmouseover="this.style.color='#4a90e2'"
+                onmouseout="this.style.color='#2c5282'"
+              >
+                Show details <i class="fas fa-chevron-down"></i>
+              </button>
+            </p>
+            <div
+              id="disclaimerDetails"
+              style="
+                display: none;
+                margin-top: 0.75rem;
+                padding-top: 0.75rem;
+                border-top: 1px solid rgba(255, 193, 7, 0.3);
+              "
+            >
+              <ul
+                style="
+                  margin: 0;
+                  padding-left: 0;
+                  list-style: none;
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                  gap: 0.5rem;
+                "
+              >
+                <li
+                  style="
+                    color: #795548;
+                    font-size: 0.85rem;
+                    display: flex;
+                    align-items: start;
+                    gap: 0.5rem;
+                  "
+                >
+                  <i
+                    class="fas fa-exclamation-triangle"
+                    style="color: #ff6b6b; margin-top: 0.2rem"
+                  ></i>
+                  AI predictions may be incorrect or incomplete
+                </li>
+                <li
+                  style="
+                    color: #795548;
+                    font-size: 0.85rem;
+                    display: flex;
+                    align-items: start;
+                    gap: 0.5rem;
+                  "
+                >
+                  <i
+                    class="fas fa-phone-alt"
+                    style="color: #ff6b6b; margin-top: 0.2rem"
+                  ></i>
+                  Medical emergencies require immediate care (Call 911/999/112)
+                </li>
+                <li
+                  style="
+                    color: #795548;
+                    font-size: 0.85rem;
+                    display: flex;
+                    align-items: start;
+                    gap: 0.5rem;
+                  "
+                >
+                  <i
+                    class="fas fa-stethoscope"
+                    style="color: #ff6b6b; margin-top: 0.2rem"
+                  ></i>
+                  AI cannot examine you physically or run diagnostic tests
+                </li>
+                <li
+                  style="
+                    color: #795548;
+                    font-size: 0.85rem;
+                    display: flex;
+                    align-items: start;
+                    gap: 0.5rem;
+                  "
+                >
+                  <i
+                    class="fas fa-user-md"
+                    style="color: #ff6b6b; margin-top: 0.2rem"
+                  ></i>
+                  Individual medical history affects diagnosis accuracy
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Main Container -->
@@ -248,7 +475,28 @@
     </div>
 
     <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
     <script>
+      // Disclaimer functions with jQuery animations
+      function closeDisclaimer() {
+        $("#medicalDisclaimer").fadeOut(300, function () {
+          $(this).slideUp(200);
+        });
+      }
+
+      function toggleDisclaimerDetails() {
+        const $details = $("#disclaimerDetails");
+        const $btn = $("#expandBtn");
+
+        if ($details.is(":hidden")) {
+          $details.slideDown(300);
+          $btn.html('Hide details <i class="fas fa-chevron-up"></i>');
+        } else {
+          $details.slideUp(300);
+          $btn.html('Show details <i class="fas fa-chevron-down"></i>');
+        }
+      }
+
       let selectedMode = "quick"; // default mode
 
       function selectMode(mode) {
