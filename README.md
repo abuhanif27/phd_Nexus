@@ -1,4 +1,4 @@
-# 🏥 PhD NexusCare - Healthcare Platform# 🏥 PhD NexusCare - Complete Healthcare Platform
+# 🏥 PhD NexusCare - Healthcare Platform
 
 > Complete medical records management system with AI-powered insights. Works 100% offline on your computer.> Privacy-first medical records management with AI-powered insights. 100% offline, zero subscriptions.
 
