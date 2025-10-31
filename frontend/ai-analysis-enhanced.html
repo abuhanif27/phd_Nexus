@@ -368,7 +368,7 @@
 
           // Get response text first to debug
           const responseText = await response.text();
-          console.log("Response text:", responseText);
+          console.log("Response text (first 1000 chars):", responseText.substring(0, 1000));
 
           // Try to parse JSON
           let data;
@@ -377,10 +377,17 @@
             console.log("Response data:", data);
           } catch (parseError) {
             console.error("JSON Parse Error:", parseError);
-            console.error("Raw response:", responseText);
-            throw new Error(
-              `Invalid JSON response: ${responseText.substring(0, 200)}`
-            );
+            console.error("Raw response (first 2000 chars):", responseText.substring(0, 2000));
+            
+            // Check if it's an HTML error page
+            if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+              // Extract error from HTML title if possible
+              const titleMatch = responseText.match(/<title>(.*?)<\/title>/i);
+              const errorTitle = titleMatch ? titleMatch[1] : 'Unknown error';
+              throw new Error(`Backend returned HTML error page: ${errorTitle}`);
+            }
+            
+            throw new Error(`Invalid JSON response: ${responseText.substring(0, 200)}`);
           }
 
           // Hide thinking animation
