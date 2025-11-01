@@ -375,7 +375,7 @@ export function DoctorsPage() {
 
                     {/* Actions */}
                     <div className="flex gap-2 pt-2">
-                      <Link href={`/appointments/new?doctor=${doctor.id}`} className="flex-1">
+                      <Link href={`/appointments?doctor=${doctor.id}`} className="flex-1">
                         <Button className="w-full" size="sm">
                           <Calendar className="mr-2 h-4 w-4" />
                           Book Appointment
