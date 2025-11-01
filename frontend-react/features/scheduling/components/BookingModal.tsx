@@ -201,14 +201,14 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden p-0">
-        {/* Header with gradient */}
-        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 px-6 py-6 text-white">
+        {/* Header */}
+        <div className="border-b bg-white px-6 py-6 dark:bg-gray-900">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
-              <Sparkles className="h-6 w-6" />
+            <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white">
+              <Sparkles className="h-6 w-6 text-blue-600" />
               Book Your Appointment
             </DialogTitle>
-            <DialogDescription className="text-blue-100">
+            <DialogDescription className="text-gray-600 dark:text-gray-400">
               Find your doctor, pick a time, and get the care you need
             </DialogDescription>
           </DialogHeader>
@@ -226,18 +226,20 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
                       step >= s.num
-                        ? 'border-white bg-white text-blue-600 shadow-lg'
-                        : 'border-blue-300 bg-blue-500/30 text-blue-200'
+                        ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                        : 'border-gray-300 bg-gray-100 text-gray-400 dark:border-gray-600 dark:bg-gray-800'
                     }`}
                   >
                     <s.icon className="h-5 w-5" />
                   </div>
-                  <span className="mt-1 text-xs font-medium">{s.label}</span>
+                  <span className={`mt-1 text-xs font-medium ${step >= s.num ? 'text-blue-600' : 'text-gray-500'}`}>
+                    {s.label}
+                  </span>
                 </div>
                 {idx < 3 && (
                   <div
                     className={`mx-2 h-0.5 flex-1 transition-all ${
-                      step > s.num ? 'bg-white' : 'bg-blue-400/40'
+                      step > s.num ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
                     }`}
                   />
                 )}
@@ -305,7 +307,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                           <div className="flex items-start gap-4">
                             {/* Avatar */}
                             <div className="relative">
-                              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xl font-bold text-white shadow-lg">
+                              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white shadow-sm">
                                 {doctor.name
                                   .split(' ')
                                   .map((n) => n[0])
@@ -387,8 +389,8 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                   </div>
 
                   {/* Selected Doctor Chip */}
-                  <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 dark:from-blue-950/20 dark:to-indigo-950/20">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white">
+                  <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
                       {selectedDoctor.name
                         .split(' ')
                         .map((n) => n[0])
@@ -415,10 +417,10 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                           key={date.value}
                           type="button"
                           onClick={() => handleDateChange(date.value)}
-                          className={`group relative overflow-hidden rounded-xl border-2 p-3 text-center transition-all ${
+                          className={`group relative overflow-hidden rounded-lg border-2 p-3 text-center transition-all ${
                             isSelected
-                              ? 'border-blue-600 bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
-                              : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800'
+                              ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                              : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800'
                           }`}
                         >
                           {isToday && !isSelected && (
@@ -477,10 +479,10 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                             key={slotValue}
                             type="button"
                             onClick={() => handleTimeSlotChange(slotValue)}
-                            className={`group relative rounded-xl border-2 p-3 text-center font-semibold transition-all ${
+                            className={`group relative rounded-lg border-2 p-3 text-center font-semibold transition-all ${
                               isSelected
-                                ? 'border-green-600 bg-gradient-to-br from-green-600 to-emerald-600 text-white shadow-lg shadow-green-500/30'
-                                : 'border-gray-200 bg-white hover:border-green-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800'
+                                ? 'border-green-600 bg-green-600 text-white shadow-sm'
+                                : 'border-gray-200 bg-white hover:border-green-300 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800'
                             }`}
                           >
                             <Clock
@@ -516,10 +518,10 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                   <h3 className="text-lg font-semibold">Additional Information</h3>
 
                   {/* Booking Summary */}
-                  <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-purple-950/20">
+                  <Card className="border-2 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20">
                     <CardContent className="p-4">
-                      <h4 className="mb-3 flex items-center gap-2 font-semibold text-blue-900 dark:text-blue-100">
-                        <Sparkles className="h-4 w-4" />
+                      <h4 className="mb-3 flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+                        <Sparkles className="h-4 w-4 text-blue-600" />
                         Your Appointment
                       </h4>
                       <div className="space-y-2 text-sm">
@@ -578,7 +580,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                   <Button
                     type="submit"
                     disabled={bookMutation.isPending}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
                   >
                     {bookMutation.isPending ? (
                       <>
