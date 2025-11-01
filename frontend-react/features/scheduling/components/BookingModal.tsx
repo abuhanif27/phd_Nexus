@@ -246,8 +246,8 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
           </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
-          <ScrollArea className="max-h-[60vh] px-6 py-4">
+        <ScrollArea className="max-h-[50vh]">
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col px-6 py-4">
             {/* Step 1: Select Doctor */}
             {step >= 1 && (
               <div className="space-y-4">
@@ -266,11 +266,11 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                       placeholder="Search by name or specialty..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
+                      className="mx-1 pl-10"
                     />
                   </div>
                   <Select value={selectedSpecialty} onValueChange={setSelectedSpecialty}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="mx-1 w-[180px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -557,46 +557,46 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                 </div>
               </>
             )}
-          </ScrollArea>
 
-          {/* Footer Actions */}
-          <div className="border-t bg-gray-50 px-6 py-4 dark:bg-gray-900">
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                className="flex-1"
-                disabled={bookMutation.isPending}
-              >
-                Cancel
-              </Button>
-              {step < 4 ? (
-                <Button type="button" variant="outline" className="flex-1" disabled>
-                  Complete all steps
-                </Button>
-              ) : (
+            {/* Footer Actions */}
+            <div className="mt-6 space-y-3 border-t pt-6">
+              <div className="flex gap-3">
                 <Button
-                  type="submit"
+                  type="button"
+                  variant="outline"
+                  onClick={onClose}
+                  className="flex-1"
                   disabled={bookMutation.isPending}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                 >
-                  {bookMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Booking...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Confirm Booking
-                    </>
-                  )}
+                  Cancel
                 </Button>
-              )}
+                {step < 4 ? (
+                  <Button type="button" variant="outline" className="flex-1" disabled>
+                    Complete all steps
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={bookMutation.isPending}
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                  >
+                    {bookMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Booking...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Confirm Booking
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
