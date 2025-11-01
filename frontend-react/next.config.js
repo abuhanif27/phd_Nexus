@@ -32,6 +32,22 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
+
+  // Performance optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+
+  // Faster builds in development
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      // Speed up development builds
+      config.optimization.removeAvailableModules = false;
+      config.optimization.removeEmptyChunks = false;
+      config.optimization.splitChunks = false;
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;
