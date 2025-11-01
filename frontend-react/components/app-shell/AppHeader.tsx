@@ -84,16 +84,18 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
         )}
 
         {/* Notifications */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative hover:bg-blue-50 dark:hover:bg-gray-800"
-        >
-          <Bell className="h-5 w-5" />
-          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-semibold text-white shadow-lg">
-            3
-          </span>
-        </Button>
+        <Link href="/notifications">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative hover:bg-blue-50 dark:hover:bg-gray-800"
+          >
+            <Bell className="h-5 w-5" />
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-semibold text-white shadow-lg">
+              3
+            </span>
+          </Button>
+        </Link>
 
         {/* User Menu */}
         <DropdownMenu>
