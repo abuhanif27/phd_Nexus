@@ -232,7 +232,9 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                   >
                     <s.icon className="h-5 w-5" />
                   </div>
-                  <span className={`mt-1 text-xs font-medium ${step >= s.num ? 'text-blue-600' : 'text-gray-500'}`}>
+                  <span
+                    className={`mt-1 text-xs font-medium ${step >= s.num ? 'text-blue-600' : 'text-gray-500'}`}
+                  >
                     {s.label}
                   </span>
                 </div>
@@ -474,6 +476,16 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                       {availableSlots.map((slot) => {
                         const slotValue = `${slot.start_time}-${slot.end_time}`;
                         const isSelected = selectedTimeSlot === slotValue;
+
+                        // Convert 24h to 12h format
+                        const formatTime12h = (time24: string) => {
+                          const [hours, minutes] = time24.split(':');
+                          const hour = parseInt(hours);
+                          const ampm = hour >= 12 ? 'PM' : 'AM';
+                          const hour12 = hour % 12 || 12;
+                          return `${hour12}:${minutes} ${ampm}`;
+                        };
+
                         return (
                           <button
                             key={slotValue}
@@ -488,7 +500,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                             <Clock
                               className={`mx-auto h-4 w-4 ${isSelected ? '' : 'text-gray-400'}`}
                             />
-                            <div className="mt-1 text-sm">{slot.start_time}</div>
+                            <div className="mt-1 text-sm">{formatTime12h(slot.start_time)}</div>
                             {isSelected && (
                               <CheckCircle2 className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-white text-green-600" />
                             )}
@@ -537,7 +549,16 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-gray-600 dark:text-gray-400">Time</span>
-                          <span className="font-semibold">{selectedTimeSlot.split('-')[0]}</span>
+                          <span className="font-semibold">
+                            {(() => {
+                              const time24 = selectedTimeSlot.split('-')[0];
+                              const [hours, minutes] = time24.split(':');
+                              const hour = parseInt(hours);
+                              const ampm = hour >= 12 ? 'PM' : 'AM';
+                              const hour12 = hour % 12 || 12;
+                              return `${hour12}:${minutes} ${ampm}`;
+                            })()}
+                          </span>
                         </div>
                       </div>
                     </CardContent>
