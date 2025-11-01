@@ -1,0 +1,57 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+/**
+ * User session information
+ */
+export interface User {
+  id: number;
+  email: string;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+/**
+ * Session store interface
+ */
+interface SessionStore {
+  user: User | null;
+  isAuthenticated: boolean;
+  setUser: (user: User | null) => void;
+  logout: () => void;
+}
+
+/**
+ * Session store using Zustand
+ * Persisted to localStorage
+ */
+export const useSessionStore = create<SessionStore>()(
+  persist(
+    (set) => ({
+      user: null,
+      isAuthenticated: false,
+
+      setUser: (user) =>
+        set({
+          user,
+          isAuthenticated: !!user,
+        }),
+
+      logout: () => {
+        set({
+          user: null,
+          isAuthenticated: false,
+        });
+      },
+    }),
+    {
+      name: 'session-storage',
+      // Only persist user data, not the entire state
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
+    }
+  )
+);
