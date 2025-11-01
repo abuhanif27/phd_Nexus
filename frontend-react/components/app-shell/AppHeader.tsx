@@ -109,7 +109,13 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
               </div>
               {mounted && user && (
                 <div className="hidden text-left md:block">
-                  <p className="text-sm font-semibold">{user.email}</p>
+                  <p className="text-sm font-semibold">
+                    {user.role === 'patient'
+                      ? user.patient_profile?.name || 'User'
+                      : user.role === 'doctor'
+                        ? user.doctor_profile?.name || 'User'
+                        : 'User'}
+                  </p>
                   <p className="text-xs capitalize text-gray-500 dark:text-gray-400">{user.role}</p>
                 </div>
               )}
@@ -118,7 +124,13 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
           <DropdownMenuContent align="end" className="w-56 dark:border-gray-700 dark:bg-gray-800">
             <DropdownMenuLabel className="dark:text-gray-200">
               <div>
-                <p className="text-sm font-medium">{user?.email || 'My Account'}</p>
+                <p className="text-sm font-medium">
+                  {user?.role === 'patient'
+                    ? user?.patient_profile?.name || 'User'
+                    : user?.role === 'doctor'
+                      ? user?.doctor_profile?.name || 'User'
+                      : 'User'}
+                </p>
                 <p className="text-xs capitalize text-gray-500 dark:text-gray-400">
                   {user?.role} Portal
                 </p>

@@ -107,29 +107,6 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
       )}
       suppressHydrationWarning
     >
-      {/* Role Badge */}
-      {mounted && isOpen && user && (
-        <div className="border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-4 dark:border-gray-700">
-          <div className="flex items-center space-x-3 text-white">
-            {user.role === 'doctor' ? (
-              <div className="rounded-lg bg-white/20 p-2">
-                <Stethoscope className="h-5 w-5" />
-              </div>
-            ) : (
-              <div className="rounded-lg bg-white/20 p-2">
-                <Activity className="h-5 w-5" />
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-white/90">
-                {user.role === 'doctor' ? 'Doctor Portal' : 'Patient Portal'}
-              </p>
-              <p className="truncate text-sm font-semibold">{user.email}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <nav className="flex flex-col gap-1 p-3">
         {navigation.map((item) => {
           const isActive = pathname === item.href;
