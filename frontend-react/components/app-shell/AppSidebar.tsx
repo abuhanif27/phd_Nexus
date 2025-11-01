@@ -99,22 +99,16 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
   // Select navigation based on user role (only after mount to avoid hydration issues)
   const navigation = mounted && user?.role === 'doctor' ? doctorNavigation : patientNavigation;
 
-  // Don't render anything until mounted to avoid hydration issues
-  if (!mounted) {
-    return (
-      <aside className="w-0 overflow-hidden border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-700 dark:bg-gray-900" />
-    );
-  }
-
   return (
     <aside
       className={cn(
         'border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-700 dark:bg-gray-900',
-        isOpen ? 'w-64' : 'w-0 overflow-hidden'
+        mounted ? (isOpen ? 'w-64' : 'w-0 overflow-hidden') : 'w-0 overflow-hidden'
       )}
+      suppressHydrationWarning
     >
       {/* Role Badge */}
-      {isOpen && user && (
+      {mounted && isOpen && user && (
         <div className="border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-4 dark:border-gray-700">
           <div className="flex items-center space-x-3 text-white">
             {user.role === 'doctor' ? (
