@@ -36,6 +36,12 @@ const patientNavigation = [
     description: 'Symptom analysis & insights',
   },
   {
+    name: 'Doctors',
+    href: '/doctors',
+    icon: Users,
+    description: 'Find specialists',
+  },
+  {
     name: 'Appointments',
     href: '/appointments',
     icon: Calendar,

@@ -9,10 +9,27 @@ import type { AISummary, AIAnalysisRequest, AIAnalysisResponse } from '@/types/a
 const BASE = '/api';
 
 /**
+ * Analyze symptoms with AI (Nexus Lite or Nexus Pro)
+ */
+export async function analyzeSymptoms(request: {
+  symptoms: string;
+  mode: 'quick' | 'deep';
+  model?: 'sklearn' | 'pytorch' | 'auto';
+  include_history?: boolean;
+  include_medical_records?: boolean;
+  include_images?: boolean;
+}): Promise<any> {
+  const { data } = await apiClient.post(`${BASE}/ai/analyze-enhanced/`, request);
+  return data;
+}
+
+/**
  * Get AI-generated summary for patient
  */
-export async function getPatientSummary(patientId: number): Promise<AISummary> {
-  const { data } = await apiClient.get<AISummary>(`${BASE}/ai-summary/${patientId}/`);
+export async function getPatientSummary(patientId?: number): Promise<any> {
+  const { data } = await apiClient.post(`${BASE}/ai/patient-summary/`, {
+    patient_id: patientId,
+  });
   return data;
 }
 
