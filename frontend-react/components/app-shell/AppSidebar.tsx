@@ -99,30 +99,16 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
   // Select navigation based on user role (only after mount to avoid hydration issues)
   const navigation = mounted && user?.role === 'doctor' ? doctorNavigation : patientNavigation;
 
-  // Don't render any user-specific content until mounted
-  if (!mounted) {
-    return (
-      <aside
-        className={cn(
-          'border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-700 dark:bg-gray-900',
-          isOpen ? 'w-64' : 'w-0 overflow-hidden'
-        )}
-      >
-        {/* Placeholder while loading */}
-        <div className="h-full" />
-      </aside>
-    );
-  }
-
   return (
     <aside
       className={cn(
         'border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-700 dark:bg-gray-900',
         isOpen ? 'w-64' : 'w-0 overflow-hidden'
       )}
+      suppressHydrationWarning
     >
       {/* Role Badge */}
-      {isOpen && user && (
+      {mounted && isOpen && user && (
         <div className="border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-4 dark:border-gray-700">
           <div className="flex items-center space-x-3 text-white">
             {user.role === 'doctor' ? (
@@ -145,39 +131,40 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
       )}
 
       <nav className="flex flex-col gap-1 p-3">
-        {navigation.map((item) => {
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
+        {mounted &&
+          navigation.map((item) => {
+            const isActive = pathname === item.href;
+            const Icon = item.icon;
 
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                'group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all',
-                isActive
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 dark:shadow-blue-500/20'
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-              )}
-              title={item.description}
-            >
-              <Icon
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
                 className={cn(
-                  'h-5 w-5 flex-shrink-0 transition-transform',
-                  isActive ? 'scale-110' : 'group-hover:scale-110'
+                  'group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all',
+                  isActive
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 dark:shadow-blue-500/20'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
                 )}
-              />
-              {isOpen && (
-                <div className="min-w-0 flex-1">
-                  <span className="block font-semibold">{item.name}</span>
-                  {!isActive && (
-                    <span className="line-clamp-1 text-xs opacity-70">{item.description}</span>
+                title={item.description}
+              >
+                <Icon
+                  className={cn(
+                    'h-5 w-5 flex-shrink-0 transition-transform',
+                    isActive ? 'scale-110' : 'group-hover:scale-110'
                   )}
-                </div>
-              )}
-            </Link>
-          );
-        })}
+                />
+                {isOpen && (
+                  <div className="min-w-0 flex-1">
+                    <span className="block font-semibold">{item.name}</span>
+                    {!isActive && (
+                      <span className="line-clamp-1 text-xs opacity-70">{item.description}</span>
+                    )}
+                  </div>
+                )}
+              </Link>
+            );
+          })}
       </nav>
     </aside>
   );
