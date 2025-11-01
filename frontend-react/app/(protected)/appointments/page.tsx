@@ -14,27 +14,39 @@ import { format } from 'date-fns';
 
 export default function AppointmentsPage() {
   const searchParams = useSearchParams();
-  const doctorId = searchParams?.get('doctor');
+  const [mounted, setMounted] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+
+  // Handle client-side mounting to avoid hydration issues
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Auto-open booking modal if doctor param exists
   useEffect(() => {
-    if (doctorId) {
-      setShowBookingModal(true);
+    if (mounted && searchParams) {
+      const doctorId = searchParams.get('doctor');
+      if (doctorId) {
+        setShowBookingModal(true);
+      }
     }
-  }, [doctorId]);
+  }, [mounted, searchParams]);
 
   // Fetch appointments
-  const { data: appointments, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['appointments'],
     queryFn: async () => {
-      const { data } = await apiClient.get<Appointment[]>('/api/scheduling/appointments/');
+      const { data } = await apiClient.get('/api/scheduling/appointments/');
       return data;
     },
   });
 
-  const upcomingAppointments = appointments?.filter((apt) => apt.status === 'scheduled') || [];
-  const pastAppointments = appointments?.filter((apt) => apt.status === 'done') || [];
+  // Handle both array and paginated response
+  const appointments = Array.isArray(data) ? data : data?.results || [];
+  const upcomingAppointments = appointments.filter(
+    (apt: Appointment) => apt.status === 'scheduled'
+  );
+  const pastAppointments = appointments.filter((apt: Appointment) => apt.status === 'done');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -84,7 +96,7 @@ export default function AppointmentsPage() {
             </div>
           ) : upcomingAppointments.length > 0 ? (
             <div className="space-y-3">
-              {upcomingAppointments.map((appointment) => (
+              {upcomingAppointments.map((appointment: Appointment) => (
                 <div
                   key={appointment.id}
                   className="flex items-start justify-between rounded-lg border p-4 transition-colors hover:bg-accent/50"
@@ -146,7 +158,7 @@ export default function AppointmentsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {pastAppointments.map((appointment) => (
+              {pastAppointments.map((appointment: Appointment) => (
                 <div
                   key={appointment.id}
                   className="flex items-start justify-between rounded-lg border p-4 opacity-75"
@@ -185,11 +197,15 @@ export default function AppointmentsPage() {
       )}
 
       {/* Booking Modal */}
-      <BookingModal
-        open={showBookingModal}
-        onClose={() => setShowBookingModal(false)}
-        preselectedDoctorId={doctorId ? Number(doctorId) : undefined}
-      />
+      {mounted && (
+        <BookingModal
+          open={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          preselectedDoctorId={
+            searchParams?.get('doctor') ? Number(searchParams.get('doctor')) : undefined
+          }
+        />
+      )}
     </div>
   );
 }
