@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # NexusCare - Quick Start Script
-# This script starts both backend and frontend servers
+# This script starts both Django backend and React frontend servers
 
 echo "🚀 Starting NexusCare Application..."
 echo ""
@@ -10,52 +10,84 @@ echo ""
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Check if backend is already running
 if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null ; then
     echo -e "${YELLOW}⚠️  Backend already running on port 8000${NC}"
 else
-    echo -e "${BLUE}📦 Starting Backend Server...${NC}"
+    echo -e "${BLUE}📦 Starting Django Backend Server...${NC}"
     cd /home/hn-hanif/Desktop/phd_Nexus/backend
-    /home/hn-hanif/Desktop/phd_Nexus/backend/.venv/bin/python manage.py runserver > /tmp/nexuscare-backend.log 2>&1 &
-    BACKEND_PID=$!
-    echo -e "${GREEN}✅ Backend started (PID: $BACKEND_PID)${NC}"
-    echo "   Logs: /tmp/nexuscare-backend.log"
-    sleep 2
+    if [ -f ".venv/bin/python" ]; then
+        .venv/bin/python manage.py runserver > /tmp/nexuscare-backend.log 2>&1 &
+        BACKEND_PID=$!
+        echo -e "${GREEN}✅ Backend started (PID: $BACKEND_PID)${NC}"
+        echo "   Logs: /tmp/nexuscare-backend.log"
+    else
+        echo -e "${RED}❌ Backend virtual environment not found${NC}"
+        echo "   Run: cd backend && python -m venv .venv && .venv/bin/pip install -r requirements.txt"
+    fi
+    sleep 3
 fi
 
-# Check if frontend is already running
-if lsof -Pi :8080 -sTCP:LISTEN -t >/dev/null ; then
-    echo -e "${YELLOW}⚠️  Frontend already running on port 8080${NC}"
+# Check if React frontend is already running
+if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null ; then
+    echo -e "${YELLOW}⚠️  React Frontend already running on port 3000${NC}"
 else
-    echo -e "${BLUE}🌐 Starting Frontend Server...${NC}"
-    cd /home/hn-hanif/Desktop/phd_Nexus/frontend
-    python3 -m http.server 8080 > /tmp/nexuscare-frontend.log 2>&1 &
+    echo -e "${BLUE}⚛️  Starting React Frontend (Next.js)...${NC}"
+    cd /home/hn-hanif/Desktop/phd_Nexus/frontend-react
+    
+    # Check if node_modules exists
+    if [ ! -d "node_modules" ]; then
+        echo -e "${YELLOW}📦 Installing dependencies (first time)...${NC}"
+        npm install
+    fi
+    
+    # Start Next.js dev server
+    npm run dev > /tmp/nexuscare-frontend.log 2>&1 &
     FRONTEND_PID=$!
-    echo -e "${GREEN}✅ Frontend started (PID: $FRONTEND_PID)${NC}"
+    echo -e "${GREEN}✅ React Frontend started (PID: $FRONTEND_PID)${NC}"
     echo "   Logs: /tmp/nexuscare-frontend.log"
-    sleep 1
+    sleep 3
 fi
 
 echo ""
 echo -e "${GREEN}🎉 NexusCare is ready!${NC}"
 echo ""
 echo "📍 Access Points:"
-echo "   Frontend: http://localhost:8080"
-echo "   Backend:  http://localhost:8000/api"
+echo "   React Frontend: http://localhost:3000"
+echo "   Django Backend: http://localhost:8000"
+echo "   API Endpoints:  http://localhost:8000/api"
+echo "   Admin Panel:    http://localhost:8000/admin"
 echo ""
 echo "🔐 Demo Accounts:"
 echo "   Patient: patient@example.com / TestPass123!"
 echo "   Doctor:  doctor@example.com / TestPass123!"
+echo "   Admin:   admin@example.com / admin"
 echo ""
-echo "📄 Pages Available:"
-echo "   - Landing:      http://localhost:8080/"
-echo "   - Login:        http://localhost:8080/login.html"
-echo "   - Register:     http://localhost:8080/register.html"
-echo "   - Dashboard:    http://localhost:8080/dashboard.html"
-echo "   - Records:      http://localhost:8080/records.html"
-echo "   - Appointments: http://localhost:8080/appointments.html"
+echo "📄 Main Pages:"
+echo "   - Home:             http://localhost:3000"
+echo "   - Login:            http://localhost:3000/login"
+echo "   - Register:         http://localhost:3000/register"
+echo "   - Patient Dashboard: http://localhost:3000/dashboard"
+echo "   - Doctor Dashboard:  http://localhost:3000/dashboard"
+echo "   - Book Appointment:  http://localhost:3000/dashboard/appointments/book"
+echo "   - Medical Records:   http://localhost:3000/dashboard/records"
+echo ""
+echo "📊 Features:"
+echo "   ✅ Real Django API Integration"
+echo "   ✅ React 19 + Next.js 15"
+echo "   ✅ Email-based Authentication + 2FA"
+echo "   ✅ Patient & Doctor Dashboards"
+echo "   ✅ Appointment Booking System"
+echo "   ✅ Medical Records Management"
+echo "   ✅ AI-Powered Health Insights"
+echo ""
+echo "🛑 To stop all services: ./stop-all.sh"
+echo "📝 View logs:"
+echo "   Backend:  tail -f /tmp/nexuscare-backend.log"
+echo "   Frontend: tail -f /tmp/nexuscare-frontend.log"
 echo "   - AI Insights:  http://localhost:8080/ai-insights.html"
 echo ""
 echo "🛑 To stop servers:"

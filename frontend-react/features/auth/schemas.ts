@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 /**
- * Login request schema
+ * Login request schema - email-based for Django backend
  */
 export const loginSchema = z.object({
-  username: z.string().min(1, 'Username is required'),
+  email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
 });
 
@@ -18,11 +18,15 @@ export const loginResponseSchema = z.object({
   refresh: z.string(),
   user: z.object({
     id: z.number(),
-    username: z.string(),
     email: z.string().email(),
-    first_name: z.string().optional(),
-    last_name: z.string().optional(),
+    phone: z.string().nullable(),
+    role: z.enum(['patient', 'doctor', 'admin']),
+    twofa_enabled: z.boolean(),
+    is_active: z.boolean(),
+    is_staff: z.boolean(),
+    created_at: z.string(),
   }),
+  requires_2fa: z.boolean().optional(),
 });
 
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
@@ -32,12 +36,13 @@ export type LoginResponse = z.infer<typeof loginResponseSchema>;
  */
 export const registerSchema = z
   .object({
-    username: z.string().min(3, 'Username must be at least 3 characters'),
     email: z.string().email('Invalid email address'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
-    firstName: z.string().optional(),
-    lastName: z.string().optional(),
+    role: z.enum(['patient', 'doctor'], {
+      required_error: 'Please select a role',
+    }),
+    phone: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -47,15 +52,28 @@ export const registerSchema = z
 export type RegisterInput = z.infer<typeof registerSchema>;
 
 /**
+ * 2FA verification schema
+ */
+export const twoFASchema = z.object({
+  email: z.string().email(),
+  code: z.string().length(6, 'Code must be 6 digits'),
+  purpose: z.enum(['2fa', 'consent']),
+});
+
+export type TwoFAInput = z.infer<typeof twoFASchema>;
+
+/**
  * User profile schema
  */
 export const userSchema = z.object({
   id: z.number(),
-  username: z.string(),
   email: z.string().email(),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  dateJoined: z.string().optional(),
+  phone: z.string().nullable(),
+  role: z.enum(['patient', 'doctor', 'admin']),
+  twofa_enabled: z.boolean(),
+  is_active: z.boolean(),
+  is_staff: z.boolean(),
+  created_at: z.string(),
 });
 
 export type User = z.infer<typeof userSchema>;

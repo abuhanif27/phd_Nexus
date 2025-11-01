@@ -2,14 +2,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 /**
- * User session information
+ * User session information - matches Django backend
  */
 export interface User {
   id: number;
   email: string;
-  username: string;
-  firstName?: string;
-  lastName?: string;
+  role: 'patient' | 'doctor' | 'admin';
+  phone?: string | null;
+  twofa_enabled?: boolean;
 }
 
 /**

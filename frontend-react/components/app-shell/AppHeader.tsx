@@ -42,9 +42,7 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>
-              {user?.firstName || user?.username || 'My Account'}
-            </DropdownMenuLabel>
+            <DropdownMenuLabel>{user?.email || 'My Account'}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>

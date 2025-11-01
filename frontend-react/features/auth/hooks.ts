@@ -43,10 +43,8 @@ export function useLogin() {
       // Update session store
       setUser({
         id: data.user.id,
-        username: data.user.username,
         email: data.user.email,
-        firstName: data.user.first_name,
-        lastName: data.user.last_name,
+        role: data.user.role,
       });
 
       // Set user in query cache
@@ -55,7 +53,7 @@ export function useLogin() {
       // Show success toast
       toast({
         title: 'Welcome back!',
-        description: `Logged in as ${data.user.username}`,
+        description: `Logged in as ${data.user.email}`,
       });
 
       // Redirect to dashboard

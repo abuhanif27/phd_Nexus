@@ -10,6 +10,25 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <AppSidebar isOpen={true} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <AppHeader onToggleSidebar={() => {}} />
+          <main className="flex-1 overflow-y-auto bg-gray-50 p-6 dark:bg-gray-900">
+            <div className="mx-auto max-w-7xl">{children}</div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">

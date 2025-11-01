@@ -6,7 +6,7 @@ import { LoginInput, LoginResponse, RegisterInput, User } from './schemas';
  */
 export const authApi = {
   /**
-   * Login with username and password
+   * Login with email and password
    */
   login: async (data: LoginInput): Promise<LoginResponse> => {
     return api.post<LoginResponse>('/api/auth/login/', data);
@@ -17,11 +17,10 @@ export const authApi = {
    */
   register: async (data: RegisterInput): Promise<User> => {
     const payload = {
-      username: data.username,
       email: data.email,
       password: data.password,
-      first_name: data.firstName,
-      last_name: data.lastName,
+      role: data.role,
+      phone: data.phone,
     };
     return api.post<User>('/api/auth/register/', payload);
   },

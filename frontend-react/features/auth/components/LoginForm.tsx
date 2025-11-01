@@ -20,7 +20,7 @@ export function LoginForm() {
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: '',
+      email: '',
       password: '',
     },
   });
@@ -32,14 +32,15 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="username">Username</Label>
+        <Label htmlFor="email">Email</Label>
         <Input
-          id="username"
-          placeholder="Enter your username"
+          id="email"
+          type="email"
+          placeholder="your.email@example.com"
           disabled={isPending}
-          {...register('username')}
+          {...register('email')}
         />
-        {errors.username && <p className="text-sm text-destructive">{errors.username.message}</p>}
+        {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
       </div>
 
       <div className="space-y-2">
