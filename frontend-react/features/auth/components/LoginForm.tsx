@@ -5,13 +5,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLogin } from '../hooks';
 import { LoginInput, loginSchema } from '../schemas';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
 
 export function LoginForm() {
-  const { mutate: login, isPending } = useLogin();
+  const { mutate: login, isPending, error } = useLogin();
 
   const {
     register,
@@ -30,35 +27,157 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="your.email@example.com"
-          disabled={isPending}
-          {...register('email')}
-        />
-        {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-      </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
+      <div className="rounded-2xl bg-white p-8 shadow-2xl">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 flex items-start space-x-3 rounded-lg border border-red-200 bg-red-50 p-4">
+            <AlertCircle className="mt-0.5 h-5 w-5 text-red-600" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800">Login failed</p>
+              <p className="mt-1 text-sm text-red-700">
+                {error instanceof Error ? error.message : 'Invalid email or password'}
+              </p>
+            </div>
+          </div>
+        )}
 
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          placeholder="Enter your password"
-          disabled={isPending}
-          {...register('password')}
-        />
-        {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
-      </div>
+        <div className="space-y-5">
+          {/* Email Field */}
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email Address <span className="text-red-500">*</span>
+            </label>
+            <div className="relative mt-1">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <Mail className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="email"
+                type="email"
+                disabled={isPending}
+                {...register('email')}
+                className="block w-full rounded-lg border border-gray-300 py-3 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
+                placeholder="your.email@example.com"
+              />
+            </div>
+            {errors.email && (
+              <p className="mt-2 flex items-center space-x-1 text-sm text-red-600">
+                <AlertCircle className="h-4 w-4" />
+                <span>{errors.email.message}</span>
+              </p>
+            )}
+          </div>
 
-      <Button type="submit" className="w-full" disabled={isPending}>
-        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {isPending ? 'Logging in...' : 'Login'}
-      </Button>
+          {/* Password Field */}
+          <div>
+            <div className="flex items-center justify-between">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password <span className="text-red-500">*</span>
+              </label>
+              <a
+                href="#"
+                className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-500"
+              >
+                Forgot password?
+              </a>
+            </div>
+            <div className="relative mt-1">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="password"
+                type="password"
+                disabled={isPending}
+                {...register('password')}
+                className="block w-full rounded-lg border border-gray-300 py-3 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
+                placeholder="••••••••••••"
+              />
+            </div>
+            {errors.password && (
+              <p className="mt-2 flex items-center space-x-1 text-sm text-red-600">
+                <AlertCircle className="h-4 w-4" />
+                <span>{errors.password.message}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Remember Me Checkbox */}
+          <div className="flex items-center">
+            <input
+              id="remember-me"
+              name="remember-me"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+              Remember me for 30 days
+            </label>
+          </div>
+        </div>
+
+        {/* Submit Button */}
+        <div className="mt-6">
+          <button
+            type="submit"
+            disabled={isPending}
+            className="group relative flex w-full items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-base font-semibold text-white shadow-2xl transition-all hover:scale-105 hover:shadow-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+          >
+            {isPending ? (
+              <>
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                <span>Signing in...</span>
+              </>
+            ) : (
+              <>
+                <LogIn className="h-5 w-5" />
+                <span>Sign in to your account</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="relative mt-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="bg-white px-4 text-gray-500">Quick access for demo</span>
+          </div>
+        </div>
+
+        {/* Demo Credentials */}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              const form = document.querySelector('form');
+              if (form) {
+                (form.querySelector('#email') as HTMLInputElement).value = 'patient@demo.com';
+                (form.querySelector('#password') as HTMLInputElement).value = 'demo123';
+              }
+            }}
+            className="rounded-lg border-2 border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+          >
+            Demo Patient
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const form = document.querySelector('form');
+              if (form) {
+                (form.querySelector('#email') as HTMLInputElement).value = 'doctor@demo.com';
+                (form.querySelector('#password') as HTMLInputElement).value = 'demo123';
+              }
+            }}
+            className="rounded-lg border-2 border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700 transition-colors hover:bg-green-100"
+          >
+            Demo Doctor
+          </button>
+        </div>
+      </div>
     </form>
   );
 }

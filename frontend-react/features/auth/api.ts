@@ -15,14 +15,8 @@ export const authApi = {
   /**
    * Register a new user
    */
-  register: async (data: RegisterInput): Promise<User> => {
-    const payload = {
-      email: data.email,
-      password: data.password,
-      role: data.role,
-      phone: data.phone,
-    };
-    return api.post<User>('/api/auth/register/', payload);
+  register: async (data: RegisterInput): Promise<LoginResponse> => {
+    return api.post<LoginResponse>('/api/auth/register/', data);
   },
 
   /**
@@ -50,3 +44,6 @@ export const authApi = {
     return Promise.resolve();
   },
 };
+
+// Export as authService for backward compatibility
+export const authService = authApi;
