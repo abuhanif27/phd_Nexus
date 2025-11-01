@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils/cn';
 
 export function HealthSummaryPage() {
   // Mock data - replace with actual API calls
@@ -198,37 +199,37 @@ export function HealthSummaryPage() {
 
       {/* Health Score Card */}
       <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
+        <CardContent className="p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <div className="rounded-full bg-blue-600 p-2">
-                  <Sparkles className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-blue-600 p-3">
+                  <Sparkles className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                     Overall Health Score
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
                     Based on your vitals, activity, and health records
                   </p>
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="mt-6">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold text-blue-600">{healthScore}</span>
-                  <span className="text-2xl text-gray-500">/100</span>
+                  <span className="text-6xl font-bold text-blue-600">{healthScore}</span>
+                  <span className="text-3xl text-gray-500">/100</span>
                 </div>
-                <Progress value={healthScore} className="mt-3 h-3" />
-                <p className="mt-2 text-sm font-medium text-green-600">
+                <Progress value={healthScore} className="mt-4 h-4" />
+                <p className="mt-3 text-base font-medium text-green-600">
                   Excellent! Keep up the great work 🎉
                 </p>
               </div>
             </div>
-            <div className="flex h-32 w-32 items-center justify-center rounded-full border-8 border-blue-600 bg-white dark:bg-gray-900">
+            <div className="flex h-36 w-36 flex-shrink-0 items-center justify-center rounded-full border-8 border-blue-600 bg-white dark:bg-gray-900">
               <div className="text-center">
-                <Target className="mx-auto h-8 w-8 text-blue-600" />
-                <p className="mt-1 text-xs font-medium text-gray-600">On Track</p>
+                <Target className="mx-auto h-10 w-10 text-blue-600" />
+                <p className="mt-2 text-sm font-medium text-gray-600">On Track</p>
               </div>
             </div>
           </div>
@@ -240,40 +241,45 @@ export function HealthSummaryPage() {
         <div className="space-y-6 lg:col-span-2">
           {/* Vital Signs */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-blue-600" />
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Activity className="h-6 w-6 text-blue-600" />
                 Vital Signs
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
+            <CardContent className="pt-0">
+              <div className="grid gap-6 md:grid-cols-2">
                 {vitalSigns.map((vital) => {
                   const Icon = vital.icon;
                   return (
-                    <Card key={vital.label} className="border-2">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex gap-3">
-                            <div className={`rounded-full p-2 ${vital.bgColor}`}>
-                              <Icon className={`h-5 w-5 ${vital.color}`} />
+                    <Card key={vital.label} className="border-2 shadow-sm">
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex flex-1 gap-4">
+                            <div className={`flex-shrink-0 rounded-full p-3 ${vital.bgColor}`}>
+                              <Icon className={`h-6 w-6 ${vital.color}`} />
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium leading-relaxed text-gray-600 dark:text-gray-400">
                                 {vital.label}
                               </p>
-                              <div className="mt-1 flex items-baseline gap-1">
-                                <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                              <div className="mt-2 flex items-baseline gap-2">
+                                <span className="text-3xl font-bold text-gray-900 dark:text-white">
                                   {vital.value}
                                 </span>
-                                <span className="text-sm text-gray-500">{vital.unit}</span>
+                                <span className="text-base text-gray-500">{vital.unit}</span>
                               </div>
-                              <p className="mt-1 text-xs text-gray-500">{vital.lastUpdated}</p>
+                              <p className="mt-2 text-xs leading-relaxed text-gray-500">
+                                {vital.lastUpdated}
+                              </p>
                             </div>
                           </div>
-                          {getTrendIcon(vital.trend)}
+                          <div className="flex-shrink-0">{getTrendIcon(vital.trend)}</div>
                         </div>
-                        <Badge variant="outline" className={`mt-3 ${getStatusColor(vital.status)}`}>
+                        <Badge
+                          variant="outline"
+                          className={`mt-4 px-3 py-1 ${getStatusColor(vital.status)}`}
+                        >
                           {vital.status.charAt(0).toUpperCase() + vital.status.slice(1)}
                         </Badge>
                       </CardContent>
@@ -299,31 +305,34 @@ export function HealthSummaryPage() {
                     {conditions.map((condition, index) => (
                       <div
                         key={index}
-                        className="flex items-start justify-between rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800"
+                        className="flex items-start justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800"
                       >
-                        <div className="flex gap-3">
-                          <div className="mt-1">
+                        <div className="flex flex-1 gap-4">
+                          <div className="mt-1 flex-shrink-0">
                             {condition.status === 'managed' ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              <CheckCircle2 className="h-6 w-6 text-green-600" />
                             ) : (
-                              <AlertCircle className="h-5 w-5 text-yellow-600" />
+                              <AlertCircle className="h-6 w-6 text-yellow-600" />
                             )}
                           </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900 dark:text-white">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
                               {condition.name}
                             </h4>
-                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                            <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
                               Diagnosed: {format(new Date(condition.diagnosed), 'MMM d, yyyy')}
                             </p>
-                            <div className="mt-2 flex gap-2">
+                            <div className="mt-3 flex flex-wrap gap-2">
                               <Badge
                                 variant="outline"
-                                className={getSeverityColor(condition.severity)}
+                                className={`px-3 py-1 ${getSeverityColor(condition.severity)}`}
                               >
                                 {condition.severity}
                               </Badge>
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                              <Badge
+                                variant="outline"
+                                className="bg-blue-50 px-3 py-1 text-blue-700"
+                              >
                                 {condition.status}
                               </Badge>
                             </div>
@@ -343,26 +352,26 @@ export function HealthSummaryPage() {
                     {medications.map((med, index) => (
                       <div
                         key={index}
-                        className="flex items-start justify-between rounded-lg border-2 border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/20"
+                        className="flex items-start justify-between gap-4 rounded-lg border-2 border-green-200 bg-green-50 p-5 dark:border-green-800 dark:bg-green-950/20"
                       >
-                        <div className="flex gap-3">
-                          <div className="rounded-full bg-green-100 p-2 dark:bg-green-900/30">
-                            <Pill className="h-5 w-5 text-green-600" />
+                        <div className="flex flex-1 gap-4">
+                          <div className="flex-shrink-0 rounded-full bg-green-100 p-3 dark:bg-green-900/30">
+                            <Pill className="h-6 w-6 text-green-600" />
                           </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900 dark:text-white">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
                               {med.name}
                             </h4>
-                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                            <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
                               {med.dosage} • {med.frequency}
                             </p>
-                            <div className="mt-2 flex items-center gap-2 text-xs text-gray-600">
-                              <Clock className="h-3 w-3" />
+                            <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+                              <Clock className="h-4 w-4" />
                               Next dose: {med.nextDose}
                             </div>
                           </div>
                         </div>
-                        <Badge className="bg-green-600">Active</Badge>
+                        <Badge className="flex-shrink-0 bg-green-600 px-3 py-1">Active</Badge>
                       </div>
                     ))}
                   </div>
@@ -377,21 +386,21 @@ export function HealthSummaryPage() {
                     {allergies.map((allergy, index) => (
                       <div
                         key={index}
-                        className="flex items-start gap-3 rounded-lg border-2 border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/20"
+                        className="flex items-start gap-4 rounded-lg border-2 border-red-200 bg-red-50 p-5 dark:border-red-800 dark:bg-red-950/20"
                       >
-                        <div className="rounded-full bg-red-100 p-2 dark:bg-red-900/30">
-                          <AlertTriangle className="h-5 w-5 text-red-600" />
+                        <div className="flex-shrink-0 rounded-full bg-red-100 p-3 dark:bg-red-900/30">
+                          <AlertTriangle className="h-6 w-6 text-red-600" />
                         </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 dark:text-white">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
                             {allergy.allergen}
                           </h4>
-                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                          <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
                             Reaction: {allergy.reaction}
                           </p>
                           <Badge
                             variant="outline"
-                            className="mt-2 border-red-300 bg-red-100 text-red-700"
+                            className="mt-3 border-red-300 bg-red-100 px-3 py-1 text-red-700"
                           >
                             {allergy.severity} severity
                           </Badge>
@@ -409,21 +418,23 @@ export function HealthSummaryPage() {
         <div className="space-y-6">
           {/* AI Insights */}
           <Card className="border-2 border-purple-200">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
-              <CardTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5 text-purple-600" />
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 pb-4 dark:from-purple-950/20 dark:to-pink-950/20">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Brain className="h-6 w-6 text-purple-600" />
                 AI Insights
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {aiInsights.map((insight, index) => (
                   <div
                     key={index}
-                    className="flex gap-3 rounded-lg bg-purple-50 p-3 dark:bg-purple-950/20"
+                    className="flex gap-4 rounded-lg bg-purple-50 p-4 dark:bg-purple-950/20"
                   >
-                    <Zap className="mt-0.5 h-4 w-4 flex-shrink-0 text-purple-600" />
-                    <p className="text-sm text-gray-700 dark:text-gray-300">{insight}</p>
+                    <Zap className="mt-1 h-5 w-5 flex-shrink-0 text-purple-600" />
+                    <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                      {insight}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -432,57 +443,68 @@ export function HealthSummaryPage() {
 
           {/* Upcoming Appointments */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-blue-600" />
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Calendar className="h-6 w-6 text-blue-600" />
                 Upcoming Appointments
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {upcomingAppointments.map((apt, index) => (
-                  <div
-                    key={index}
-                    className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-white">
-                          {apt.doctor}
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{apt.specialty}</p>
-                        <div className="mt-2 flex items-center gap-2 text-xs text-gray-600">
-                          <Calendar className="h-3 w-3" />
-                          {format(new Date(apt.date), 'MMM d, yyyy')} • {apt.time}
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                        {apt.type}
-                      </Badge>
+            <CardContent className="space-y-4 p-6 pt-0">
+              {upcomingAppointments.map((apt, index) => (
+                <div
+                  key={index}
+                  className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 transition-all hover:shadow-md dark:border-blue-800 dark:from-blue-950/30 dark:to-indigo-950/30"
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'px-3 py-1 text-xs font-semibold',
+                        apt.type === 'Follow-up'
+                          ? 'border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                          : 'border-green-300 bg-green-100 text-green-700 dark:border-green-700 dark:bg-green-900/50 dark:text-green-300'
+                      )}
+                    >
+                      {apt.type}
+                    </Badge>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {format(new Date(apt.date), 'MMM d, yyyy')}
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <h4 className="mb-1 text-base font-bold text-gray-900 dark:text-white">
+                    {apt.doctor}
+                  </h4>
+                  <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">{apt.specialty}</p>
+
+                  <div className="flex items-center gap-2 rounded-lg bg-white/60 px-3 py-2 dark:bg-gray-800/60">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {apt.time}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
 
           {/* Quick Actions */}
           <Card className="border-2 border-blue-200">
-            <CardHeader>
-              <CardTitle className="text-base">Quick Actions</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Quick Actions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 p-6">
-              <Button variant="outline" className="w-full justify-start gap-2">
-                <Shield className="h-4 w-4" />
-                Update Medical History
+            <CardContent className="space-y-3 p-6">
+              <Button variant="outline" className="w-full justify-start gap-3 py-6">
+                <Shield className="h-5 w-5" />
+                <span className="text-base">Update Medical History</span>
               </Button>
-              <Button variant="outline" className="w-full justify-start gap-2">
-                <Activity className="h-4 w-4" />
-                Log Vital Signs
+              <Button variant="outline" className="w-full justify-start gap-3 py-6">
+                <Activity className="h-5 w-5" />
+                <span className="text-base">Log Vital Signs</span>
               </Button>
-              <Button variant="outline" className="w-full justify-start gap-2">
-                <Calendar className="h-4 w-4" />
-                Schedule Checkup
+              <Button variant="outline" className="w-full justify-start gap-3 py-6">
+                <Calendar className="h-5 w-5" />
+                <span className="text-base">Schedule Checkup</span>
               </Button>
             </CardContent>
           </Card>
