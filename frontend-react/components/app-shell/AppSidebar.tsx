@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -83,6 +84,11 @@ const doctorNavigation = [
 export function AppSidebar({ isOpen }: AppSidebarProps) {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Select navigation based on user role
   const navigation = user?.role === 'doctor' ? doctorNavigation : patientNavigation;
@@ -90,24 +96,28 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
   return (
     <aside
       className={cn(
-        'border-r bg-gradient-to-b from-white to-gray-50 transition-all duration-300 dark:from-gray-900 dark:to-gray-800',
+        'border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-700 dark:bg-gray-900',
         isOpen ? 'w-64' : 'w-0 overflow-hidden'
       )}
     >
       {/* Role Badge */}
-      {isOpen && (
-        <div className="border-b bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3">
-          <div className="flex items-center space-x-2 text-white">
-            {user?.role === 'doctor' ? (
-              <Stethoscope className="h-5 w-5" />
+      {isOpen && mounted && user && (
+        <div className="border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-4 dark:border-gray-700">
+          <div className="flex items-center space-x-3 text-white">
+            {user.role === 'doctor' ? (
+              <div className="rounded-lg bg-white/20 p-2">
+                <Stethoscope className="h-5 w-5" />
+              </div>
             ) : (
-              <Activity className="h-5 w-5" />
+              <div className="rounded-lg bg-white/20 p-2">
+                <Activity className="h-5 w-5" />
+              </div>
             )}
-            <div>
-              <p className="text-xs font-medium opacity-90">
-                {user?.role === 'doctor' ? 'Doctor Portal' : 'Patient Portal'}
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-white/90">
+                {user.role === 'doctor' ? 'Doctor Portal' : 'Patient Portal'}
               </p>
-              <p className="text-sm font-semibold">{user?.email}</p>
+              <p className="truncate text-sm font-semibold">{user.email}</p>
             </div>
           </div>
         </div>
@@ -123,23 +133,25 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
               key={item.name}
               href={item.href}
               className={cn(
-                'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                'group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all',
                 isActive
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
-                  : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600 dark:text-gray-300 dark:hover:bg-gray-800'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 dark:shadow-blue-500/20'
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
               )}
               title={item.description}
             >
               <Icon
                 className={cn(
-                  'h-5 w-5 transition-transform',
+                  'h-5 w-5 flex-shrink-0 transition-transform',
                   isActive ? 'scale-110' : 'group-hover:scale-110'
                 )}
               />
               {isOpen && (
-                <div className="flex-1">
-                  <span className="block">{item.name}</span>
-                  {!isActive && <span className="text-xs opacity-60">{item.description}</span>}
+                <div className="min-w-0 flex-1">
+                  <span className="block font-semibold">{item.name}</span>
+                  {!isActive && (
+                    <span className="line-clamp-1 text-xs opacity-70">{item.description}</span>
+                  )}
                 </div>
               )}
             </Link>
@@ -148,13 +160,15 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
       </nav>
 
       {/* AI Features Badge */}
-      {isOpen && (
-        <div className="mx-3 mb-3 mt-auto rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3">
-          <div className="flex items-start space-x-2">
-            <Brain className="h-5 w-5 text-blue-600" />
-            <div>
-              <p className="text-xs font-semibold text-blue-900">AI-Powered</p>
-              <p className="mt-0.5 text-xs text-blue-700">
+      {isOpen && mounted && (
+        <div className="mx-3 mb-4 mt-auto rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 dark:border-blue-900/30 dark:from-blue-950/30 dark:to-indigo-950/30">
+          <div className="flex items-start space-x-3">
+            <div className="rounded-lg bg-blue-600 p-2">
+              <Brain className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-blue-900 dark:text-blue-100">AI-Powered</p>
+              <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
                 {user?.role === 'doctor'
                   ? 'Patient analysis & insights'
                   : 'Symptom analysis available'}
