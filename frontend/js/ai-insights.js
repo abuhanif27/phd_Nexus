@@ -1,6 +1,61 @@
 // AI Insights JavaScript for NexusCare
 const API_BASE_URL = "http://localhost:8000/api";
 
+// Example texts for buttons
+const exampleTexts = {
+  chest1:
+    "I have sharp chest pain on my left side that started 2 hours ago. It gets worse when I breathe deeply or cough. Also feeling short of breath and sweating.",
+  skin1:
+    "I have a red, itchy rash on my arms and legs that appeared 3 days ago. The affected areas are slightly swollen and warm to touch. No fever but very uncomfortable.",
+  neuro1:
+    "Severe throbbing headache on the right side of my head for 6 hours. Sensitive to light and sound. Feeling nauseous and have had two episodes of vomiting.",
+};
+
+// Check authentication
+
+// Fill example text into symptoms textarea
+function fillSimpleExample(exampleKey) {
+  const textarea = document.getElementById("symptoms");
+
+  if (!textarea) {
+    console.error("Symptoms textarea not found!");
+    return;
+  }
+
+  if (!exampleTexts[exampleKey]) {
+    console.error("Example text not found for key:", exampleKey);
+    return;
+  }
+
+  textarea.value = exampleTexts[exampleKey];
+
+  // Highlight the textarea briefly
+  textarea.style.borderColor = "var(--accent-teal)";
+  textarea.style.boxShadow = "0 0 0 4px rgba(0, 217, 181, 0.15)";
+  setTimeout(() => {
+    textarea.style.borderColor = "";
+    textarea.style.boxShadow = "";
+  }, 1000);
+
+  // Scroll to textarea
+  textarea.scrollIntoView({ behavior: "smooth", block: "center" });
+  textarea.focus();
+}
+
+// Initialize examples section visibility
+function initializeExamplesSection() {
+  const hasClosed = localStorage.getItem("aiInsightsExamplesClosed");
+  const wrapper = document.getElementById("exampleSymptomsWrapper");
+
+  if (wrapper) {
+    if (hasClosed === "true") {
+      wrapper.style.display = "none";
+    } else {
+      wrapper.style.display = "block";
+    }
+  }
+}
+
 // Check authentication
 function checkAuth() {
   const token = localStorage.getItem("accessToken");
@@ -554,35 +609,32 @@ document.addEventListener("DOMContentLoaded", () => {
   if (checkAuth()) {
     loadUserInfo();
 
-    // Add example symptoms helper
-    const examplesDiv = document.createElement("div");
-    examplesDiv.style.cssText =
-      "margin-top: 1rem; padding: 1rem; background: var(--bg-light); border-radius: 8px;";
-    examplesDiv.innerHTML = `
-            <p style="font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary);">Example symptoms:</p>
-            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                <button type="button" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;" 
-                        onclick="document.getElementById('symptoms').value = 'severe chest pain, shortness of breath, rapid heartbeat'">
-                    Chest pain example
-                </button>
-                <button type="button" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;"
-                        onclick="document.getElementById('symptoms').value = 'skin rash, itching, redness on arms and legs'">
-                    Skin issues example
-                </button>
-                <button type="button" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;"
-                        onclick="document.getElementById('symptoms').value = 'persistent headache, dizziness, sensitivity to light'">
-                    Neurological example
-                </button>
-            </div>
-        `;
+    // Initialize examples section
+    initializeExamplesSection();
 
-    const symptomForm = document.getElementById("symptomForm");
-    if (symptomForm) {
-      symptomForm.parentElement.insertBefore(
-        examplesDiv,
-        symptomForm.nextSibling
-      );
-    }
+    // Close button handler
+    $("#closeExamplesBtn").on("click", function () {
+      localStorage.setItem("aiInsightsExamplesClosed", "true");
+      $("#exampleSymptomsWrapper").fadeOut();
+    });
+
+    // Rotate chevron on collapse
+    $("#exampleSymptomsCollapse").on("show.bs.collapse", function () {
+      $("#toggleExamplesChevron").css("transform", "rotate(180deg)");
+    });
+
+    $("#exampleSymptomsCollapse").on("hide.bs.collapse", function () {
+      $("#toggleExamplesChevron").css("transform", "rotate(0deg)");
+    });
+
+    // Example button click handlers
+    $(".example-btn").on("click", function () {
+      const exampleKey = $(this).data("example");
+      fillSimpleExample(exampleKey);
+
+      // Close the collapse after selection
+      $("#exampleSymptomsCollapse").collapse("hide");
+    });
   }
 });
 

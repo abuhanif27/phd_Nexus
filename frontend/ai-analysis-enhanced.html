@@ -475,7 +475,7 @@
         <!-- Example Symptoms Dropdown -->
         <div
           id="exampleSymptomsSection"
-          style="margin-top: 1.5rem; position: relative; display: none"
+          style="margin-top: 1.5rem; position: relative"
         >
           <div
             style="
@@ -516,8 +516,8 @@
           <div style="display: flex; flex-wrap: wrap; gap: 0.75rem">
             <button
               type="button"
-              class="btn btn-outline-primary"
-              onclick="fillSimpleExample('chest1')"
+              class="btn btn-outline-primary example-btn"
+              data-example="chest1"
               style="
                 padding: 0.6rem 1.2rem;
                 font-size: 0.9rem;
@@ -536,8 +536,8 @@
 
             <button
               type="button"
-              class="btn btn-outline-primary"
-              onclick="fillSimpleExample('skin1')"
+              class="btn btn-outline-primary example-btn"
+              data-example="skin1"
               style="
                 padding: 0.6rem 1.2rem;
                 font-size: 0.9rem;
@@ -556,8 +556,8 @@
 
             <button
               type="button"
-              class="btn btn-outline-primary"
-              onclick="fillSimpleExample('neuro1')"
+              class="btn btn-outline-primary example-btn"
+              data-example="neuro1"
               style="
                 padding: 0.6rem 1.2rem;
                 font-size: 0.9rem;
@@ -636,12 +636,66 @@
         localStorage.setItem("aiAnalysisExamplesClosed", "true");
       }
 
+      // Example texts for buttons
+      const exampleTexts = {
+        chest1:
+          "I have sharp chest pain on my left side that started 2 hours ago. It gets worse when I breathe deeply or cough. Also feeling short of breath and sweating.",
+        chest2:
+          "Experiencing tightness in my chest for the past hour, radiating to my left arm and jaw. Feeling nauseous and dizzy.",
+        skin1:
+          "I have a red, itchy rash on my arms and legs that appeared 3 days ago. The affected areas are slightly swollen and warm to touch. No fever but very uncomfortable.",
+        skin2:
+          "Noticed small, red bumps on my torso yesterday. They are very itchy, especially at night. Some have started to form blisters.",
+        neuro1:
+          "Severe throbbing headache on the right side of my head for 6 hours. Sensitive to light and sound. Feeling nauseous and have had two episodes of vomiting.",
+        neuro2:
+          "Experiencing sudden dizziness and difficulty maintaining balance for the past 2 hours. Room feels like it's spinning. Also have slight numbness in my left hand.",
+        flu1: "I have fever, headache, and body aches for 3 days. Temperature around 101°F. Also feeling tired, loss of appetite, and mild sore throat.",
+        flu2: "Experiencing chills, severe body aches, and dry cough for 2 days. Feel exhausted and have been sweating at night. Throat is scratchy and slightly painful.",
+      };
+
+      // Simple button example filler
+      function fillSimpleExample(exampleKey) {
+        console.log("fillSimpleExample called with:", exampleKey);
+        const textarea = document.getElementById("symptoms");
+        if (!textarea) {
+          console.error("Symptoms textarea not found!");
+          return;
+        }
+
+        if (!exampleTexts[exampleKey]) {
+          console.error("Example text not found for key:", exampleKey);
+          return;
+        }
+
+        textarea.value = exampleTexts[exampleKey];
+        console.log(
+          "Textarea filled with:",
+          exampleTexts[exampleKey].substring(0, 50) + "..."
+        );
+
+        // Highlight the textarea briefly
+        $(textarea).css("border-color", "var(--accent-teal)");
+        $(textarea).css("box-shadow", "0 0 0 4px rgba(0, 217, 181, 0.15)");
+        setTimeout(() => {
+          $(textarea).css("border-color", "var(--border-color)");
+          $(textarea).css("box-shadow", "none");
+        }, 1000);
+
+        // Scroll to textarea
+        textarea.scrollIntoView({ behavior: "smooth", block: "center" });
+        textarea.focus();
+      }
+
       // Check if this is first visit and show examples accordingly
       function initializeExamplesSection() {
         const hasClosed = localStorage.getItem("aiAnalysisExamplesClosed");
-        if (!hasClosed) {
-          // First time visitor - show the examples
-          $("#exampleSymptomsSection").fadeIn(400);
+        if (hasClosed === "true") {
+          // User has closed it before - keep it hidden
+          $("#exampleSymptomsSection").hide();
+        } else {
+          // Show the examples (default behavior)
+          $("#exampleSymptomsSection").show();
         }
       }
 
@@ -649,6 +703,13 @@
       $(document).ready(function () {
         initializeExamplesSection();
         updateModelDisplay(); // Initialize model description
+
+        // Attach click event listeners to example buttons
+        $(".example-btn").on("click", function () {
+          const exampleKey = $(this).data("example");
+          console.log("Example button clicked:", exampleKey);
+          fillSimpleExample(exampleKey);
+        });
       });
 
       // Update model description based on selection
@@ -672,23 +733,6 @@
         }, 300);
       }
 
-      const exampleTexts = {
-        chest1:
-          "I have sharp chest pain on my left side that started 2 hours ago. It gets worse when I breathe deeply or cough. Also feeling short of breath and sweating.",
-        chest2:
-          "Experiencing tightness in my chest for the past hour, radiating to my left arm and jaw. Feeling nauseous and dizzy.",
-        skin1:
-          "I have a red, itchy rash on my arms and legs that appeared 3 days ago. The affected areas are slightly swollen and warm to touch. No fever but very uncomfortable.",
-        skin2:
-          "Noticed small, red bumps on my torso yesterday. They are very itchy, especially at night. Some have started to form blisters.",
-        neuro1:
-          "Severe throbbing headache on the right side of my head for 6 hours. Sensitive to light and sound. Feeling nauseous and have had two episodes of vomiting.",
-        neuro2:
-          "Experiencing sudden dizziness and difficulty maintaining balance for the past 2 hours. Room feels like it's spinning. Also have slight numbness in my left hand.",
-        flu1: "I have fever, headache, and body aches for 3 days. Temperature around 101°F. Also feeling tired, loss of appetite, and mild sore throat.",
-        flu2: "Experiencing chills, severe body aches, and dry cough for 2 days. Feel exhausted and have been sweating at night. Throat is scratchy and slightly painful.",
-      };
-
       function fillExample(event, exampleKey) {
         event.preventDefault();
         const textarea = document.getElementById("symptoms");
@@ -705,24 +749,6 @@
 
         // Scroll to textarea
         textarea.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-
-      // Simple button example filler (without dropdown)
-      function fillSimpleExample(exampleKey) {
-        const textarea = document.getElementById("symptoms");
-        textarea.value = exampleTexts[exampleKey];
-
-        // Highlight the textarea briefly
-        $(textarea).css("border-color", "var(--accent-teal)");
-        $(textarea).css("box-shadow", "0 0 0 4px rgba(0, 217, 181, 0.15)");
-        setTimeout(() => {
-          $(textarea).css("border-color", "var(--border-color)");
-          $(textarea).css("box-shadow", "none");
-        }, 1000);
-
-        // Scroll to textarea
-        textarea.scrollIntoView({ behavior: "smooth", block: "center" });
-        textarea.focus();
       }
 
       let selectedMode = "quick"; // default mode
