@@ -173,25 +173,6 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
           );
         })}
       </nav>
-
-      {/* AI Features Badge */}
-      {isOpen && mounted && (
-        <div className="mx-3 mb-4 mt-auto rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 dark:border-blue-900/30 dark:from-blue-950/30 dark:to-indigo-950/30">
-          <div className="flex items-start space-x-3">
-            <div className="rounded-lg bg-blue-600 p-2">
-              <Brain className="h-5 w-5 text-white" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-blue-900 dark:text-blue-100">AI-Powered</p>
-              <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
-                {user?.role === 'doctor'
-                  ? 'Patient analysis & insights'
-                  : 'Symptom analysis available'}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </aside>
   );
 }
