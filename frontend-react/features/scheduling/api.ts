@@ -11,9 +11,16 @@ const BASE = '/api/scheduling';
 /**
  * Get available slots for a doctor on a specific date
  */
-export async function getAvailableSlots(doctorId: number, date: string): Promise<string[]> {
-  const { data } = await apiClient.get<string[]>(`${BASE}/available-slots/`, {
-    params: { doctor_id: doctorId, date },
+export async function getAvailableSlots(
+  doctorId: number,
+  date: string
+): Promise<{
+  date: string;
+  doctor_id: number;
+  slots: Array<{ start_time: string; end_time: string; available: boolean }>;
+}> {
+  const { data } = await apiClient.get(`${BASE}/doctors/${doctorId}/slots/`, {
+    params: { date },
   });
   return data;
 }

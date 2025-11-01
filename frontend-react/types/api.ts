@@ -17,6 +17,8 @@ export interface User {
   is_active: boolean;
   is_staff: boolean;
   created_at: string;
+  patient_profile?: Patient;
+  doctor_profile?: Doctor;
 }
 
 export interface LoginRequest {
@@ -127,6 +129,7 @@ export interface Appointment {
 
 export interface AppointmentCreateRequest {
   doctor: number;
+  patient: number;
   date: string;
   start_time: string;
   end_time: string;

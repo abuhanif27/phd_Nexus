@@ -1,16 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-interface User {
-  id: number;
-  email: string;
-  phone: string | null;
-  role: 'patient' | 'doctor' | 'admin';
-  twofa_enabled: boolean;
-  is_active: boolean;
-  is_staff: boolean;
-  created_at: string;
-}
+import type { User } from '@/types/api';
 
 interface AuthState {
   user: User | null;
