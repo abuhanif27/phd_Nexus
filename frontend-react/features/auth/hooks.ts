@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from './api';
 import { setTokens, clearTokens } from '@/lib/auth/session';
-import { useSessionStore } from '@/store/useSession';
+import { useAuthStore } from './store';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/use-toast';
 import { getErrorMessage } from '@/lib/api/errors';
@@ -32,7 +32,7 @@ export function useCurrentUser() {
 export function useLogin() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { setUser } = useSessionStore();
+  const { setAuth } = useAuthStore();
 
   return useMutation({
     mutationFn: authApi.login,
@@ -40,12 +40,8 @@ export function useLogin() {
       // Store tokens
       setTokens(data.access, data.refresh);
 
-      // Update session store
-      setUser({
-        id: data.user.id,
-        email: data.user.email,
-        role: data.user.role,
-      });
+      // Update auth store with full user data
+      setAuth(data.user, data.access, data.refresh);
 
       // Set user in query cache
       queryClient.setQueryData(authKeys.currentUser(), data.user);
@@ -100,7 +96,7 @@ export function useRegister() {
 export function useLogout() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { logout: clearSession } = useSessionStore();
+  const { clearAuth } = useAuthStore();
 
   return useMutation({
     mutationFn: authApi.logout,
@@ -108,8 +104,8 @@ export function useLogout() {
       // Clear tokens
       clearTokens();
 
-      // Clear session store
-      clearSession();
+      // Clear auth store
+      clearAuth();
 
       // Clear all queries
       queryClient.clear();
