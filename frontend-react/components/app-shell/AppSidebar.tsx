@@ -99,13 +99,22 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
   // Select navigation based on user role (only after mount to avoid hydration issues)
   const navigation = mounted && user?.role === 'doctor' ? doctorNavigation : patientNavigation;
 
+  // Don't render until mounted to avoid hydration issues
+  if (!mounted) {
+    return (
+      <aside
+        className="w-0 overflow-hidden border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-700 dark:bg-gray-900"
+        suppressHydrationWarning
+      />
+    );
+  }
+
   return (
     <aside
       className={cn(
         'border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-700 dark:bg-gray-900',
-        mounted ? (isOpen ? 'w-64' : 'w-0 overflow-hidden') : 'w-0 overflow-hidden'
+        isOpen ? 'w-64' : 'w-0 overflow-hidden'
       )}
-      suppressHydrationWarning
     >
       <nav className="flex flex-col gap-1 p-3">
         {navigation.map((item) => {

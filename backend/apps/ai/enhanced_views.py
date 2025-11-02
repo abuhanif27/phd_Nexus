@@ -73,16 +73,50 @@ class EnhancedAIAnalysisView(views.APIView):
     def _quick_analysis(self, symptoms, patient, disclaimer, model='auto'):
         """
         Quick Answer: Fast symptom analysis using scikit-learn model
-        Takes 1-2 seconds
+        Takes 1-2 seconds, or uses multi-modal if images/documents available
         """
         start_time = time.time()
         
-        # Use requested model for quick prediction (default to sklearn-like behavior)
-        requested = model or 'sklearn'
-        # If user selected 'auto', prefer sklearn for quick mode
-        if requested == 'auto':
-            requested = 'sklearn'
-        result = ai_service.predict_specialist(symptoms, model_type=requested)
+        # Check if patient has images or lab reports
+        patient_images = []
+        lab_reports = []
+        
+        if patient:
+            try:
+                # Get recent medical images
+                from apps.records.models import MedicalImage
+                patient_images = list(MedicalImage.objects.filter(
+                    patient=patient
+                ).order_by('-created_at')[:3])
+            except:
+                pass
+            
+            try:
+                # Get recent lab reports
+                from apps.records.models import LabResult
+                lab_reports = list(LabResult.objects.filter(
+                    patient=patient
+                ).order_by('-created_at')[:3])
+            except:
+                pass
+        
+        # Use smart router for intelligent model selection
+        try:
+            from apps.ai.smart_model_router import get_smart_router
+            router = get_smart_router()
+            
+            result = router.predict(
+                text=symptoms,
+                patient_images=patient_images,
+                lab_reports=lab_reports
+            )
+        except Exception as e:
+            # Fallback to traditional sklearn
+            print(f"Smart router failed, using traditional: {e}")
+            requested = model or 'sklearn'
+            if requested == 'auto':
+                requested = 'sklearn'
+            result = ai_service.predict_specialist(symptoms, model_type=requested)
         
         # Add NLP entity extraction
         entities = ai_service.analyze_symptoms(symptoms)
