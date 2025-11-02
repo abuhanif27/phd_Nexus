@@ -73,13 +73,31 @@ class AIService:
                 print(f"Warning: Could not load FAISS index: {e}")
     
     def _load_specialist_classifier(self):
-        """Load specialist classifier (PyTorch or sklearn with fallback)."""
+        """Load specialist classifier (Enhanced versions with fallback)."""
+        # Enhanced model paths (PRIORITY)
+        enhanced_sklearn_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn_enhanced.joblib')
+        enhanced_sklearn_labels = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn_enhanced_labels.joblib')
+        
+        # Original model paths (fallback)
         pytorch_model_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_pytorch.pt')
         pytorch_labels_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_pytorch_labels.joblib')
         sklearn_model_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn.joblib')
         sklearn_labels_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn_labels.joblib')
         
-        # Try PyTorch first if requested or auto
+        # Try ENHANCED sklearn first (best performance)
+        if os.path.exists(enhanced_sklearn_path) and os.path.exists(enhanced_sklearn_labels):
+            try:
+                from apps.ai.sklearn_classifier_enhanced import EnhancedSklearnSpecialistClassifier
+                self.specialist_classifier = EnhancedSklearnSpecialistClassifier.load(
+                    enhanced_sklearn_path, enhanced_sklearn_labels
+                )
+                self.specialist_classifier_type = 'enhanced_sklearn'
+                print(f"✓ Loaded ENHANCED sklearn specialist classifier (HIGH ACCURACY)")
+                return
+            except Exception as e:
+                print(f"Warning: Could not load enhanced sklearn classifier: {e}")
+        
+        # Try PyTorch if requested or auto
         if self.model_type in ['pytorch', 'auto']:
             if os.path.exists(pytorch_model_path) and os.path.exists(pytorch_labels_path):
                 try:
@@ -95,7 +113,7 @@ class AIService:
                     if self.model_type == 'pytorch':
                         return
         
-        # Try sklearn (fallback or explicit)
+        # Try regular sklearn (fallback or explicit)
         if self.model_type in ['sklearn', 'auto']:
             if os.path.exists(sklearn_model_path) and os.path.exists(sklearn_labels_path):
                 try:
@@ -180,8 +198,8 @@ class AIService:
             }
         
         try:
-            # Use new classifiers (sklearn or pytorch) with predict_single method
-            if self.specialist_classifier_type in ['sklearn', 'pytorch']:
+            # Use new classifiers (sklearn, enhanced_sklearn, or pytorch) with predict_single method
+            if self.specialist_classifier_type in ['sklearn', 'pytorch', 'enhanced_sklearn']:
                 result = self.specialist_classifier.predict_single(text, top_k=3)
                 result['model_type'] = self.specialist_classifier_type
                 return result
