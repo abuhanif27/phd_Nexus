@@ -20,8 +20,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { analyzeSymptoms, getPatientSummary } from '../api';
-import { useAuthStore } from '@/features/auth/store';
+import { analyzeSymptoms } from '../api';
 
 const analysisSchema = z.object({
   symptoms: z.string().min(10, 'Please describe your symptoms in detail (at least 10 characters)'),
@@ -38,20 +37,24 @@ interface AnalysisResult {
   specialist: string;
   confidence: number;
   urgency: 'emergency' | 'urgent' | 'routine';
-  entities: any[];
   reasoning?: string;
-  medicalHistory?: string;
   recommendations: string[];
-  disclaimer: {
+  disclaimer?: {
     warning: string;
     message: string;
     limitations: string[];
+  };
+  entities?: any[];
+  nextSteps?: {
+    action?: string;
+    urgency?: string;
+    preparation?: string[];
+    monitoring?: string[];
   };
   processingTime: number;
 }
 
 export function AIAnalysisPage() {
-  const { user } = useAuthStore();
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [result, setResult] = React.useState<AnalysisResult | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -99,9 +102,17 @@ export function AIAnalysisPage() {
 
       const processingTime = (Date.now() - startTime) / 1000;
 
+      // Map backend response to frontend interface
       setResult({
-        ...response,
         mode: data.mode,
+        specialist: response.analysis?.recommended_specialist || 'General Practitioner',
+        confidence: response.analysis?.confidence || 0,
+        urgency: response.next_steps?.urgency || 'routine',
+        reasoning: response.analysis?.reasoning || '',
+        recommendations: response.recommendations || [],
+        disclaimer: response.disclaimer,
+        entities: response.analysis?.extracted_symptoms || [],
+        nextSteps: response.next_steps || {},
         processingTime,
       });
     } catch (err: any) {
@@ -388,18 +399,21 @@ export function AIAnalysisPage() {
                 <AlertCircle className="h-6 w-6 flex-shrink-0 text-orange-600 dark:text-orange-400" />
                 <div className="flex-1">
                   <h3 className="font-bold text-orange-900 dark:text-orange-100">
-                    {result.disclaimer.warning}
+                    {result.disclaimer?.warning || 'Medical Disclaimer'}
                   </h3>
                   <p className="mt-2 text-sm text-orange-800 dark:text-orange-200">
-                    {result.disclaimer.message}
+                    {result.disclaimer?.message ||
+                      'This is an AI-powered analysis and should not replace professional medical advice.'}
                   </p>
-                  <ul className="mt-3 space-y-1">
-                    {result.disclaimer.limitations.map((limitation, idx) => (
-                      <li key={idx} className="text-sm text-orange-700 dark:text-orange-300">
-                        • {limitation}
-                      </li>
-                    ))}
-                  </ul>
+                  {result.disclaimer?.limitations && result.disclaimer.limitations.length > 0 && (
+                    <ul className="mt-3 space-y-1">
+                      {result.disclaimer.limitations.map((limitation: string, idx: number) => (
+                        <li key={idx} className="text-sm text-orange-700 dark:text-orange-300">
+                          • {limitation}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             </CardContent>
