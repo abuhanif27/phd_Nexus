@@ -31,20 +31,22 @@ from .models import EmbeddingMeta, AISummary
 class AIService:
     """
     Main AI service for NLP/ML operations.
-    Supports both sklearn and PyTorch models with intelligent fallback.
+    Supports sklearn and DistilBERT models with intelligent fallback.
+    100% FREE - no API costs!
     """
     def __init__(self, model_type: str = 'auto'):
         """
         Initialize AI Service.
         
         Args:
-            model_type: 'sklearn', 'pytorch', or 'auto' (tries pytorch, falls back to sklearn)
+            model_type: 'sklearn', 'distilbert', or 'auto' (defaults to sklearn)
         """
         self.model_type = model_type
         self.spacy_model = None
         self.embedding_model = None
         self.specialist_classifier = None
         self.specialist_classifier_type = None
+        self.distilbert_classifier = None  # FREE CPU-friendly DistilBERT
         self.faiss_index = None
         self._load_models()
     
@@ -93,6 +95,17 @@ class AIService:
                 )
                 self.specialist_classifier_type = 'enhanced_sklearn'
                 print(f"✓ Loaded ENHANCED sklearn specialist classifier (HIGH ACCURACY)")
+                
+                # Try to load FREE DistilBERT for deep mode
+                distilbert_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_distilbert_cpu.pt')
+                if os.path.exists(distilbert_path):
+                    try:
+                        from apps.ai.distilbert_cpu_classifier import FreeDistilBERTClassifier
+                        self.distilbert_classifier = FreeDistilBERTClassifier(distilbert_path)
+                        print(f"✓ Deep mode available (FREE DistilBERT, no API costs)")
+                    except Exception as e:
+                        print(f"  Deep mode unavailable: {e}")
+                
                 return
             except Exception as e:
                 print(f"Warning: Could not load enhanced sklearn classifier: {e}")
@@ -173,10 +186,18 @@ class AIService:
             'entities': entities
         }
     
-    def predict_specialist(self, text: str, model_type: str = None) -> Dict:
+    def predict_specialist(self, text: str, model_type: str = None, mode: str = 'quick', 
+                          patient_history: str = None) -> Dict:
         """
         Predict specialist from symptom text using loaded classifier.
-        Supports sklearn, PyTorch, and legacy models.
+        Supports sklearn (quick) and DistilBERT (deep) - 100% FREE!
+        
+        Args:
+            text: Symptom description
+            model_type: Override model type ('sklearn', 'distilbert')
+            mode: 'quick' (fast sklearn 5-10ms) or 'deep' (FREE DistilBERT 100ms)
+            patient_history: Optional patient history (currently unused)
+            
         Returns specialist name, confidence, and top alternatives.
         """
         # If caller requests a specific model type, attempt to load it.
@@ -198,7 +219,13 @@ class AIService:
             }
         
         try:
-            # Use new classifiers (sklearn, enhanced_sklearn, or pytorch) with predict_single method
+            # DEEP MODE: Use FREE DistilBERT (no API costs!)
+            if mode == 'deep' and self.distilbert_classifier:
+                result = self.distilbert_classifier.predict_single(text, top_k=3)
+                result['model_type'] = 'distilbert_cpu_free'
+                return result
+            
+            # Use new classifiers (sklearn, enhanced_sklearn) with predict_single method
             if self.specialist_classifier_type in ['sklearn', 'pytorch', 'enhanced_sklearn']:
                 result = self.specialist_classifier.predict_single(text, top_k=3)
                 result['model_type'] = self.specialist_classifier_type

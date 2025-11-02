@@ -39,7 +39,13 @@ class SymptomAnalyzeView(views.APIView):
 
 
 class SpecialistPredictView(views.APIView):
-    """Predict specialist from symptom text."""
+    """
+    Predict specialist from symptom text.
+    
+    Supports two modes (100% FREE):
+    - 'quick': Fast sklearn (5-10ms, 88% confidence)
+    - 'deep': FREE DistilBERT CPU (100ms, improving confidence, no API costs)
+    """
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
@@ -47,13 +53,19 @@ class SpecialistPredictView(views.APIView):
         serializer.is_valid(raise_exception=True)
         
         text = serializer.validated_data['text']
-        # Optional model override (e.g., 'pytorch', 'sklearn', 'auto')
+        
+        # Get mode: 'quick' (default) or 'deep'
+        mode = request.data.get('mode', 'quick')
+        
+        # Optional model override (e.g., 'sklearn', 'distilbert', 'auto')
         model = request.data.get('model') or request.query_params.get('model')
-        # Predict specialist
-        if model:
-            result = ai_service.predict_specialist(text, model_type=model)
-        else:
-            result = ai_service.predict_specialist(text)
+        
+        # Predict specialist with mode support
+        result = ai_service.predict_specialist(
+            text, 
+            model_type=model,
+            mode=mode
+        )
         
         return Response(result)
 

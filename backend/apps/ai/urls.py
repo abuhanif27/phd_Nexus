@@ -7,16 +7,14 @@ from .views import (
     PatientSummaryView, BuildIndexView, TextSummaryView, HealthAnalysisView,
     ModelStatusView
 )
-from .enhanced_views import enhanced_ai_analysis
 
 urlpatterns = [
     path('symptoms/analyze/', SymptomAnalyzeView.as_view(), name='symptoms_analyze'),
     path('ai/specialist/', SpecialistPredictView.as_view(), name='ai_specialist'),
+    path('ai/predict-specialist/', SpecialistPredictView.as_view(), name='predict_specialist'),
     path('ai/summary/', TextSummaryView.as_view(), name='ai_text_summary'),
     path('ai/patient-summary/', PatientSummaryView.as_view(), name='ai_patient_summary'),
     path('ai/build-index/', BuildIndexView.as_view(), name='ai_build_index'),
     path('health-analysis/', HealthAnalysisView.as_view(), name='health_analysis'),
     path('models/status/', ModelStatusView.as_view(), name='model_status'),
-    # New enhanced AI analysis endpoint
-    path('ai/analyze-enhanced/', enhanced_ai_analysis, name='ai_analyze_enhanced'),
 ]
