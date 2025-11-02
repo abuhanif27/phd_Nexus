@@ -19,14 +19,15 @@ if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null ; then
 else
     echo -e "${BLUE}📦 Starting Django Backend Server...${NC}"
     cd /home/hn-hanif/Desktop/phd_Nexus/backend
-    if [ -f ".venv/bin/python" ]; then
-        .venv/bin/python manage.py runserver > /tmp/nexuscare-backend.log 2>&1 &
+    if [ -f "manage.py" ]; then
+        # Start Django with Python
+        python manage.py runserver > /tmp/nexuscare-backend.log 2>&1 &
         BACKEND_PID=$!
         echo -e "${GREEN}✅ Backend started (PID: $BACKEND_PID)${NC}"
         echo "   Logs: /tmp/nexuscare-backend.log"
     else
-        echo -e "${RED}❌ Backend virtual environment not found${NC}"
-        echo "   Run: cd backend && python -m venv .venv && .venv/bin/pip install -r requirements.txt"
+        echo -e "${RED}❌ Django manage.py not found${NC}"
+        echo "   Check your backend directory path"
     fi
     sleep 3
 fi
@@ -88,19 +89,18 @@ echo "🛑 To stop all services: ./stop-all.sh"
 echo "📝 View logs:"
 echo "   Backend:  tail -f /tmp/nexuscare-backend.log"
 echo "   Frontend: tail -f /tmp/nexuscare-frontend.log"
-echo "   - AI Insights:  http://localhost:8080/ai-insights.html"
 echo ""
 echo "🛑 To stop servers:"
 echo "   pkill -f 'manage.py runserver'"
-echo "   pkill -f 'http.server 8080'"
+echo "   pkill -f 'next dev'"
 echo ""
 
-# Open browser (optional)
+# Open browser to the correct URL (localhost:3000)
 if command -v xdg-open > /dev/null; then
     echo "🌐 Opening browser..."
-    xdg-open http://localhost:8080 2>/dev/null &
+    xdg-open http://localhost:3000 2>/dev/null &
 elif command -v open > /dev/null; then
-    open http://localhost:8080 2>/dev/null &
+    open http://localhost:3000 2>/dev/null &
 fi
 
 echo "✨ Ready to go!"
