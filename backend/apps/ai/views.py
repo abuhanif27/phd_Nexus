@@ -232,6 +232,161 @@ class HealthAnalysisView(views.APIView):
             )
 
 
+class EnhancedAnalysisView(views.APIView):
+    """
+    Enhanced AI analysis combining symptom analysis and specialist prediction.
+    
+    Supports both quick (sklearn) and deep (DistilBERT) modes.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            # Get request data
+            symptoms = request.data.get('symptoms', '')
+            mode = request.data.get('mode', 'quick')
+            include_history = request.data.get('include_history', False)
+            model = request.data.get('model', 'auto')
+            
+            if not symptoms:
+                return Response(
+                    {'error': 'Symptoms text is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Analyze symptoms
+            symptom_analysis = ai_service.analyze_symptoms(symptoms)
+            
+            # Predict specialist with selected mode
+            specialist_prediction = ai_service.predict_specialist(
+                symptoms,
+                model_type=model if model != 'auto' else None,
+                mode=mode
+            )
+            
+            # Get patient history if requested
+            patient_history = None
+            if include_history and hasattr(request.user, 'patient_profile'):
+                from apps.records.models import MedicalRecord
+                patient = request.user.patient_profile
+                records = MedicalRecord.objects.filter(patient=patient).order_by('-created_at')[:5]
+                patient_history = {
+                    'medical_conditions': patient.medical_conditions or 'None reported',
+                    'allergies': patient.allergies or 'None reported',
+                    'recent_records': [
+                        {
+                            'date': record.created_at.isoformat(),
+                            'diagnosis': record.diagnosis,
+                            'treatment': record.treatment
+                        } for record in records
+                    ]
+                }
+            
+            # Extract specialist info
+            specialist = specialist_prediction.get('specialist', 'General Practitioner')
+            confidence = specialist_prediction.get('confidence', 0.0)
+            
+            # Determine urgency based on confidence and keywords
+            urgency = 'routine'
+            symptoms_lower = symptoms.lower()
+            if any(word in symptoms_lower for word in ['severe', 'emergency', 'bleeding', 'chest pain', 'difficulty breathing']):
+                urgency = 'urgent' if confidence > 0.6 else 'emergency'
+            elif any(word in symptoms_lower for word in ['pain', 'fever', 'infection']):
+                urgency = 'urgent' if confidence > 0.5 else 'routine'
+            
+            # Generate recommendations
+            recommendations = []
+            if confidence > 0.7:
+                recommendations.append(f"Consult with a {specialist} for specialized care")
+                recommendations.append("Schedule an appointment within 1-2 weeks for evaluation")
+            elif confidence > 0.5:
+                recommendations.append(f"Consider seeing a {specialist} or General Practitioner")
+                recommendations.append("Monitor symptoms and seek care if they worsen")
+            else:
+                recommendations.append("Consult with a General Practitioner for initial evaluation")
+                recommendations.append("Keep track of your symptoms and their progression")
+            
+            if urgency == 'urgent' or urgency == 'emergency':
+                recommendations.insert(0, "Seek immediate medical attention if symptoms worsen")
+            
+            # Add general recommendations
+            recommendations.extend([
+                "Stay hydrated and get adequate rest",
+                "Keep a symptom diary for your healthcare provider",
+                "Avoid self-medication without professional advice"
+            ])
+            
+            # Generate disclaimer
+            disclaimer = {
+                'warning': '⚠️ Medical Disclaimer',
+                'message': 'This is an AI-powered analysis and should not replace professional medical advice.',
+                'limitations': [
+                    'AI analysis is not a substitute for professional medical diagnosis',
+                    'Always consult with qualified healthcare professionals',
+                    'Seek immediate help for emergency symptoms',
+                    f'Analysis based on {mode} mode with {confidence:.1%} confidence'
+                ]
+            }
+            
+            # Generate next steps
+            next_steps = {
+                'action': f"Schedule appointment with {specialist}",
+                'urgency': urgency,
+                'preparation': [
+                    'Write down all symptoms with onset dates',
+                    'List any medications you\'re currently taking',
+                    'Note any allergies or medical conditions',
+                    'Bring relevant medical records'
+                ],
+                'monitoring': [
+                    'Track symptom changes daily',
+                    'Note any triggers or patterns',
+                    'Record severity on a scale of 1-10',
+                    'Document any new symptoms'
+                ]
+            }
+            
+            # Combine results with frontend-expected structure
+            result = {
+                'success': True,
+                'mode': mode,
+                'model_used': specialist_prediction.get('model_used', mode),
+                'analysis': {
+                    'recommended_specialist': specialist,
+                    'confidence': confidence,
+                    'reasoning': specialist_prediction.get('reasoning', f'{mode.title()} mode analysis suggests {specialist} based on symptom patterns'),
+                    'extracted_symptoms': symptom_analysis.get('entities', []),
+                    'cleaned_text': symptom_analysis.get('cleaned_text', symptoms)
+                },
+                'recommendations': recommendations,
+                'disclaimer': disclaimer,
+                'next_steps': next_steps,
+                'patient_history': patient_history,
+            }
+            
+            # Save symptom log if user is a patient
+            if hasattr(request.user, 'patient_profile'):
+                SymptomLog.objects.create(
+                    patient=request.user.patient_profile,
+                    text=symptoms,
+                    cleaned_text=symptom_analysis.get('cleaned_text', symptoms),
+                    entities=symptom_analysis.get('entities', {})
+                )
+            
+            return Response(result)
+            
+        except Exception as e:
+            import traceback
+            return Response(
+                {
+                    'success': False,
+                    'error': str(e),
+                    'traceback': traceback.format_exc()
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class ModelStatusView(views.APIView):
     """Get status of ML models (which models are trained and available)."""
     permission_classes = [IsAuthenticated]
