@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
+    "dev:windows": "set PORT=3000 && next dev",
     "build": "next build",
     "start": "next start -p 3000",
+    "start:windows": "set PORT=3000 && next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "typecheck": "tsc --noEmit",
@@ -18,6 +20,7 @@
     "test:e2e:ui": "playwright test --ui",
     "msw:init": "msw init public/ --save",
     "analyze": "ANALYZE=true next build",
+    "analyze:windows": "set ANALYZE=true&& next build",
     "prepare": "husky || true"
   },
   "dependencies": {

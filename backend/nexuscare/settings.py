@@ -1,7 +1,10 @@
 """
 Django settings for NexusCare project.
+
+Platform-specific settings for Windows, Linux, and macOS.
 """
 import os
+import platform
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
@@ -11,6 +14,10 @@ load_dotenv()
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Detect OS for Windows-specific fixes
+CURRENT_OS = platform.system()
+IS_WINDOWS = CURRENT_OS == 'Windows'
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET', 'dev-secret-change-in-production')
@@ -157,7 +164,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
+    os.getenv('FRONTEND_URL', 'http://localhost:3000'),
 ]
+
+# Allow all custom origins from environment variable
+additional_origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
+if additional_origins:
+    CORS_ALLOWED_ORIGINS.extend([o.strip() for o in additional_origins.split(',') if o.strip()])
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -177,6 +190,25 @@ CELERY_TIMEZONE = TIME_ZONE
 FAISS_INDEX_PATH = BASE_DIR / os.getenv('FAISS_INDEX_PATH', 'ai_index/faiss.index')
 SYMPTOM_MODEL_PATH = BASE_DIR / os.getenv('SYMPTOM_MODEL_PATH', 'ai_models/specialist_clf.joblib')
 SPACY_MODEL = os.getenv('SPACY_MODEL', 'en_core_web_sm')
+
+# Windows-specific: Tesseract OCR path
+if IS_WINDOWS:
+    # Try to auto-detect Tesseract path
+    tesseract_paths = [
+        r'C:\Program Files\Tesseract-OCR\tesseract.exe',
+        r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
+    ]
+    
+    tesseract_cmd = os.getenv('TESSERACT_CMD')
+    if tesseract_cmd and os.path.exists(tesseract_cmd):
+        import pytesseract
+        pytesseract.pytesseract.pytesseract_cmd = tesseract_cmd
+    else:
+        for path in tesseract_paths:
+            if os.path.exists(path):
+                import pytesseract
+                pytesseract.pytesseract.pytesseract_cmd = path
+                break
 
 # File signing settings
 FILE_LINK_EXPIRY_SECONDS = 300  # 5 minutes

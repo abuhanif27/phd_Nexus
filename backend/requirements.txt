@@ -1,23 +1,44 @@
+# Django and REST Framework
 Django==5.0.1
 djangorestframework==3.14.0
 djangorestframework-simplejwt==5.3.1
 django-cors-headers==4.3.1
+
+# Utilities
 pytz
 python-dotenv
 Pillow
+
+# OCR and Text Processing
 pytesseract
 spacy==3.7.2
-sentence-transformers==2.3.1
-scikit-learn==1.4.0
-faiss-cpu==1.8.0
 sumy==0.11.0
-joblib
-celery==5.3.6
-redis==5.0.1
-pyotp
 nltk
+
+# NLP and Embeddings
+sentence-transformers==2.3.1
 pandas
 numpy
+
+# Machine Learning and AI
+scikit-learn==1.4.0
+faiss-cpu==1.8.0
+joblib
+
+# Async Task Queue
+celery==5.3.6
+redis==5.0.1
+
+# Authentication
+pyotp
 pyjwt
+
+# Testing
 pytest
 pytest-django
+
+# Windows compatibility
+# NOTE: For Windows, ensure you have:
+# - Tesseract OCR installed from: https://github.com/UB-Mannheim/tesseract/wiki
+# - Uncomment torch if using GPU: torch==2.0.0+cu118 -f https://download.pytorch.org/whl/torch_stable.html
+
