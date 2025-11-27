@@ -90,6 +90,7 @@ if not exist "%SCRIPT_DIR%frontend-react\node_modules" (
     start "NexusCare React" cmd /k "cd /d "%SCRIPT_DIR%frontend-react" && npm run dev"
 )
 set FRONTEND_URL=http://localhost:8080
+set REACT_URL=http://localhost:3000
 goto done
 
 :done
@@ -121,6 +122,10 @@ REM Open browser
 echo Opening browser...
 timeout /t 2 /nobreak > nul
 start %FRONTEND_URL%
+if "%choice%"=="3" (
+    timeout /t 1 /nobreak > nul
+    start %REACT_URL%
+)
 
 echo.
 echo Press any key to close this window...

@@ -8,15 +8,12 @@ echo.
 
 echo Stopping Django backend server...
 taskkill /F /IM python.exe /FI "WINDOWTITLE eq NexusCare Backend*" 2>nul
-taskkill /F /FI "WINDOWTITLE eq NexusCare Backend*" 2>nul
 
 echo Stopping Frontend server (Python HTTP)...
 taskkill /F /IM python.exe /FI "WINDOWTITLE eq NexusCare Frontend*" 2>nul
-taskkill /F /FI "WINDOWTITLE eq NexusCare Frontend*" 2>nul
 
 echo Stopping React frontend (Node.js)...
 taskkill /F /IM node.exe /FI "WINDOWTITLE eq NexusCare React*" 2>nul
-taskkill /F /FI "WINDOWTITLE eq NexusCare React*" 2>nul
 
 echo.
 echo ===========================================
