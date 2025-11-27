@@ -43,22 +43,36 @@ Before starting, ensure you have installed:
 
 ## 🚀 Quick Setup (5 minutes)
 
-### Step 1: Clone and Navigate
+### Step 1: Check Prerequisites
 
 ```powershell
-# Clone the repository
-git clone https://github.com/abuhanif27/phd_Nexus.git
-cd phd_Nexus
+# PowerShell: Run this to verify all dependencies
+.\check-prerequisites.ps1
+```
+
+**Or using Command Prompt:**
+```cmd
+# Command Prompt
+python --version
+npm --version
+git --version
 ```
 
 ### Step 2: Run Setup Script
 
+**Using PowerShell (Recommended):**
 ```powershell
 # Allow scripts to run (one time only)
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # Run the Windows setup script
 .\setup-windows.ps1
+```
+
+**Or using Command Prompt:**
+```cmd
+# Command Prompt
+setup-windows.bat
 ```
 
 This script will:
@@ -80,18 +94,34 @@ Follow the prompts to create your admin account.
 
 ### Step 4: Start Services
 
-**Terminal 1 - Backend:**
+**Using PowerShell:**
+
+Terminal 1 - Backend:
 ```powershell
 cd backend
 .\start-backend-windows.ps1
 # Backend will run on http://localhost:8000
 ```
 
-**Terminal 2 - Frontend:**
+Terminal 2 - Frontend:
 ```powershell
 cd frontend-react
 .\start-frontend-windows.ps1
 # Frontend will run on http://localhost:3000
+```
+
+**Or using Command Prompt:**
+
+Terminal 1 - Backend:
+```cmd
+cd backend
+start-backend-windows.bat
+```
+
+Terminal 2 - Frontend:
+```cmd
+cd frontend-react
+npm run dev
 ```
 
 ### Step 5: Access the Application

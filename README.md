@@ -21,6 +21,7 @@
 This project has organized documentation:
 
 - **🚀 [SETUP.md](SETUP.md)** - **START HERE!** Complete beginner-friendly setup guide
+- **🪟 [SETUP_WINDOWS.md](SETUP_WINDOWS.md)** - **Windows Users** - Step-by-step Windows setup
 - **🧠 [AI_SYSTEM_REDESIGN.md](AI_SYSTEM_REDESIGN.md)** - **NEW!** Two-mode AI analysis system (Quick vs Deep)
 - **README.md** (this file) - Project overview and features
 - **[frontend.md](frontend.md)** - Frontend pages, design system, and features
