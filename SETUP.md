@@ -191,6 +191,29 @@ Open your browser and visit:
 
 Instead of running each command separately, use our quick-start scripts:
 
+### On Windows:
+
+**Automated Setup (First Time):**
+```cmd
+# From backend folder, double-click or run:
+backend\setup.bat
+```
+
+**All-in-One Launch:**
+```cmd
+# From project root directory, double-click or run:
+launch.bat
+# or
+start-all.bat
+```
+
+**Stop All Services:**
+```cmd
+stop-all.bat
+```
+
+### On Mac/Linux:
+
 **All-in-One Launch:**
 
 ```bash
