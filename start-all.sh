@@ -13,14 +13,18 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Get the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Check if backend is already running
 if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null ; then
     echo -e "${YELLOW}⚠️  Backend already running on port 8000${NC}"
 else
     echo -e "${BLUE}📦 Starting Django Backend Server...${NC}"
-    cd /home/hn-hanif/Desktop/phd_Nexus/backend
+    cd "$SCRIPT_DIR/backend"
     if [ -f "manage.py" ]; then
-        # Start Django with Python
+        # Activate virtual environment and start Django
+        source .venv/bin/activate
         python manage.py runserver > /tmp/nexuscare-backend.log 2>&1 &
         BACKEND_PID=$!
         echo -e "${GREEN}✅ Backend started (PID: $BACKEND_PID)${NC}"
@@ -37,7 +41,7 @@ if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null ; then
     echo -e "${YELLOW}⚠️  React Frontend already running on port 3000${NC}"
 else
     echo -e "${BLUE}⚛️  Starting React Frontend (Next.js)...${NC}"
-    cd /home/hn-hanif/Desktop/phd_Nexus/frontend-react
+    cd "$SCRIPT_DIR/frontend-react"
     
     # Check if node_modules exists
     if [ ! -d "node_modules" ]; then
