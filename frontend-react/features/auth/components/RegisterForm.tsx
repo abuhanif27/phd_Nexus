@@ -111,11 +111,40 @@ export function RegisterForm() {
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (err: any) {
-      setError(
-        err.response?.data?.error ||
-          err.response?.data?.detail ||
-          'Registration failed. Please try again.'
-      );
+      const resp = err?.response?.data;
+      let message = 'Registration failed. Please try again.';
+
+      if (resp) {
+        if (typeof resp === 'string') {
+          // Backend returned an HTML error page (Django debug) — extract useful text
+          const html = resp;
+          const preMatch = html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+          if (preMatch && preMatch[1]) {
+            const extracted = preMatch[1].replace(/<[^>]+>/g, '').trim();
+            message = extracted.substring(0, 1000);
+          } else {
+            // Strip tags and shorten to avoid dumping full HTML into the UI
+            const text = html
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            message = text.substring(0, 500) + (text.length > 500 ? '...' : '');
+          }
+          // Keep full HTML in console for debugging
+          console.error('Full HTML error from register endpoint:', resp);
+        } else if (resp.detail) {
+          message = resp.detail;
+        } else if (typeof resp === 'object') {
+          const msgs: string[] = [];
+          for (const v of Object.values(resp)) {
+            if (Array.isArray(v)) msgs.push(...v.filter((x) => !!x));
+            else if (typeof v === 'string') msgs.push(v);
+          }
+          if (msgs.length) message = msgs.join(' ');
+        }
+      }
+
+      setError(message);
     } finally {
       setIsLoading(false);
     }

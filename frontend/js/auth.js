@@ -75,7 +75,7 @@ if (document.getElementById("loginForm")) {
         showAlert(
           data.detail ||
             data.error ||
-            "Login failed. Please check your credentials."
+            "Login failed. Please check your credentials.",
         );
       }
     } catch (error) {
@@ -89,14 +89,14 @@ if (document.getElementById("loginForm")) {
             "1. Backend is running: cd backend && source .venv/bin/activate && python manage.py runserver\n" +
             "2. CORS is configured for port 8080\n" +
             "3. Backend API URL: " +
-            API_BASE_URL
+            API_BASE_URL,
         );
       } else {
         showAlert(
           "Network error: " +
             error.message +
             "\nPlease ensure the backend server is running at " +
-            API_BASE_URL
+            API_BASE_URL,
         );
       }
     } finally {
@@ -150,6 +150,7 @@ if (document.getElementById("registerForm")) {
           body: JSON.stringify({
             email,
             password,
+            password_confirm: confirmPassword,
             phone: phone || null,
             role,
           }),
@@ -174,8 +175,8 @@ if (document.getElementById("registerForm")) {
           const errorMsg = data.email
             ? data.email[0]
             : data.password
-            ? data.password[0]
-            : data.detail || "Registration failed. Please try again.";
+              ? data.password[0]
+              : data.detail || "Registration failed. Please try again.";
           showAlert(errorMsg);
         }
       } catch (error) {
@@ -189,14 +190,14 @@ if (document.getElementById("registerForm")) {
               "1. Backend is running: cd backend && source .venv/bin/activate && python manage.py runserver\n" +
               "2. CORS is configured for port 8080\n" +
               "3. Backend API URL: " +
-              API_BASE_URL
+              API_BASE_URL,
           );
         } else {
           showAlert(
             "Network error: " +
               error.message +
               "\nPlease ensure the backend server is running at " +
-              API_BASE_URL
+              API_BASE_URL,
           );
         }
       } finally {
