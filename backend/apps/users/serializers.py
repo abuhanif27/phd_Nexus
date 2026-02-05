@@ -4,13 +4,57 @@ Serializers for user authentication and management.
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import User, OTPToken
+from apps.patients.models import Patient
+from apps.doctors.models import Doctor
 
 
 class UserSerializer(serializers.ModelSerializer):
+    # Nested serializers for related profiles
+    patient_profile = serializers.SerializerMethodField()
+    doctor_profile = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'email', 'phone', 'role', 'twofa_enabled', 'created_at']
+        fields = [
+            'id',
+            'email',
+            'phone',
+            'role',
+            'twofa_enabled',
+            'created_at',
+            'patient_profile',
+            'doctor_profile',
+        ]
         read_only_fields = ['id', 'created_at']
+
+    def get_patient_profile(self, obj):
+        try:
+            p = obj.patient_profile
+            return {
+                'name': p.name,
+                'phone': p.phone,
+                'dob': p.dob.isoformat() if p.dob else None,
+                'gender': p.gender,
+                'blood_group': p.blood_group,
+                'address': p.address,
+                'emergency_contact': p.emergency_contact,
+            }
+        except Patient.DoesNotExist:
+            return None
+
+    def get_doctor_profile(self, obj):
+        try:
+            d = obj.doctor_profile
+            return {
+                'name': d.name,
+                'specialty': d.specialty,
+                'qualifications': d.qualifications,
+                'bio': d.bio,
+                'location': d.location,
+                'rating': d.rating,
+            }
+        except Doctor.DoesNotExist:
+            return None
 
 
 class RegisterSerializer(serializers.ModelSerializer):
