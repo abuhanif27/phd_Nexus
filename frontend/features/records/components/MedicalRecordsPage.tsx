@@ -102,6 +102,22 @@ export function MedicalRecordsPage() {
     }
   };
 
+  const handleDeleteFile = async (fileId: number) => {
+    if (typeof window !== 'undefined' && !window.confirm('Remove this document? This cannot be undone.')) return;
+    try {
+      await deleteMedicalFile(fileId);
+      queryClient.invalidateQueries({ queryKey: ['medical-files'] });
+      toast({ title: 'Deleted', description: 'Document removed.' });
+      if (viewFile?.id === fileId) closeViewFile();
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Delete failed',
+        description: err?.response?.data?.error || 'Please try again.',
+      });
+    }
+  };
+
   // Fetch all records
   const { data: filesData, isLoading: loadingFiles } = useQuery({
     queryKey: ['medical-files'],
@@ -272,6 +288,7 @@ export function MedicalRecordsPage() {
             isLoading={isLoading}
             onViewFile={handleViewFile}
             onDownloadFile={handleDownloadToDevice}
+            onDeleteFile={handleDeleteFile}
           />
         </TabsContent>
 
@@ -357,7 +374,15 @@ export function MedicalRecordsPage() {
                     </Button>
                   </div>
                 )}
-                <div className="mt-4 flex justify-end border-t pt-4">
+                <div className="mt-4 flex justify-end gap-2 border-t pt-4">
+                  <Button
+                    variant="outline"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => handleDeleteFile(viewFile.id)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
                   <Button
                     variant="default"
                     onClick={() => handleDownloadToDevice(viewFile.id, viewFile.filename)}
@@ -384,6 +409,7 @@ function AllRecordsTab({
   isLoading,
   onViewFile,
   onDownloadFile,
+  onDeleteFile,
 }: {
   labResults: any[];
   prescriptions: any[];
@@ -392,6 +418,7 @@ function AllRecordsTab({
   isLoading: boolean;
   onViewFile: (file: { id: number; filename: string; mime?: string }) => void;
   onDownloadFile: (fileId: number, filename: string) => void;
+  onDeleteFile: (fileId: number) => void;
 }) {
   if (isLoading) {
     return (
@@ -435,6 +462,7 @@ function AllRecordsTab({
           record={record}
           onViewFile={record.type === 'file' ? onViewFile : undefined}
           onDownloadFile={record.type === 'file' ? onDownloadFile : undefined}
+          onDeleteFile={record.type === 'file' ? onDeleteFile : undefined}
         />
       ))}
     </div>
@@ -752,10 +780,12 @@ function RecordCard({
   record,
   onViewFile,
   onDownloadFile,
+  onDeleteFile,
 }: {
   record: any;
   onViewFile?: (file: { id: number; filename: string; mime?: string }) => void;
   onDownloadFile?: (fileId: number, filename: string) => void;
+  onDeleteFile?: (fileId: number) => void;
 }) {
   const getRecordIcon = () => {
     switch (record.type) {
@@ -821,6 +851,17 @@ function RecordCard({
               title="Download"
             >
               <Download className="h-4 w-4" />
+            </Button>
+          )}
+          {record.type === 'file' && onDeleteFile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => onDeleteFile(record.id)}
+              title="Delete"
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
           {record.type !== 'file' && (
