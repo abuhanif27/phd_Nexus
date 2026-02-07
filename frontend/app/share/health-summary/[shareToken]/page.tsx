@@ -85,7 +85,7 @@ export default function SharedHealthSummaryPage() {
           </div>
         </div>
       </div>
-      
+
       {/* Pass shared data to HealthSummaryPage component */}
       <HealthSummaryPage sharedData={data} isSharedView={true} />
     </div>

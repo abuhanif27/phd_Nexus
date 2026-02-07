@@ -28,6 +28,7 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
+  Link2,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { useAuthStore } from '@/features/auth/store';
 import { cn } from '@/lib/utils/cn';
+import { ShareLinksManager } from './ShareLinksManager';
 
 export function SettingsPage() {
   const { user } = useAuthStore();
@@ -95,7 +97,7 @@ export function SettingsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 gap-4 bg-white p-2 dark:bg-gray-800 lg:grid-cols-5">
+          <TabsList className={`grid w-full grid-cols-2 gap-4 bg-white p-2 dark:bg-gray-800 ${isPatient ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`}>
             <TabsTrigger
               value="profile"
               className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
@@ -131,6 +133,15 @@ export function SettingsPage() {
               <Monitor className="h-4 w-4" />
               Preferences
             </TabsTrigger>
+            {isPatient && (
+              <TabsTrigger
+                value="share-links"
+                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
+              >
+                <Link2 className="h-4 w-4" />
+                Share Links
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Profile Settings */}
@@ -865,6 +876,13 @@ export function SettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Share Links Management (Patient Only) */}
+          {isPatient && (
+            <TabsContent value="share-links" className="space-y-6">
+              <ShareLinksManager />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>

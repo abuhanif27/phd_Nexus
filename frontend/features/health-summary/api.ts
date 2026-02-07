@@ -41,9 +41,23 @@ export async function getHealthSummaryShares(): Promise<{
 }
 
 // Deactivate a share link
-export async function deactivateHealthSummaryShare(shareToken: string): Promise<{ message: string }> {
+export async function deactivateHealthSummaryShare(
+  shareToken: string
+): Promise<{ message: string }> {
   const response = await apiClient.delete('/api/health/summary/share/', {
-    data: { share_token: shareToken }
+    data: { share_token: shareToken },
+  });
+  return response.data;
+}
+
+// Toggle active status of a share link
+export async function toggleHealthSummaryShareStatus(
+  shareToken: string,
+  isActive?: boolean
+): Promise<{ message: string; is_active: boolean }> {
+  const response = await apiClient.put('/api/health/summary/share/', {
+    share_token: shareToken,
+    is_active: isActive,
   });
   return response.data;
 }

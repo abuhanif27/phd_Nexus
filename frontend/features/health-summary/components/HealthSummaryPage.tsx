@@ -54,8 +54,17 @@ interface HealthSummaryPageProps {
   isSharedView?: boolean;
 }
 
-export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSummaryPageProps = {}) {
-  const { data: summaryData, isLoading, error, refetch, isFetching } = useQuery({
+export function HealthSummaryPage({
+  sharedData,
+  isSharedView = false,
+}: HealthSummaryPageProps = {}) {
+  const {
+    data: summaryData,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery({
     queryKey: ['health-summary'],
     queryFn: getHealthSummary,
     enabled: !sharedData, // Don't fetch if we already have shared data
@@ -86,19 +95,20 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
     setIsGeneratingShare(true);
     try {
       const result = await createHealthSummaryShare();
-      const fullUrl = typeof window !== 'undefined' 
-        ? `${window.location.origin}/share/health-summary/${result.share_token}`
-        : '';
+      const fullUrl =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/share/health-summary/${result.share_token}`
+          : '';
       setShareLink(fullUrl);
-      toast({ 
-        title: 'Share link created!', 
-        description: 'Your unique shareable link has been generated.' 
+      toast({
+        title: 'Share link created!',
+        description: 'Your unique shareable link has been generated.',
       });
     } catch (error) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Failed to create share link', 
-        description: 'Please try again later.' 
+      toast({
+        variant: 'destructive',
+        title: 'Failed to create share link',
+        description: 'Please try again later.',
       });
     } finally {
       setIsGeneratingShare(false);
@@ -112,12 +122,16 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
       await handleGenerateShareLink();
       return;
     }
-    
+
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast({ title: 'Link copied', description: 'Health Summary link copied to clipboard.' });
     } catch {
-      toast({ variant: 'destructive', title: 'Could not copy', description: 'Please copy the URL from the address bar.' });
+      toast({
+        variant: 'destructive',
+        title: 'Could not copy',
+        description: 'Please copy the URL from the address bar.',
+      });
     }
   };
   const shareTitle = 'NexusCare Health Summary';
@@ -134,13 +148,18 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
         toast({ title: 'Shared', description: 'Thanks for sharing.' });
       } catch (err: unknown) {
         if ((err as Error)?.name !== 'AbortError') {
-          toast({ variant: 'destructive', title: 'Share failed', description: 'Could not open share dialog.' });
+          toast({
+            variant: 'destructive',
+            title: 'Share failed',
+            description: 'Could not open share dialog.',
+          });
         }
       }
     } else {
       toast({
         title: 'Not supported in this browser',
-        description: 'Use "Copy link" and paste it in the app or site where you want to share (e.g. email, WhatsApp).',
+        description:
+          'Use "Copy link" and paste it in the app or site where you want to share (e.g. email, WhatsApp).',
       });
     }
   };
@@ -155,7 +174,11 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
   const handleShareOnX = () => {
     const link = shareUrl || (typeof window !== 'undefined' ? window.location.href : '');
     if (!link) {
-      toast({ variant: 'destructive', title: 'Cannot share', description: 'Page URL is not available.' });
+      toast({
+        variant: 'destructive',
+        title: 'Cannot share',
+        description: 'Page URL is not available.',
+      });
       return;
     }
     const text = encodeURIComponent(shareText);
@@ -177,7 +200,10 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
   });
   const today = new Date().toISOString().slice(0, 10);
   const upcomingAppointments = appointments
-    .filter((a: { status?: string; date?: string }) => a.status === 'scheduled' && a.date && a.date >= today)
+    .filter(
+      (a: { status?: string; date?: string }) =>
+        a.status === 'scheduled' && a.date && a.date >= today
+    )
     .sort((a: { date?: string; start_time?: string }, b: { date?: string; start_time?: string }) =>
       `${a.date}T${a.start_time || ''}`.localeCompare(`${b.date}T${b.start_time || ''}`)
     )
@@ -192,7 +218,12 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
   const aiSummary = (professionalSummary || actualData?.summary) ?? '';
   const bullets = actualData?.bullets ?? [];
   const recordHighlights = actualData?.record_highlights ?? [];
-  const contentFromRecords = professionalFindings.length > 0 ? professionalFindings : (recordHighlights.length > 0 ? recordHighlights : bullets);
+  const contentFromRecords =
+    professionalFindings.length > 0
+      ? professionalFindings
+      : recordHighlights.length > 0
+        ? recordHighlights
+        : bullets;
   const aiInsights = actualData?.ai_insights ?? [];
 
   const vitalSigns = [
@@ -329,7 +360,7 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
             <Button
               onClick={handleSummarize}
               disabled={isSummarizing}
-              className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all hover:shadow-lg disabled:opacity-70"
+              className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-lg disabled:opacity-70"
             >
               {isSummarizing ? (
                 <>
@@ -354,45 +385,49 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
                 <DropdownMenuItem onClick={handleCopyLink} className="gap-2">
                   <Copy className="h-4 w-4" />
                   {shareLink ? 'Copy share link' : 'Generate & copy link'}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleShareViaEmail} className="gap-2">
-                <Mail className="h-4 w-4" />
-                Share via email
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleShareOnX} className="gap-2">
-                <MessageCircle className="h-4 w-4" />
-                Share on X
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleShareToApps} className="gap-2">
-                <Link2 className="h-4 w-4" />
-                Share to other apps
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            onClick={() => {
-              if (aiSummary || contentFromRecords.length > 0 || recordCount > 0) {
-                exportHealthSummaryPdf({
-                  aiSummary,
-                  contentFromRecords,
-                  conditions: conditions.map((c: { name?: string } | string) =>
-                typeof c === 'object' && c !== null && 'name' in c ? { name: c.name } : { name: String(c) }
-              ),
-              medications: medications.map((m: { name?: string } | string) =>
-                typeof m === 'object' && m !== null && 'name' in m ? { name: m.name } : { name: String(m) }
-              ),
-                  sourceCounts,
-                  dateRange,
-                  recordCount,
-                });
-              }
-            }}
-            disabled={!(aiSummary || contentFromRecords.length > 0 || recordCount > 0)}
-            className="gap-2 bg-blue-600 hover:bg-blue-700"
-          >
-            <Download className="h-4 w-4" />
-            Export PDF
-          </Button>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareViaEmail} className="gap-2">
+                  <Mail className="h-4 w-4" />
+                  Share via email
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareOnX} className="gap-2">
+                  <MessageCircle className="h-4 w-4" />
+                  Share on X
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareToApps} className="gap-2">
+                  <Link2 className="h-4 w-4" />
+                  Share to other apps
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              onClick={() => {
+                if (aiSummary || contentFromRecords.length > 0 || recordCount > 0) {
+                  exportHealthSummaryPdf({
+                    aiSummary,
+                    contentFromRecords,
+                    conditions: conditions.map((c: { name?: string } | string) =>
+                      typeof c === 'object' && c !== null && 'name' in c
+                        ? { name: c.name }
+                        : { name: String(c) }
+                    ),
+                    medications: medications.map((m: { name?: string } | string) =>
+                      typeof m === 'object' && m !== null && 'name' in m
+                        ? { name: m.name }
+                        : { name: String(m) }
+                    ),
+                    sourceCounts,
+                    dateRange,
+                    recordCount,
+                  });
+                }
+              }}
+              disabled={!(aiSummary || contentFromRecords.length > 0 || recordCount > 0)}
+              className="gap-2 bg-blue-600 hover:bg-blue-700"
+            >
+              <Download className="h-4 w-4" />
+              Export PDF
+            </Button>
           </div>
         )}
       </div>
@@ -429,25 +464,25 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
 
       {/* Loading: beautiful animation while summarizing */}
       {isSummarizing && (
-        <Card className="overflow-hidden border-2 border-purple-200 bg-gradient-to-br from-purple-50/90 to-indigo-50/90 dark:from-purple-950/30 dark:to-indigo-950/30 shadow-lg">
-          <div className="h-1 w-full bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-500 bg-[length:200%_100%] animate-shimmer" />
-          <CardContent className="flex flex-col items-center justify-center py-16 px-6">
-            <div className="animate-pulse-soft flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg">
+        <Card className="overflow-hidden border-2 border-purple-200 bg-gradient-to-br from-purple-50/90 to-indigo-50/90 shadow-lg dark:from-purple-950/30 dark:to-indigo-950/30">
+          <div className="h-1 w-full animate-shimmer bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-500 bg-[length:200%_100%]" />
+          <CardContent className="flex flex-col items-center justify-center px-6 py-16">
+            <div className="flex h-20 w-20 animate-pulse-soft items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg">
               <Brain className="h-10 w-10 text-white" />
             </div>
             <p className="mt-6 text-lg font-medium text-foreground">Analyzing your records</p>
             <p className="mt-1 text-sm text-muted-foreground">Building your health summary…</p>
             <div className="mt-6 flex gap-1.5">
               <span
-                className="h-2 w-2 rounded-full bg-purple-500 animate-dot-bounce"
+                className="h-2 w-2 animate-dot-bounce rounded-full bg-purple-500"
                 style={{ animationDelay: '0ms' }}
               />
               <span
-                className="h-2 w-2 rounded-full bg-indigo-500 animate-dot-bounce"
+                className="h-2 w-2 animate-dot-bounce rounded-full bg-indigo-500"
                 style={{ animationDelay: '160ms' }}
               />
               <span
-                className="h-2 w-2 rounded-full bg-purple-500 animate-dot-bounce"
+                className="h-2 w-2 animate-dot-bounce rounded-full bg-purple-500"
                 style={{ animationDelay: '320ms' }}
               />
             </div>
@@ -464,7 +499,8 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
               AI summary from your medical records
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Generated from lab results, prescriptions, encounters, and documents (most recent by date). Uses extractive summarization and medical entity extraction.
+              Generated from lab results, prescriptions, encounters, and documents (most recent by
+              date). Uses extractive summarization and medical entity extraction.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -483,25 +519,32 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
                   <Badge variant="secondary">Documents: {sourceCounts.file}</Badge>
                 )}
                 {dateRange?.newest && (
-                  <Badge variant="outline">Latest: {format(new Date(dateRange.newest), 'MMM d, yyyy')}</Badge>
+                  <Badge variant="outline">
+                    Latest: {format(new Date(dateRange.newest), 'MMM d, yyyy')}
+                  </Badge>
                 )}
               </div>
             )}
             {aiSummary && (
-              <p className="text-sm leading-relaxed text-foreground" data-testid="professional-summary">
+              <p
+                className="text-sm leading-relaxed text-foreground"
+                data-testid="professional-summary"
+              >
                 {aiSummary}
               </p>
             )}
-            {(contentFromRecords.length > 0) && (
+            {contentFromRecords.length > 0 && (
               <div>
                 <p className="mb-2 text-sm font-medium text-foreground">
-                  {professionalFindings.length > 0 ? 'Key findings' : 'Content from your uploaded records:'}
+                  {professionalFindings.length > 0
+                    ? 'Key findings'
+                    : 'Content from your uploaded records:'}
                 </p>
                 <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
                   {contentFromRecords.map((b, i) => (
                     <li
                       key={i}
-                      className="opacity-0 animate-summary-stagger"
+                      className="animate-summary-stagger opacity-0"
                       style={{ animationDelay: `${(i + 1) * 80}ms` }}
                     >
                       {b}
@@ -623,53 +666,64 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
                   <div className="space-y-4">
                     {conditions.length === 0 && contentFromRecords.length === 0 ? (
                       <p className="py-6 text-center text-sm text-muted-foreground">
-                        No conditions extracted from your records yet. Add lab results and encounter notes for AI to identify conditions.
+                        No conditions extracted from your records yet. Add lab results and encounter
+                        notes for AI to identify conditions.
                       </p>
                     ) : (
                       <>
-                        {conditions.length > 0 && conditions.map((condition, index) => (
-                      <div
-                        key={index}
-                        className="flex items-start justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800"
-                      >
-                        <div className="flex flex-1 gap-4">
-                          <div className="mt-1 flex-shrink-0">
-                            {condition.status === 'managed' ? (
-                              <CheckCircle2 className="h-6 w-6 text-green-600" />
-                            ) : (
-                              <AlertCircle className="h-6 w-6 text-yellow-600" />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
-                              {condition.name}
-                            </h4>
-                            {(condition.diagnosed_date || (condition as any).diagnosed) && (
-                              <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                                Diagnosed: {format(new Date((condition.diagnosed_date || (condition as any).diagnosed) as string), 'MMM d, yyyy')}
-                              </p>
-                            )}
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              <Badge
-                                variant="outline"
-                                className={`px-3 py-1 ${getSeverityColor(condition.severity)}`}
-                              >
-                                {condition.severity}
-                              </Badge>
-                              <Badge
-                                variant="outline"
-                                className="bg-blue-50 px-3 py-1 text-blue-700"
-                              >
-                                {condition.status}
-                              </Badge>
+                        {conditions.length > 0 &&
+                          conditions.map((condition, index) => (
+                            <div
+                              key={index}
+                              className="flex items-start justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800"
+                            >
+                              <div className="flex flex-1 gap-4">
+                                <div className="mt-1 flex-shrink-0">
+                                  {condition.status === 'managed' ? (
+                                    <CheckCircle2 className="h-6 w-6 text-green-600" />
+                                  ) : (
+                                    <AlertCircle className="h-6 w-6 text-yellow-600" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
+                                    {condition.name}
+                                  </h4>
+                                  {(condition.diagnosed_date || (condition as any).diagnosed) && (
+                                    <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                                      Diagnosed:{' '}
+                                      {format(
+                                        new Date(
+                                          (condition.diagnosed_date ||
+                                            (condition as any).diagnosed) as string
+                                        ),
+                                        'MMM d, yyyy'
+                                      )}
+                                    </p>
+                                  )}
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    <Badge
+                                      variant="outline"
+                                      className={`px-3 py-1 ${getSeverityColor(condition.severity)}`}
+                                    >
+                                      {condition.severity}
+                                    </Badge>
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-blue-50 px-3 py-1 text-blue-700"
+                                    >
+                                      {condition.status}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      </div>
-                        ))}
+                          ))}
                         {conditions.length === 0 && contentFromRecords.length > 0 && (
                           <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                            <p className="mb-2 text-sm font-medium text-foreground">Findings from your uploaded records:</p>
+                            <p className="mb-2 text-sm font-medium text-foreground">
+                              Findings from your uploaded records:
+                            </p>
                             <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
                               {contentFromRecords.slice(0, 10).map((line, i) => (
                                 <li key={i}>{line}</li>
@@ -690,40 +744,46 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
                   <div className="space-y-4">
                     {medications.length === 0 && contentFromRecords.length === 0 ? (
                       <p className="py-6 text-center text-sm text-muted-foreground">
-                        No medications extracted from your records yet. Add prescriptions for AI to list medications.
+                        No medications extracted from your records yet. Add prescriptions for AI to
+                        list medications.
                       </p>
                     ) : (
                       <>
-                        {medications.length > 0 && medications.map((med, index) => (
-                      <div
-                        key={index}
-                        className="flex items-start justify-between gap-4 rounded-lg border-2 border-green-200 bg-green-50 p-5 dark:border-green-800 dark:bg-green-950/20"
-                      >
-                        <div className="flex flex-1 gap-4">
-                          <div className="flex-shrink-0 rounded-full bg-green-100 p-3 dark:bg-green-900/30">
-                            <Pill className="h-6 w-6 text-green-600" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
-                              {med.name}
-                            </h4>
-                            <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                              {[med.dosage, med.frequency].filter(Boolean).join(' • ') || '—'}
-                            </p>
-                            {(med.start_date || (med as any).nextDose) && (
-                            <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
-                              <Clock className="h-4 w-4" />
-                              {(med as any).nextDose ? `Next dose: ${(med as any).nextDose}` : `Start: ${med.start_date}`}
+                        {medications.length > 0 &&
+                          medications.map((med, index) => (
+                            <div
+                              key={index}
+                              className="flex items-start justify-between gap-4 rounded-lg border-2 border-green-200 bg-green-50 p-5 dark:border-green-800 dark:bg-green-950/20"
+                            >
+                              <div className="flex flex-1 gap-4">
+                                <div className="flex-shrink-0 rounded-full bg-green-100 p-3 dark:bg-green-900/30">
+                                  <Pill className="h-6 w-6 text-green-600" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
+                                    {med.name}
+                                  </h4>
+                                  <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                                    {[med.dosage, med.frequency].filter(Boolean).join(' • ') || '—'}
+                                  </p>
+                                  {(med.start_date || (med as any).nextDose) && (
+                                    <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+                                      <Clock className="h-4 w-4" />
+                                      {(med as any).nextDose
+                                        ? `Next dose: ${(med as any).nextDose}`
+                                        : `Start: ${med.start_date}`}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <Badge className="flex-shrink-0 bg-green-600 px-3 py-1">Active</Badge>
                             </div>
-                            )}
-                          </div>
-                        </div>
-                        <Badge className="flex-shrink-0 bg-green-600 px-3 py-1">Active</Badge>
-                      </div>
-                        ))}
+                          ))}
                         {medications.length === 0 && contentFromRecords.length > 0 && (
                           <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                            <p className="mb-2 text-sm font-medium text-foreground">Content from your uploaded records:</p>
+                            <p className="mb-2 text-sm font-medium text-foreground">
+                              Content from your uploaded records:
+                            </p>
                             <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
                               {contentFromRecords.slice(0, 10).map((line, i) => (
                                 <li key={i}>{line}</li>
@@ -746,30 +806,32 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
                       <p className="py-6 text-center text-sm text-muted-foreground">
                         No allergies on file. Update your profile or add them in Medical Records.
                       </p>
-                    ) : allergies.map((allergy, index) => (
-                      <div
-                        key={index}
-                        className="flex items-start gap-4 rounded-lg border-2 border-red-200 bg-red-50 p-5 dark:border-red-800 dark:bg-red-950/20"
-                      >
-                        <div className="flex-shrink-0 rounded-full bg-red-100 p-3 dark:bg-red-900/30">
-                          <AlertTriangle className="h-6 w-6 text-red-600" />
+                    ) : (
+                      allergies.map((allergy, index) => (
+                        <div
+                          key={index}
+                          className="flex items-start gap-4 rounded-lg border-2 border-red-200 bg-red-50 p-5 dark:border-red-800 dark:bg-red-950/20"
+                        >
+                          <div className="flex-shrink-0 rounded-full bg-red-100 p-3 dark:bg-red-900/30">
+                            <AlertTriangle className="h-6 w-6 text-red-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
+                              {allergy.allergen}
+                            </h4>
+                            <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                              Reaction: {allergy.reaction}
+                            </p>
+                            <Badge
+                              variant="outline"
+                              className="mt-3 border-red-300 bg-red-100 px-3 py-1 text-red-700"
+                            >
+                              {allergy.severity} severity
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
-                            {allergy.allergen}
-                          </h4>
-                          <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                            Reaction: {allergy.reaction}
-                          </p>
-                          <Badge
-                            variant="outline"
-                            className="mt-3 border-red-300 bg-red-100 px-3 py-1 text-red-700"
-                          >
-                            {allergy.severity} severity
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -791,24 +853,28 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
               <div className="space-y-4">
                 {aiInsights.length === 0 && contentFromRecords.length === 0 ? (
                   <p className="py-4 text-center text-sm text-muted-foreground">
-                    No insights yet. Add medical records (labs, prescriptions, encounters) to get personalized AI insights.
+                    No insights yet. Add medical records (labs, prescriptions, encounters) to get
+                    personalized AI insights.
                   </p>
                 ) : (
                   <>
-                    {aiInsights.length > 0 && aiInsights.map((insight, index) => (
-                      <div
-                        key={`insight-${index}`}
-                        className="flex gap-4 rounded-lg bg-purple-50 p-4 dark:bg-purple-950/20"
-                      >
-                        <Zap className="mt-1 h-5 w-5 flex-shrink-0 text-purple-600" />
-                        <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                          {insight}
-                        </p>
-                      </div>
-                    ))}
+                    {aiInsights.length > 0 &&
+                      aiInsights.map((insight, index) => (
+                        <div
+                          key={`insight-${index}`}
+                          className="flex gap-4 rounded-lg bg-purple-50 p-4 dark:bg-purple-950/20"
+                        >
+                          <Zap className="mt-1 h-5 w-5 flex-shrink-0 text-purple-600" />
+                          <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                            {insight}
+                          </p>
+                        </div>
+                      ))}
                     {aiInsights.length === 0 && contentFromRecords.length > 0 && (
                       <>
-                        <p className="mb-2 text-sm font-medium text-foreground">From your uploaded records:</p>
+                        <p className="mb-2 text-sm font-medium text-foreground">
+                          From your uploaded records:
+                        </p>
                         {contentFromRecords.slice(0, 5).map((line, index) => (
                           <div
                             key={`record-${index}`}
@@ -842,31 +908,48 @@ export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSu
                   No upcoming appointments. Book one from the Appointments page.
                 </p>
               ) : (
-                upcomingAppointments.map((apt: { id?: number; date: string; start_time?: string; doctor_name?: string; doctor?: number; specialty?: string }, index: number) => (
-                  <div
-                    key={apt.id ?? index}
-                    className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 transition-all hover:shadow-md dark:border-blue-800 dark:from-blue-950/30 dark:to-indigo-950/30"
-                  >
-                    <div className="mb-3 flex items-center justify-between">
-                      <Badge variant="outline" className="border-blue-300 bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
-                        Scheduled
-                      </Badge>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {format(new Date(apt.date), 'MMM d, yyyy')}
+                upcomingAppointments.map(
+                  (
+                    apt: {
+                      id?: number;
+                      date: string;
+                      start_time?: string;
+                      doctor_name?: string;
+                      doctor?: number;
+                      specialty?: string;
+                    },
+                    index: number
+                  ) => (
+                    <div
+                      key={apt.id ?? index}
+                      className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 transition-all hover:shadow-md dark:border-blue-800 dark:from-blue-950/30 dark:to-indigo-950/30"
+                    >
+                      <div className="mb-3 flex items-center justify-between">
+                        <Badge
+                          variant="outline"
+                          className="border-blue-300 bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                        >
+                          Scheduled
+                        </Badge>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {format(new Date(apt.date), 'MMM d, yyyy')}
+                        </div>
+                      </div>
+                      <h4 className="mb-1 text-base font-bold text-gray-900 dark:text-white">
+                        {apt.doctor_name ?? `Doctor #${apt.doctor}`}
+                      </h4>
+                      <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
+                        {apt.specialty ?? '—'}
+                      </p>
+                      <div className="flex items-center gap-2 rounded-lg bg-white/60 px-3 py-2 dark:bg-gray-800/60">
+                        <Calendar className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {apt.start_time ?? '—'}
+                        </span>
                       </div>
                     </div>
-                    <h4 className="mb-1 text-base font-bold text-gray-900 dark:text-white">
-                      {apt.doctor_name ?? `Doctor #${apt.doctor}`}
-                    </h4>
-                    <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">{apt.specialty ?? '—'}</p>
-                    <div className="flex items-center gap-2 rounded-lg bg-white/60 px-3 py-2 dark:bg-gray-800/60">
-                      <Calendar className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {apt.start_time ?? '—'}
-                      </span>
-                    </div>
-                  </div>
-                ))
+                  )
+                )
               )}
             </CardContent>
           </Card>

@@ -270,22 +270,36 @@ class HealthSummaryShareView(views.APIView):
         if err is not None:
             return err
         
-        # Check if an active share already exists
-        existing_share = HealthSummaryShare.objects.filter(
-            patient=patient,
-            is_active=True
-        ).first()
+        # Check total share count (limit to 10)
+        total_shares = HealthSummaryShare.objects.filter(patient=patient).count()
         
-        if existing_share and existing_share.is_valid():
-            # Return existing valid share
-            serializer = HealthSummaryShareSerializer(existing_share)
+        # Allow force_new parameter to create new link regardless
+        force_new = request.data.get('force_new', False)
+        
+        if not force_new:
+            # Check if an active share already exists
+            existing_share = HealthSummaryShare.objects.filter(
+                patient=patient,
+                is_active=True
+            ).first()
+            
+            if existing_share and existing_share.is_valid():
+                # Return existing valid share
+                return Response({
+                    'share_token': str(existing_share.share_token),
+                    'share_url': f'/share/health-summary/{existing_share.share_token}',
+                    'created_at': existing_share.created_at,
+                    'is_active': existing_share.is_active,
+                    'message': 'Using existing share link'
+                })
+        
+        # Enforce 10-link limit
+        if total_shares >= 10:
             return Response({
-                'share_token': str(existing_share.share_token),
-                'share_url': f'/share/health-summary/{existing_share.share_token}',
-                'created_at': existing_share.created_at,
-                'is_active': existing_share.is_active,
-                'message': 'Using existing share link'
-            })
+                'error': 'Maximum of 10 share links allowed. Please delete an old link to create a new one.',
+                'limit_reached': True,
+                'total_shares': total_shares
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         # Create new share
         share = HealthSummaryShare.objects.create(
@@ -293,7 +307,6 @@ class HealthSummaryShareView(views.APIView):
             expires_at=request.data.get('expires_at')  # Optional expiration
         )
         
-        serializer = HealthSummaryShareSerializer(share)
         return Response({
             'share_token': str(share.share_token),
             'share_url': f'/share/health-summary/{share.share_token}',
@@ -308,7 +321,16 @@ class HealthSummaryShareView(views.APIView):
         if err is not None:
             return err
         
-        shares = HealthSummaryShare.objects.filter(patient=patient).order_by('-created_at')
+        # Optional parameter to filter by active status
+        include_inactive = request.query_params.get('include_inactive', 'true').lower() == 'true'
+        
+        shares = HealthSummaryShare.objects.filter(patient=patient)
+        
+        # Filter out inactive links if requested
+        if not include_inactive:
+            shares = shares.filter(is_active=True)
+        
+        shares = shares.order_by('-created_at')
         
         return Response({
             'shares': [
@@ -324,8 +346,46 @@ class HealthSummaryShareView(views.APIView):
             ]
         })
     
+    def put(self, request):
+        """Toggle active status of a share link (activate/deactivate)."""
+        patient, err = _get_patient_or_403(request)
+        if err is not None:
+            return err
+        
+        share_token = request.data.get('share_token')
+        is_active = request.data.get('is_active')
+        
+        if not share_token:
+            return Response(
+                {'error': 'share_token is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            share = HealthSummaryShare.objects.get(
+                share_token=share_token,
+                patient=patient
+            )
+            # Toggle if is_active not provided, otherwise set to specific value
+            if is_active is None:
+                share.is_active = not share.is_active
+            else:
+                share.is_active = bool(is_active)
+            
+            share.save()
+            status_text = 'activated' if share.is_active else 'deactivated'
+            return Response({
+                'message': f'Share link {status_text} successfully',
+                'is_active': share.is_active
+            })
+        except HealthSummaryShare.DoesNotExist:
+            return Response(
+                {'error': 'Share link not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
     def delete(self, request):
-        """Deactivate a share link."""
+        """Permanently delete a share link."""
         patient, err = _get_patient_or_403(request)
         if err is not None:
             return err
@@ -342,9 +402,8 @@ class HealthSummaryShareView(views.APIView):
                 share_token=share_token,
                 patient=patient
             )
-            share.is_active = False
-            share.save()
-            return Response({'message': 'Share link deactivated successfully'})
+            share.delete()  # Permanently delete from database
+            return Response({'message': 'Share link permanently deleted'})
         except HealthSummaryShare.DoesNotExist:
             return Response(
                 {'error': 'Share link not found'},
