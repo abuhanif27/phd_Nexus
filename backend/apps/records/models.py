@@ -25,6 +25,7 @@ class File(models.Model):
     mime = models.CharField(max_length=100)
     size = models.IntegerField()
     created_at = models.DateTimeField(default=timezone.now)
+    extracted_text = models.TextField(blank=True, default='')  # OCR text for images, used in health summary
     
     class Meta:
         db_table = 'files'

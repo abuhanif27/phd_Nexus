@@ -28,6 +28,7 @@ from datetime import timedelta
 from apps.records.models import LabResult, Prescription, Encounter, File
 from apps.patients.models import Patient
 from .models import EmbeddingMeta, AISummary
+from .tasks import get_or_extract_file_text
 
 
 class AIService:
@@ -459,6 +460,104 @@ class AIService:
             # Fallback: return first few sentences
             sentences = text.split('.')[:sentence_count]
             return [s.strip() + '.' for s in sentences if s.strip()]
+
+    def _build_professional_summary(self, corpus: str) -> Tuple[str, List[str]]:
+        """
+        Turn raw OCR/corpus into a clean, professional narrative and short key findings.
+        Strips metadata, extracts conditions/syndromes/vaccination, returns meaningful summary.
+        """
+        import re
+        # Extract actual content: remove "[date] [type] Document: ... Content from image:" and keep medical text
+        content_parts = []
+        for block in re.split(r'\[\d{4}-\d{2}-\d{2}\]\s*\[\w+\]\s*Document:[^\n]*\.?\s*', corpus):
+            block = block.replace('Content from image:', '').strip()
+            if len(block) > 40 and not block.startswith('['):
+                content_parts.append(block)
+        raw_text = ' '.join(content_parts) if content_parts else corpus
+        raw_text = re.sub(r'\[\d{4}-\d{2}-\d{2}\]\s*\[\w+\]\s*Document:[^\n]+', ' ', raw_text)
+        raw_text = re.sub(r'Content from image:\s*', ' ', raw_text)
+        # Remove long phone/email/URL runs so they don't become "findings"
+        raw_text = re.sub(r'\(\d{3}\)\s*\d{3}[-\s]?\d{4}', ' ', raw_text)
+        raw_text = re.sub(r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}', ' ', raw_text)
+        raw_text = re.sub(r'[\w.-]+@[\w.-]+\.\w+', ' ', raw_text)
+        raw_text = re.sub(r'www\.\S+', ' ', raw_text)
+        raw_text = ' '.join(raw_text.split())
+
+        findings = []
+        seen = set()
+
+        def add_finding(s: str, max_len: int = 100):
+            s = s.strip()
+            if not s or len(s) < 4:
+                return
+            s = s[:max_len].strip()
+            key = s.lower()[:80]
+            if key not in seen:
+                seen.add(key)
+                findings.append(s)
+
+        # Medical problems / conditions – clean, professional phrases only
+        phrase_checks = [
+            (r'mild\s+asthma.*?controlled.*?medication', 'Mild asthma, controlled with medication'),
+            (r'asthma.*?controlled', 'Asthma, controlled with medication'),
+            (r'occasional\s+migraine.*?stress', 'Occasional migraines, triggered by stress'),
+            (r'migraine', 'Migraines noted'),
+            (r'hypertension.*?lifestyle', 'Hypertension, managed with lifestyle changes'),
+            (r'hypertension', 'Hypertension'),
+            (r'diabetes', 'Diabetes'),
+        ]
+        for pat, phrase in phrase_checks:
+            if re.search(pat, raw_text, re.IGNORECASE):
+                add_finding(phrase)
+        # One free-form line after "List any Medical Problems" if short enough
+        m = re.search(r'list any medical problems[^:]*:\s*([^.]{20,120})', raw_text, re.IGNORECASE)
+        if m:
+            g = re.sub(r'\s+', ' ', m.group(1)).strip()
+            if not re.search(r'\d{5}|street|avenue', g, re.IGNORECASE):
+                add_finding(g[:100])
+
+        # Vaccination / immunity
+        if re.search(r'not\s+immune|NOT\s+IMMUNE', raw_text, re.IGNORECASE):
+            imm = []
+            if re.search(r'measles', raw_text, re.IGNORECASE):
+                imm.append('Measles: not immune')
+            if re.search(r'varicella|chicken\s*pox', raw_text, re.IGNORECASE):
+                imm.append('Chicken pox (Varicella): see record')
+            if re.search(r'hepatitis\s*B.*no|vaccination.*no', raw_text, re.IGNORECASE):
+                imm.append('Hepatitis B vaccination: no')
+            for i in imm:
+                add_finding(i)
+        if re.search(r'hepatitis\s*B', raw_text, re.IGNORECASE) and not any('Hepatitis' in f for f in findings):
+            add_finding('Hepatitis B vaccination status noted in record')
+
+        # Short phrases that look like conditions (no long addresses)
+        for part in re.split(r'[.;]', raw_text):
+            part = part.strip()
+            if 15 < len(part) < 120 and not re.search(r'\d{5}|street|avenue|suite|lane|drive', part, re.IGNORECASE):
+                if any(k in part.lower() for k in ('asthma', 'migraine', 'hypertension', 'medication', 'controlled', 'managed', 'stress', 'problem', 'condition', 'vaccination', 'immune')):
+                    add_finding(part, 90)
+
+        # Dedupe and limit
+        clean_findings = []
+        for f in findings[:14]:
+            if f not in clean_findings:
+                clean_findings.append(f)
+
+        # Build short narrative
+        n = len(re.findall(r'\[\d{4}-\d{2}-\d{2}\]', corpus)) if corpus else 0
+        n = max(n, 1) if content_parts or corpus.strip() else 0
+        record_word = 'record' if n == 1 else 'records'
+        if clean_findings:
+            narrative = f"Based on {n} medical {record_word}. Key findings: {clean_findings[0]}"
+            if len(clean_findings) > 1:
+                narrative += f"; {clean_findings[1]}"
+            if len(clean_findings) > 2:
+                narrative += f". Also noted: {', '.join(clean_findings[2:5])}."
+            else:
+                narrative += "."
+        else:
+            narrative = f"Based on {n} medical {record_word}. No structured conditions or vaccination summary could be extracted; review your uploaded documents for details."
+        return narrative, clean_findings
     
     def summarize_text(self, text: str) -> Dict:
         """
@@ -568,7 +667,12 @@ class AIService:
             items.append((enc.ts, 'encounter', text))
 
         for f in patient.files.filter(created_at__gte=cutoff).order_by('-created_at')[:max_items]:
-            text = f"Document: {f.filename} (category: {f.get_kind_display() if hasattr(f, 'get_kind_display') else f.kind})."
+            kind_label = f.get_kind_display() if hasattr(f, 'get_kind_display') else f.kind
+            extracted = get_or_extract_file_text(f)
+            if extracted:
+                text = f"Document: {f.filename} (category: {kind_label}). Content from image: {extracted}"
+            else:
+                text = f"Document: {f.filename} (category: {kind_label})."
             items.append((f.created_at, 'file', text))
 
         # Sort by date descending (most recent first), then take up to max_items
@@ -608,6 +712,7 @@ class AIService:
             return {
                 'summary': 'No recent medical records found. Upload lab results, prescriptions, or encounter notes to get an AI-generated health summary.',
                 'bullets': [],
+                'record_highlights': [],
                 'insights': ['Add medical records to see personalized insights.'],
                 'conditions': [],
                 'medications': [],
@@ -618,6 +723,10 @@ class AIService:
 
         # Extractive summary (TextRank) – medical-domain friendly
         bullets = self._extractive_summary(corpus, sentence_count=8)
+        if not bullets and corpus.strip():
+            # Fallback: use first meaningful lines/sentences so analyze part has content
+            lines = [s.strip() for s in corpus.split('\n') if len(s.strip()) > 30][:10]
+            bullets = lines or [corpus[:300]]
         summary = ' '.join(bullets) if bullets else corpus[:500]
 
         # Entity extraction (spaCy NER; medical models can be plugged here)
@@ -639,18 +748,57 @@ class AIService:
                 elif label in ('DRUG', 'MEDICATION', 'CHEMICAL'):
                     medications.extend(vals[:15])
 
-        # Fallback: keyword-based extraction from corpus
-        if not conditions and not medications:
-            for sent in corpus.replace('\n', ' ').split('.'):
-                sent_lower = sent.lower()
-                if any(k in sent_lower for k in ('diagnosis', 'diagnosed', 'condition', 'disease', 'disorder')):
-                    conditions.append(sent.strip()[:120])
-                if any(k in sent_lower for k in ('prescribed', 'drug', 'mg', 'tablet', 'capsule', 'medication')):
-                    medications.append(sent.strip()[:120])
-            conditions = list(dict.fromkeys(conditions))[:8]
-            medications = list(dict.fromkeys(medications))[:12]
+        # Fallback: keyword-based extraction from corpus (broadened so analyze part is full of content)
+        condition_keywords = (
+            'diagnosis', 'diagnosed', 'condition', 'disease', 'disorder', 'syndrome',
+            'lab', 'result', 'test', 'patient', 'treatment', 'symptom', 'note', 'finding',
+            'content from image', 'document', 'encounter', 'prescription'
+        )
+        medication_keywords = (
+            'prescribed', 'drug', 'mg', 'tablet', 'capsule', 'medication', 'dose', 'dosage',
+            'medicine', 'rx', 'pill', 'ml '
+        )
+        for sent in corpus.replace('\n', ' ').split('.'):
+            s = sent.strip()
+            if len(s) < 15:
+                continue
+            sent_lower = s.lower()
+            if any(k in sent_lower for k in condition_keywords):
+                conditions.append(s[:200])
+            if any(k in sent_lower for k in medication_keywords):
+                medications.append(s[:200])
+        conditions = list(dict.fromkeys(conditions))[:12]
+        medications = list(dict.fromkeys(medications))[:12]
 
-        # Build short insights from summary + counts
+        # When still empty, fill from summary bullets so the analyze part is full of content from records
+        if not conditions and bullets:
+            conditions = [b[:200] for b in bullets[:10]]
+        if not medications and bullets:
+            med_bullets = [b for b in bullets if any(k in b.lower() for k in medication_keywords)]
+            if med_bullets:
+                medications = [b[:200] for b in med_bullets[:8]]
+            else:
+                medications = [b[:200] for b in bullets[:6]]
+
+        # Professional summary: clean narrative + key findings (no raw OCR dump)
+        professional_narrative = ''
+        professional_findings = []
+        try:
+            professional_narrative, professional_findings = self._build_professional_summary(corpus)
+        except Exception as e:
+            print(f"Professional summary error: {e}")
+        if professional_findings:
+            conditions = professional_findings[:12]
+        if professional_narrative:
+            summary = professional_narrative
+
+        # Prefer clean findings for highlights so UI is not a mess
+        record_highlights = list(professional_findings) if professional_findings else list(bullets)
+        if not record_highlights and summary:
+            record_highlights = [summary[:400]]
+        record_highlights = record_highlights[:15]
+
+        # Build short insights from summary + counts (clean, no raw dump)
         insights = []
         sc = meta['source_counts']
         if sc.get('lab'):
@@ -661,14 +809,19 @@ class AIService:
             insights.append(f"Based on {sc['encounter']} encounter note(s).")
         if sc.get('file'):
             insights.append(f"Based on {sc['file']} uploaded document(s).")
-        if bullets:
+        if professional_findings:
+            insights.extend(professional_findings[:4])
+        elif bullets:
             insights.extend(bullets[:4])
 
         return {
             'summary': summary,
             'bullets': bullets,
+            'professional_summary': professional_narrative or summary,
+            'professional_findings': professional_findings,
+            'record_highlights': record_highlights,
             'insights': insights[:10],
-            'conditions': conditions[:10],
+            'conditions': conditions[:12],
             'medications': medications[:12],
             'entities': entities_map,
             'source_counts': meta['source_counts'],

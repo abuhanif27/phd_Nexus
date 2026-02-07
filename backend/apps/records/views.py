@@ -55,8 +55,11 @@ class FileUploadView(views.APIView):
             size=uploaded_file.size
         )
         
-        # Trigger OCR processing if applicable
-        if kind in ['lab', 'prescription']:
+        # Trigger OCR for image files (any kind) so health summary can analyze document content
+        mime = (uploaded_file.content_type or '').lower()
+        name = (uploaded_file.name or '').lower()
+        is_image = mime.startswith('image/') or any(name.endswith(ext) for ext in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'))
+        if is_image or kind in ['lab', 'prescription']:
             process_file_task(file_obj.id)
         
         return Response(

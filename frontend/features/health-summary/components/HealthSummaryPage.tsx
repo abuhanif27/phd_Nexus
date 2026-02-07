@@ -56,8 +56,12 @@ export function HealthSummaryPage() {
   const sourceCounts = summaryData?.source_counts ?? {};
   const recordCount = summaryData?.record_count ?? 0;
   const dateRange = summaryData?.date_range;
-  const aiSummary = summaryData?.summary ?? '';
+  const professionalSummary = summaryData?.professional_summary ?? summaryData?.summary ?? '';
+  const professionalFindings = summaryData?.professional_findings ?? [];
+  const aiSummary = (professionalSummary || summaryData?.summary) ?? '';
   const bullets = summaryData?.bullets ?? [];
+  const recordHighlights = summaryData?.record_highlights ?? [];
+  const contentFromRecords = professionalFindings.length > 0 ? professionalFindings : (recordHighlights.length > 0 ? recordHighlights : bullets);
   const aiInsights = summaryData?.ai_insights ?? [];
 
   const vitalSigns = [
@@ -198,7 +202,7 @@ export function HealthSummaryPage() {
       </div>
 
       {/* AI Summary from medical records (labs, prescriptions, encounters, documents) */}
-      {(aiSummary || bullets.length > 0 || recordCount > 0) && (
+      {(aiSummary || contentFromRecords.length > 0 || recordCount > 0) && (
         <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50/80 to-indigo-50/80 dark:from-purple-950/20 dark:to-indigo-950/20">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-xl">
@@ -229,13 +233,22 @@ export function HealthSummaryPage() {
                 )}
               </div>
             )}
-            {aiSummary && <p className="text-sm leading-relaxed text-foreground">{aiSummary}</p>}
-            {bullets.length > 0 && (
-              <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                {bullets.map((b, i) => (
-                  <li key={i}>{b}</li>
-                ))}
-              </ul>
+            {aiSummary && (
+              <p className="text-sm leading-relaxed text-foreground" data-testid="professional-summary">
+                {aiSummary}
+              </p>
+            )}
+            {(contentFromRecords.length > 0) && (
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">
+                  {professionalFindings.length > 0 ? 'Key findings' : 'Content from your uploaded records:'}
+                </p>
+                <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                  {contentFromRecords.map((b, i) => (
+                    <li key={i}>{b}</li>
+                  ))}
+                </ul>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -348,11 +361,13 @@ export function HealthSummaryPage() {
               <Card>
                 <CardContent className="p-6">
                   <div className="space-y-4">
-                    {conditions.length === 0 ? (
+                    {conditions.length === 0 && contentFromRecords.length === 0 ? (
                       <p className="py-6 text-center text-sm text-muted-foreground">
                         No conditions extracted from your records yet. Add lab results and encounter notes for AI to identify conditions.
                       </p>
-                    ) : conditions.map((condition, index) => (
+                    ) : (
+                      <>
+                        {conditions.length > 0 && conditions.map((condition, index) => (
                       <div
                         key={index}
                         className="flex items-start justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800"
@@ -391,7 +406,19 @@ export function HealthSummaryPage() {
                           </div>
                         </div>
                       </div>
-                    ))}
+                        ))}
+                        {conditions.length === 0 && contentFromRecords.length > 0 && (
+                          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                            <p className="mb-2 text-sm font-medium text-foreground">Findings from your uploaded records:</p>
+                            <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                              {contentFromRecords.slice(0, 10).map((line, i) => (
+                                <li key={i}>{line}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -401,11 +428,13 @@ export function HealthSummaryPage() {
               <Card>
                 <CardContent className="p-6">
                   <div className="space-y-4">
-                    {medications.length === 0 ? (
+                    {medications.length === 0 && contentFromRecords.length === 0 ? (
                       <p className="py-6 text-center text-sm text-muted-foreground">
                         No medications extracted from your records yet. Add prescriptions for AI to list medications.
                       </p>
-                    ) : medications.map((med, index) => (
+                    ) : (
+                      <>
+                        {medications.length > 0 && medications.map((med, index) => (
                       <div
                         key={index}
                         className="flex items-start justify-between gap-4 rounded-lg border-2 border-green-200 bg-green-50 p-5 dark:border-green-800 dark:bg-green-950/20"
@@ -431,7 +460,19 @@ export function HealthSummaryPage() {
                         </div>
                         <Badge className="flex-shrink-0 bg-green-600 px-3 py-1">Active</Badge>
                       </div>
-                    ))}
+                        ))}
+                        {medications.length === 0 && contentFromRecords.length > 0 && (
+                          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                            <p className="mb-2 text-sm font-medium text-foreground">Content from your uploaded records:</p>
+                            <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                              {contentFromRecords.slice(0, 10).map((line, i) => (
+                                <li key={i}>{line}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -488,21 +529,41 @@ export function HealthSummaryPage() {
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-4">
-                {aiInsights.length === 0 ? (
+                {aiInsights.length === 0 && contentFromRecords.length === 0 ? (
                   <p className="py-4 text-center text-sm text-muted-foreground">
                     No insights yet. Add medical records (labs, prescriptions, encounters) to get personalized AI insights.
                   </p>
-                ) : aiInsights.map((insight, index) => (
-                  <div
-                    key={index}
-                    className="flex gap-4 rounded-lg bg-purple-50 p-4 dark:bg-purple-950/20"
-                  >
-                    <Zap className="mt-1 h-5 w-5 flex-shrink-0 text-purple-600" />
-                    <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                      {insight}
-                    </p>
-                  </div>
-                ))}
+                ) : (
+                  <>
+                    {aiInsights.length > 0 && aiInsights.map((insight, index) => (
+                      <div
+                        key={`insight-${index}`}
+                        className="flex gap-4 rounded-lg bg-purple-50 p-4 dark:bg-purple-950/20"
+                      >
+                        <Zap className="mt-1 h-5 w-5 flex-shrink-0 text-purple-600" />
+                        <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                          {insight}
+                        </p>
+                      </div>
+                    ))}
+                    {aiInsights.length === 0 && contentFromRecords.length > 0 && (
+                      <>
+                        <p className="mb-2 text-sm font-medium text-foreground">From your uploaded records:</p>
+                        {contentFromRecords.slice(0, 5).map((line, index) => (
+                          <div
+                            key={`record-${index}`}
+                            className="flex gap-4 rounded-lg bg-purple-50 p-4 dark:bg-purple-950/20"
+                          >
+                            <Zap className="mt-1 h-5 w-5 flex-shrink-0 text-purple-600" />
+                            <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                              {line}
+                            </p>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -1,6 +1,7 @@
 """
 OCR and document processing tasks.
 """
+import os
 import re
 from typing import Dict, List
 
@@ -9,31 +10,52 @@ try:
     from PIL import Image
     import spacy
 except ImportError:
-    pass
+    pytesseract = None
+    Image = None
+    spacy = None
 
 from django.conf import settings
 from apps.records.models import File, LabResult, Prescription
+
+# Mime types and extensions we can OCR (PIL can open these)
+IMAGE_MIMES = {'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp', 'image/webp'}
+IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
+
+
+def _is_image_file(file_obj: File) -> bool:
+    mime = (file_obj.mime or '').lower()
+    name = (file_obj.filename or '').lower()
+    if mime and mime.startswith('image/'):
+        return True
+    return any(name.endswith(ext) for ext in IMAGE_EXTENSIONS)
 
 
 def process_file_ocr(file_id: int) -> Dict:
     """
     Process uploaded file with OCR and extract structured data.
+    For image files (including kind=other), extracts text and stores in File.extracted_text
+    so the health summary can analyze document content.
     """
     try:
         file_obj = File.objects.get(id=file_id)
-        
-        # Perform OCR
+        if not _is_image_file(file_obj):
+            return {'status': 'skipped', 'reason': 'not an image file'}
+        if not os.path.exists(file_obj.storage_path):
+            return {'status': 'error', 'error': 'File not found on disk'}
+        if not Image or not pytesseract:
+            return {'status': 'error', 'error': 'OCR dependencies (PIL, pytesseract) not available'}
+
         image = Image.open(file_obj.storage_path)
-        raw_text = pytesseract.image_to_string(image)
-        
-        # Determine type and extract structured data
+        raw_text = (pytesseract.image_to_string(image) or '').strip()
+        # Persist OCR text so health summary can use it (for all image files)
+        file_obj.extracted_text = raw_text[:10000]
+        file_obj.save(update_fields=['extracted_text'])
+
         if file_obj.kind == 'lab':
             return _extract_lab_data(file_obj, raw_text)
         elif file_obj.kind == 'prescription':
             return _extract_prescription_data(file_obj, raw_text)
-        else:
-            return {'status': 'success', 'text': raw_text}
-    
+        return {'status': 'success', 'text': raw_text[:500]}
     except Exception as e:
         return {'status': 'error', 'error': str(e)}
 
@@ -102,6 +124,30 @@ def _extract_prescription_data(file_obj: File, text: str) -> Dict:
     
     except Exception as e:
         return {'status': 'error', 'error': str(e)}
+
+
+def get_or_extract_file_text(file_obj: File) -> str:
+    """
+    Return extracted text for an image file: use stored extracted_text if present,
+    otherwise run OCR and save to file. Returns empty string if not an image or OCR fails.
+    """
+    if not _is_image_file(file_obj):
+        return ''
+    if getattr(file_obj, 'extracted_text', None) and (file_obj.extracted_text or '').strip():
+        return (file_obj.extracted_text or '').strip()
+    if not os.path.exists(file_obj.storage_path):
+        return ''
+    try:
+        if not Image or not pytesseract:
+            return ''
+        image = Image.open(file_obj.storage_path)
+        raw_text = (pytesseract.image_to_string(image) or '').strip()
+        if raw_text:
+            file_obj.extracted_text = raw_text[:10000]
+            file_obj.save(update_fields=['extracted_text'])
+        return raw_text
+    except Exception:
+        return ''
 
 
 # Celery task wrapper (if enabled)

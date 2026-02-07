@@ -57,4 +57,10 @@ export interface HealthSummary {
   source_counts?: { lab?: number; prescription?: number; encounter?: number; file?: number };
   record_count?: number;
   date_range?: { oldest?: string; newest?: string };
+  /** Content from uploaded records (summary + bullets) for the analyze section. */
+  record_highlights?: string[];
+  /** Clean, professional narrative (no raw OCR dump). */
+  professional_summary?: string;
+  /** Short key findings (conditions, vaccination, etc.) for display. */
+  professional_findings?: string[];
 }
