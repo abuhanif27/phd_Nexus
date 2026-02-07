@@ -35,6 +35,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils/cn';
 import { getHealthSummary } from '../api';
 import { getMyAppointments } from '@/features/scheduling/api';
+import { exportHealthSummaryPdf } from '../exportHealthSummaryPdf';
 
 export function HealthSummaryPage() {
   const { data: summaryData, isLoading, error, refetch, isFetching } = useQuery({
@@ -227,9 +228,29 @@ export function HealthSummaryPage() {
             <Share2 className="h-4 w-4" />
             Share
           </Button>
-          <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
+          <Button
+            onClick={() => {
+              if (aiSummary || contentFromRecords.length > 0 || recordCount > 0) {
+                exportHealthSummaryPdf({
+                  aiSummary,
+                  contentFromRecords,
+                  conditions: conditions.map((c: { name?: string } | string) =>
+                typeof c === 'object' && c !== null && 'name' in c ? { name: c.name } : { name: String(c) }
+              ),
+              medications: medications.map((m: { name?: string } | string) =>
+                typeof m === 'object' && m !== null && 'name' in m ? { name: m.name } : { name: String(m) }
+              ),
+                  sourceCounts,
+                  dateRange,
+                  recordCount,
+                });
+              }
+            }}
+            disabled={!(aiSummary || contentFromRecords.length > 0 || recordCount > 0)}
+            className="gap-2 bg-blue-600 hover:bg-blue-700"
+          >
             <Download className="h-4 w-4" />
-            Export
+            Export PDF
           </Button>
         </div>
       </div>
