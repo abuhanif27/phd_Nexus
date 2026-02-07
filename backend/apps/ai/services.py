@@ -23,7 +23,9 @@ except ImportError:
     pass
 
 from django.conf import settings
-from apps.records.models import LabResult, Prescription, Encounter
+from django.utils import timezone
+from datetime import timedelta
+from apps.records.models import LabResult, Prescription, Encounter, File
 from apps.patients.models import Patient
 from .models import EmbeddingMeta, AISummary
 
@@ -529,6 +531,150 @@ class AIService:
                 'conditions': [],
                 'medications': []
             }
+
+    def get_recent_records_corpus(self, patient_id: int, max_items: int = 80,
+                                   max_days: int = 365) -> Tuple[str, Dict]:
+        """
+        Aggregate all medical records for a patient (most recent by date), build a single text corpus.
+        Returns (corpus_text, meta) with meta: source_counts, date_range, record_count.
+        """
+        patient = Patient.objects.get(id=patient_id)
+        cutoff = timezone.now() - timedelta(days=max_days)
+
+        # Collect (timestamp, type, text) for unified sorting
+        items = []
+
+        for lab in patient.lab_results.filter(ts__gte=cutoff).order_by('-ts')[:max_items]:
+            text = f"Lab: {lab.title}. {lab.summary or ''}"
+            if lab.data:
+                text += " " + " ".join(f"{k}: {v}" for k, v in list(lab.data.items())[:10])
+            items.append((lab.ts, 'lab', text))
+
+        for rx in patient.prescriptions.filter(ts__gte=cutoff).order_by('-ts')[:max_items]:
+            parts = ["Prescription:"]
+            for item in (rx.items or [])[:15]:
+                if isinstance(item, dict):
+                    parts.append(
+                        f"{item.get('drug', '')} {item.get('dosage', '')} "
+                        f"{item.get('duration', '')} {item.get('instructions', '')}"
+                    )
+                else:
+                    parts.append(str(item))
+            parts.append(rx.notes or "")
+            items.append((rx.ts, 'prescription', " ".join(parts)))
+
+        for enc in patient.encounters.filter(ts__gte=cutoff).order_by('-ts')[:max_items]:
+            text = f"Encounter: {enc.notes}. Diagnosis: {enc.diagnosis}. Plan: {enc.plan}"
+            items.append((enc.ts, 'encounter', text))
+
+        for f in patient.files.filter(created_at__gte=cutoff).order_by('-created_at')[:max_items]:
+            text = f"Document: {f.filename} (category: {f.get_kind_display() if hasattr(f, 'get_kind_display') else f.kind})."
+            items.append((f.created_at, 'file', text))
+
+        # Sort by date descending (most recent first), then take up to max_items
+        items.sort(key=lambda x: x[0], reverse=True)
+        items = items[:max_items]
+
+        sections = []
+        source_counts = {'lab': 0, 'prescription': 0, 'encounter': 0, 'file': 0}
+        for ts, typ, text in items:
+            source_counts[typ] = source_counts.get(typ, 0) + 1
+            date_str = ts.strftime('%Y-%m-%d') if hasattr(ts, 'strftime') else str(ts)
+            sections.append(f"[{date_str}] [{typ}] {text}")
+
+        corpus = "\n".join(sections)
+        date_range = {}
+        if items:
+            date_range = {
+                'oldest': min(x[0] for x in items).isoformat() if hasattr(items[-1][0], 'isoformat') else str(items[-1][0]),
+                'newest': max(x[0] for x in items).isoformat() if hasattr(items[0][0], 'isoformat') else str(items[0][0]),
+            }
+        return corpus, {
+            'source_counts': source_counts,
+            'date_range': date_range,
+            'record_count': len(items),
+        }
+
+    def generate_health_summary_from_records(self, patient_id: int,
+                                             max_items: int = 80,
+                                             max_days: int = 365) -> Dict:
+        """
+        Generate AI health summary from all existing medical records (most recent by date).
+        Uses TextRank for extractive summary and spaCy (or medical NER) for entities.
+        Categories: lab results, prescriptions, encounters, documents (others).
+        """
+        corpus, meta = self.get_recent_records_corpus(patient_id, max_items=max_items, max_days=max_days)
+        if not corpus.strip():
+            return {
+                'summary': 'No recent medical records found. Upload lab results, prescriptions, or encounter notes to get an AI-generated health summary.',
+                'bullets': [],
+                'insights': ['Add medical records to see personalized insights.'],
+                'conditions': [],
+                'medications': [],
+                'source_counts': meta['source_counts'],
+                'date_range': meta['date_range'],
+                'record_count': 0,
+            }
+
+        # Extractive summary (TextRank) – medical-domain friendly
+        bullets = self._extractive_summary(corpus, sentence_count=8)
+        summary = ' '.join(bullets) if bullets else corpus[:500]
+
+        # Entity extraction (spaCy NER; medical models can be plugged here)
+        conditions = []
+        medications = []
+        entities_map = {}
+        if self.spacy_model:
+            doc = self.spacy_model(corpus)
+            for ent in doc.ents:
+                label = ent.label_
+                if label not in entities_map:
+                    entities_map[label] = []
+                if ent.text not in entities_map[label]:
+                    entities_map[label].append(ent.text)
+            # Map common labels to conditions/medications
+            for label, vals in entities_map.items():
+                if label in ('DISEASE', 'CONDITION', 'PROBLEM', 'GPE') and label != 'GPE':
+                    conditions.extend(vals[:10])
+                elif label in ('DRUG', 'MEDICATION', 'CHEMICAL'):
+                    medications.extend(vals[:15])
+
+        # Fallback: keyword-based extraction from corpus
+        if not conditions and not medications:
+            for sent in corpus.replace('\n', ' ').split('.'):
+                sent_lower = sent.lower()
+                if any(k in sent_lower for k in ('diagnosis', 'diagnosed', 'condition', 'disease', 'disorder')):
+                    conditions.append(sent.strip()[:120])
+                if any(k in sent_lower for k in ('prescribed', 'drug', 'mg', 'tablet', 'capsule', 'medication')):
+                    medications.append(sent.strip()[:120])
+            conditions = list(dict.fromkeys(conditions))[:8]
+            medications = list(dict.fromkeys(medications))[:12]
+
+        # Build short insights from summary + counts
+        insights = []
+        sc = meta['source_counts']
+        if sc.get('lab'):
+            insights.append(f"Based on {sc['lab']} recent lab result(s).")
+        if sc.get('prescription'):
+            insights.append(f"Based on {sc['prescription']} prescription(s) on file.")
+        if sc.get('encounter'):
+            insights.append(f"Based on {sc['encounter']} encounter note(s).")
+        if sc.get('file'):
+            insights.append(f"Based on {sc['file']} uploaded document(s).")
+        if bullets:
+            insights.extend(bullets[:4])
+
+        return {
+            'summary': summary,
+            'bullets': bullets,
+            'insights': insights[:10],
+            'conditions': conditions[:10],
+            'medications': medications[:12],
+            'entities': entities_map,
+            'source_counts': meta['source_counts'],
+            'date_range': meta['date_range'],
+            'record_count': meta['record_count'],
+        }
 
 
 # Global service instance

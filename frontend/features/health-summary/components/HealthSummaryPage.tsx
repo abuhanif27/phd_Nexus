@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
   Activity,
@@ -23,17 +23,42 @@ import {
   Clock,
   Target,
   Zap,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Link from 'next/link';
 import { cn } from '@/lib/utils/cn';
+import { getHealthSummary } from '../api';
+import { getMyAppointments } from '@/features/scheduling/api';
 
 export function HealthSummaryPage() {
-  // Mock data - replace with actual API calls
-  const [healthScore] = useState(85);
+  const { data: summaryData, isLoading, error } = useQuery({
+    queryKey: ['health-summary'],
+    queryFn: getHealthSummary,
+  });
+  const { data: appointments = [] } = useQuery({
+    queryKey: ['my-appointments'],
+    queryFn: getMyAppointments,
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  const upcomingAppointments = appointments
+    .filter((a: { status?: string; date?: string }) => a.status === 'scheduled' && a.date && a.date >= today)
+    .sort((a: { date?: string; start_time?: string }, b: { date?: string; start_time?: string }) =>
+      `${a.date}T${a.start_time || ''}`.localeCompare(`${b.date}T${b.start_time || ''}`)
+    )
+    .slice(0, 5);
+
+  const healthScore = summaryData?.health_score ?? 85;
+  const sourceCounts = summaryData?.source_counts ?? {};
+  const recordCount = summaryData?.record_count ?? 0;
+  const dateRange = summaryData?.date_range;
+  const aiSummary = summaryData?.summary ?? '';
+  const bullets = summaryData?.bullets ?? [];
+  const aiInsights = summaryData?.ai_insights ?? [];
 
   const vitalSigns = [
     {
@@ -82,61 +107,10 @@ export function HealthSummaryPage() {
     },
   ];
 
-  const conditions = [
-    {
-      name: 'Type 2 Diabetes',
-      severity: 'moderate',
-      status: 'managed',
-      diagnosed: '2020-03-15',
-    },
-    { name: 'Hypertension', severity: 'mild', status: 'managed', diagnosed: '2019-08-20' },
-  ];
+  const conditions = summaryData?.conditions ?? [];
+  const medications = summaryData?.medications ?? [];
 
-  const medications = [
-    {
-      name: 'Metformin',
-      dosage: '500mg',
-      frequency: 'Twice daily',
-      status: 'active',
-      nextDose: 'Today, 6:00 PM',
-    },
-    {
-      name: 'Lisinopril',
-      dosage: '10mg',
-      frequency: 'Once daily',
-      status: 'active',
-      nextDose: 'Tomorrow, 8:00 AM',
-    },
-  ];
-
-  const allergies = [
-    { allergen: 'Penicillin', reaction: 'Rash', severity: 'severe' },
-    { allergen: 'Peanuts', reaction: 'Anaphylaxis', severity: 'severe' },
-  ];
-
-  const aiInsights = [
-    'Your blood pressure has been consistently normal for the past 3 months',
-    'Consider increasing physical activity to 150 minutes per week',
-    "Schedule your annual checkup - it's been 11 months",
-    'Your medication adherence is excellent at 95%',
-  ];
-
-  const upcomingAppointments = [
-    {
-      doctor: 'Dr. Sarah Smith',
-      specialty: 'Endocrinologist',
-      date: '2025-11-10',
-      time: '10:00 AM',
-      type: 'Follow-up',
-    },
-    {
-      doctor: 'Dr. John Doe',
-      specialty: 'Cardiologist',
-      date: '2025-11-15',
-      time: '2:30 PM',
-      type: 'Routine Checkup',
-    },
-  ];
+  const allergies = summaryData?.allergies ?? [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -175,6 +149,32 @@ export function HealthSummaryPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Analyzing your medical records…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 p-6">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Health Summary</h1>
+        <Card className="border-destructive/50">
+          <CardContent className="p-6">
+            <p className="text-muted-foreground">
+              Could not load your health summary. Please try again later.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -182,7 +182,7 @@ export function HealthSummaryPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Health Summary</h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Your comprehensive health overview powered by AI
+            Your comprehensive health overview powered by AI (from your most recent records)
           </p>
         </div>
         <div className="flex gap-2">
@@ -196,6 +196,50 @@ export function HealthSummaryPage() {
           </Button>
         </div>
       </div>
+
+      {/* AI Summary from medical records (labs, prescriptions, encounters, documents) */}
+      {(aiSummary || bullets.length > 0 || recordCount > 0) && (
+        <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50/80 to-indigo-50/80 dark:from-purple-950/20 dark:to-indigo-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Brain className="h-6 w-6 text-purple-600" />
+              AI summary from your medical records
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Generated from lab results, prescriptions, encounters, and documents (most recent by date). Uses extractive summarization and medical entity extraction.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {recordCount > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {sourceCounts.lab != null && sourceCounts.lab > 0 && (
+                  <Badge variant="secondary">Labs: {sourceCounts.lab}</Badge>
+                )}
+                {sourceCounts.prescription != null && sourceCounts.prescription > 0 && (
+                  <Badge variant="secondary">Prescriptions: {sourceCounts.prescription}</Badge>
+                )}
+                {sourceCounts.encounter != null && sourceCounts.encounter > 0 && (
+                  <Badge variant="secondary">Encounters: {sourceCounts.encounter}</Badge>
+                )}
+                {sourceCounts.file != null && sourceCounts.file > 0 && (
+                  <Badge variant="secondary">Documents: {sourceCounts.file}</Badge>
+                )}
+                {dateRange?.newest && (
+                  <Badge variant="outline">Latest: {format(new Date(dateRange.newest), 'MMM d, yyyy')}</Badge>
+                )}
+              </div>
+            )}
+            {aiSummary && <p className="text-sm leading-relaxed text-foreground">{aiSummary}</p>}
+            {bullets.length > 0 && (
+              <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                {bullets.map((b, i) => (
+                  <li key={i}>{b}</li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Health Score Card */}
       <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
@@ -211,7 +255,9 @@ export function HealthSummaryPage() {
                     Overall Health Score
                   </h3>
                   <p className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                    Based on your vitals, activity, and health records
+                    {recordCount > 0
+                      ? `Based on ${recordCount} medical record(s) (labs, prescriptions, encounters, documents)`
+                      : 'Based on your vitals, activity, and health records'}
                   </p>
                 </div>
               </div>
@@ -302,7 +348,11 @@ export function HealthSummaryPage() {
               <Card>
                 <CardContent className="p-6">
                   <div className="space-y-4">
-                    {conditions.map((condition, index) => (
+                    {conditions.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">
+                        No conditions extracted from your records yet. Add lab results and encounter notes for AI to identify conditions.
+                      </p>
+                    ) : conditions.map((condition, index) => (
                       <div
                         key={index}
                         className="flex items-start justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800"
@@ -319,9 +369,11 @@ export function HealthSummaryPage() {
                             <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
                               {condition.name}
                             </h4>
-                            <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                              Diagnosed: {format(new Date(condition.diagnosed), 'MMM d, yyyy')}
-                            </p>
+                            {(condition.diagnosed_date || (condition as any).diagnosed) && (
+                              <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                                Diagnosed: {format(new Date((condition.diagnosed_date || (condition as any).diagnosed) as string), 'MMM d, yyyy')}
+                              </p>
+                            )}
                             <div className="mt-3 flex flex-wrap gap-2">
                               <Badge
                                 variant="outline"
@@ -349,7 +401,11 @@ export function HealthSummaryPage() {
               <Card>
                 <CardContent className="p-6">
                   <div className="space-y-4">
-                    {medications.map((med, index) => (
+                    {medications.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">
+                        No medications extracted from your records yet. Add prescriptions for AI to list medications.
+                      </p>
+                    ) : medications.map((med, index) => (
                       <div
                         key={index}
                         className="flex items-start justify-between gap-4 rounded-lg border-2 border-green-200 bg-green-50 p-5 dark:border-green-800 dark:bg-green-950/20"
@@ -363,12 +419,14 @@ export function HealthSummaryPage() {
                               {med.name}
                             </h4>
                             <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                              {med.dosage} • {med.frequency}
+                              {[med.dosage, med.frequency].filter(Boolean).join(' • ') || '—'}
                             </p>
+                            {(med.start_date || (med as any).nextDose) && (
                             <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
                               <Clock className="h-4 w-4" />
-                              Next dose: {med.nextDose}
+                              {(med as any).nextDose ? `Next dose: ${(med as any).nextDose}` : `Start: ${med.start_date}`}
                             </div>
+                            )}
                           </div>
                         </div>
                         <Badge className="flex-shrink-0 bg-green-600 px-3 py-1">Active</Badge>
@@ -383,7 +441,11 @@ export function HealthSummaryPage() {
               <Card>
                 <CardContent className="p-6">
                   <div className="space-y-4">
-                    {allergies.map((allergy, index) => (
+                    {allergies.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">
+                        No allergies on file. Update your profile or add them in Medical Records.
+                      </p>
+                    ) : allergies.map((allergy, index) => (
                       <div
                         key={index}
                         className="flex items-start gap-4 rounded-lg border-2 border-red-200 bg-red-50 p-5 dark:border-red-800 dark:bg-red-950/20"
@@ -426,7 +488,11 @@ export function HealthSummaryPage() {
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-4">
-                {aiInsights.map((insight, index) => (
+                {aiInsights.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    No insights yet. Add medical records (labs, prescriptions, encounters) to get personalized AI insights.
+                  </p>
+                ) : aiInsights.map((insight, index) => (
                   <div
                     key={index}
                     className="flex gap-4 rounded-lg bg-purple-50 p-4 dark:bg-purple-950/20"
@@ -450,41 +516,37 @@ export function HealthSummaryPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 p-6 pt-0">
-              {upcomingAppointments.map((apt, index) => (
-                <div
-                  key={index}
-                  className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 transition-all hover:shadow-md dark:border-blue-800 dark:from-blue-950/30 dark:to-indigo-950/30"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        'px-3 py-1 text-xs font-semibold',
-                        apt.type === 'Follow-up'
-                          ? 'border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
-                          : 'border-green-300 bg-green-100 text-green-700 dark:border-green-700 dark:bg-green-900/50 dark:text-green-300'
-                      )}
-                    >
-                      {apt.type}
-                    </Badge>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {format(new Date(apt.date), 'MMM d, yyyy')}
+              {upcomingAppointments.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No upcoming appointments. Book one from the Appointments page.
+                </p>
+              ) : (
+                upcomingAppointments.map((apt: { id?: number; date: string; start_time?: string; doctor_name?: string; doctor?: number; specialty?: string }, index: number) => (
+                  <div
+                    key={apt.id ?? index}
+                    className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 transition-all hover:shadow-md dark:border-blue-800 dark:from-blue-950/30 dark:to-indigo-950/30"
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <Badge variant="outline" className="border-blue-300 bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                        Scheduled
+                      </Badge>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {format(new Date(apt.date), 'MMM d, yyyy')}
+                      </div>
+                    </div>
+                    <h4 className="mb-1 text-base font-bold text-gray-900 dark:text-white">
+                      {apt.doctor_name ?? `Doctor #${apt.doctor}`}
+                    </h4>
+                    <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">{apt.specialty ?? '—'}</p>
+                    <div className="flex items-center gap-2 rounded-lg bg-white/60 px-3 py-2 dark:bg-gray-800/60">
+                      <Calendar className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {apt.start_time ?? '—'}
+                      </span>
                     </div>
                   </div>
-
-                  <h4 className="mb-1 text-base font-bold text-gray-900 dark:text-white">
-                    {apt.doctor}
-                  </h4>
-                  <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">{apt.specialty}</p>
-
-                  <div className="flex items-center gap-2 rounded-lg bg-white/60 px-3 py-2 dark:bg-gray-800/60">
-                    <Calendar className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {apt.time}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -494,17 +556,23 @@ export function HealthSummaryPage() {
               <CardTitle className="text-lg">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 p-6">
-              <Button variant="outline" className="w-full justify-start gap-3 py-6">
-                <Shield className="h-5 w-5" />
-                <span className="text-base">Update Medical History</span>
+              <Button variant="outline" className="w-full justify-start gap-3 py-6" asChild>
+                <Link href="/dashboard/records">
+                  <Shield className="h-5 w-5" />
+                  <span className="text-base">Medical Records</span>
+                </Link>
               </Button>
-              <Button variant="outline" className="w-full justify-start gap-3 py-6">
-                <Activity className="h-5 w-5" />
-                <span className="text-base">Log Vital Signs</span>
+              <Button variant="outline" className="w-full justify-start gap-3 py-6" asChild>
+                <Link href="/dashboard/records/upload">
+                  <Activity className="h-5 w-5" />
+                  <span className="text-base">Upload Document</span>
+                </Link>
               </Button>
-              <Button variant="outline" className="w-full justify-start gap-3 py-6">
-                <Calendar className="h-5 w-5" />
-                <span className="text-base">Schedule Checkup</span>
+              <Button variant="outline" className="w-full justify-start gap-3 py-6" asChild>
+                <Link href="/appointments">
+                  <Calendar className="h-5 w-5" />
+                  <span className="text-base">Appointments</span>
+                </Link>
               </Button>
             </CardContent>
           </Card>

@@ -49,4 +49,12 @@ export interface HealthSummary {
   next_appointment?: string;
   health_score?: number;
   ai_insights?: string[];
+  /** AI-generated summary from medical records (TextRank + NER). */
+  summary?: string;
+  /** Bullet points from extractive summary. */
+  bullets?: string[];
+  /** Record counts used for summary: lab, prescription, encounter, file. */
+  source_counts?: { lab?: number; prescription?: number; encounter?: number; file?: number };
+  record_count?: number;
+  date_range?: { oldest?: string; newest?: string };
 }

@@ -117,13 +117,15 @@ export interface Appointment {
   id: number;
   doctor: number;
   patient: number;
+  doctor_name?: string;
+  specialty?: string;
   doctor_details?: Doctor;
   patient_details?: Patient;
   date: string;
   start_time: string;
   end_time: string;
   status: AppointmentStatus;
-  notes: string;
+  notes?: string;
   created_at: string;
 }
 

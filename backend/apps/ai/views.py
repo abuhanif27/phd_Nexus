@@ -13,6 +13,16 @@ from .serializers import (
 from .services import ai_service
 
 
+def _get_patient_or_403(request):
+    """Get current user's patient profile or return 403 Response."""
+    if not hasattr(request.user, 'patient_profile'):
+        return None, Response(
+            {'error': 'Patient profile not found. Complete your profile to see health summary.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    return request.user.patient_profile, None
+
+
 class SymptomAnalyzeView(views.APIView):
     """Analyze symptoms using NLP."""
     permission_classes = [IsAuthenticated]
@@ -150,10 +160,70 @@ class TextSummaryView(views.APIView):
         return Response(result)
 
 
+class HealthSummaryView(views.APIView):
+    """
+    GET: AI health summary from all existing medical records (most recent by date).
+    Aggregates labs, prescriptions, encounters, documents and summarizes with TextRank + NER.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        patient, err = _get_patient_or_403(request)
+        if err is not None:
+            return err
+        try:
+            result = ai_service.generate_health_summary_from_records(patient.id)
+            # Shape for frontend HealthSummary + AI fields
+            return Response({
+                'vital_signs': [],  # Optional: from vitals API later
+                'conditions': [
+                    {'id': i, 'name': c, 'severity': 'moderate', 'diagnosed_date': '', 'status': 'active'}
+                    for i, c in enumerate(result.get('conditions', [])[:15])
+                ],
+                'allergies': [],  # From profile if needed
+                'medications': [
+                    {'id': i, 'name': m[:80], 'dosage': '', 'frequency': '', 'start_date': '', 'status': 'active'}
+                    for i, m in enumerate(result.get('medications', [])[:15])
+                ],
+                'last_checkup': result.get('date_range', {}).get('newest'),
+                'next_appointment': None,
+                'health_score': None,
+                'ai_insights': result.get('insights', []),
+                'summary': result.get('summary', ''),
+                'bullets': result.get('bullets', []),
+                'source_counts': result.get('source_counts', {}),
+                'record_count': result.get('record_count', 0),
+                'date_range': result.get('date_range', {}),
+            })
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to generate health summary: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class HealthInsightsView(views.APIView):
+    """GET: AI insights derived from health summary (same pipeline, insights only)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        patient, err = _get_patient_or_403(request)
+        if err is not None:
+            return err
+        try:
+            result = ai_service.generate_health_summary_from_records(patient.id)
+            return Response({'insights': result.get('insights', [])})
+        except Exception as e:
+            return Response(
+                {'error': str(e), 'insights': []},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class HealthAnalysisView(views.APIView):
     """Generate comprehensive health analysis for patient."""
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         try:
             # Get patient profile
@@ -166,10 +236,14 @@ class HealthAnalysisView(views.APIView):
             patient = request.user.patient_profile
             
             # Get patient's health data
-            from apps.records.models import MedicalRecord, Prescription
+            from apps.records.models import LabResult, Prescription, Encounter, File
             from apps.scheduling.models import Appointment
             
-            records_count = MedicalRecord.objects.filter(patient=patient).count()
+            records_count = (
+                LabResult.objects.filter(patient=patient).count()
+                + Encounter.objects.filter(patient=patient).count()
+                + File.objects.filter(patient=patient).count()
+            )
             prescriptions_count = Prescription.objects.filter(patient=patient).count()
             appointments_count = Appointment.objects.filter(patient=patient).count()
             symptoms_count = SymptomLog.objects.filter(patient=patient).count()
@@ -267,18 +341,18 @@ class EnhancedAnalysisView(views.APIView):
             # Get patient history if requested
             patient_history = None
             if include_history and hasattr(request.user, 'patient_profile'):
-                from apps.records.models import MedicalRecord
+                from apps.records.models import Encounter
                 patient = request.user.patient_profile
-                records = MedicalRecord.objects.filter(patient=patient).order_by('-created_at')[:5]
+                encounters = Encounter.objects.filter(patient=patient).order_by('-ts')[:5]
                 patient_history = {
-                    'medical_conditions': patient.medical_conditions or 'None reported',
-                    'allergies': patient.allergies or 'None reported',
+                    'medical_conditions': getattr(patient, 'medical_conditions', None) or 'None reported',
+                    'allergies': getattr(patient, 'allergies', None) or 'None reported',
                     'recent_records': [
                         {
-                            'date': record.created_at.isoformat(),
-                            'diagnosis': record.diagnosis,
-                            'treatment': record.treatment
-                        } for record in records
+                            'date': enc.ts.isoformat(),
+                            'diagnosis': enc.diagnosis,
+                            'treatment': enc.plan
+                        } for enc in encounters
                     ]
                 }
             

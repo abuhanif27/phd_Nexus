@@ -3,6 +3,7 @@
 - **Specialist prediction** – symptom text → recommended doctor (sklearn or PyTorch)
 - **Symptom analysis** – spaCy NER on medical text
 - **Summaries** – FAISS + TextRank on records
+- **Health summary** – from all medical records (labs, prescriptions, encounters, documents), most recent by date; TextRank extractive summary + spaCy NER (conditions, medications). Optional: BioBERT/SciBERT for medical entity extraction.
 - **OCR** – Tesseract for documents
 
 ## Models
@@ -23,5 +24,13 @@ Training data: `backend/data/symptoms_train.csv`. Models go to `backend/ai_model
 
 ## API
 
+- `GET /api/health/summary/` – AI health summary from patient’s records (labs, prescriptions, encounters, files); returns summary, bullets, insights, extracted conditions/medications, source counts.
+- `GET /api/health/insights/` – insights only (same pipeline).
 - `POST /api/ai/specialist/` – body `{"text": "symptoms"}` → specialist recommendation
 - Other AI endpoints: see backend `apps/ai/urls.py` and [backend/API_DOCS.md](../backend/API_DOCS.md).
+
+## Medical NER (optional)
+
+The health summary uses spaCy for entity extraction. For medical-domain NER you can add:
+- **BioBERT** (`dmis-lab/biobert-v1.1`) or **SciBERT** for better medical entity recognition.
+- Wire a medical tokenizer + NER head in `AIService.generate_health_summary_from_records` to populate `conditions` and `medications` from the corpus.

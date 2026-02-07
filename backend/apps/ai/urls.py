@@ -5,10 +5,13 @@ from django.urls import path
 from .views import (
     SymptomAnalyzeView, SpecialistPredictView,
     PatientSummaryView, BuildIndexView, TextSummaryView, HealthAnalysisView,
-    ModelStatusView, EnhancedAnalysisView
+    ModelStatusView, EnhancedAnalysisView,
+    HealthSummaryView, HealthInsightsView,
 )
 
 urlpatterns = [
+    path('health/summary/', HealthSummaryView.as_view(), name='health_summary'),
+    path('health/insights/', HealthInsightsView.as_view(), name='health_insights'),
     path('symptoms/analyze/', SymptomAnalyzeView.as_view(), name='symptoms_analyze'),
     path('ai/specialist/', SpecialistPredictView.as_view(), name='ai_specialist'),
     path('ai/predict-specialist/', SpecialistPredictView.as_view(), name='predict_specialist'),
