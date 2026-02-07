@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
@@ -36,10 +37,25 @@ import { getHealthSummary } from '../api';
 import { getMyAppointments } from '@/features/scheduling/api';
 
 export function HealthSummaryPage() {
-  const { data: summaryData, isLoading, error } = useQuery({
+  const { data: summaryData, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['health-summary'],
     queryFn: getHealthSummary,
   });
+  const [minLoadingUntil, setMinLoadingUntil] = useState<number | null>(null);
+  const isSummarizing = isFetching || minLoadingUntil !== null;
+
+  useEffect(() => {
+    if (!isFetching && minLoadingUntil != null) {
+      const remaining = Math.max(0, minLoadingUntil - Date.now());
+      const timer = setTimeout(() => setMinLoadingUntil(null), remaining);
+      return () => clearTimeout(timer);
+    }
+  }, [isFetching, minLoadingUntil]);
+
+  const handleSummarize = () => {
+    setMinLoadingUntil(Date.now() + 2500);
+    refetch();
+  };
   const { data: appointments = [] } = useQuery({
     queryKey: ['my-appointments'],
     queryFn: getMyAppointments,
@@ -190,6 +206,23 @@ export function HealthSummaryPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={handleSummarize}
+            disabled={isSummarizing}
+            className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all hover:shadow-lg disabled:opacity-70"
+          >
+            {isSummarizing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Summarizing…
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                Summarize my records
+              </>
+            )}
+          </Button>
           <Button variant="outline" className="gap-2">
             <Share2 className="h-4 w-4" />
             Share
@@ -201,9 +234,37 @@ export function HealthSummaryPage() {
         </div>
       </div>
 
-      {/* AI Summary from medical records (labs, prescriptions, encounters, documents) */}
-      {(aiSummary || contentFromRecords.length > 0 || recordCount > 0) && (
-        <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50/80 to-indigo-50/80 dark:from-purple-950/20 dark:to-indigo-950/20">
+      {/* Loading: beautiful animation while summarizing */}
+      {isSummarizing && (
+        <Card className="overflow-hidden border-2 border-purple-200 bg-gradient-to-br from-purple-50/90 to-indigo-50/90 dark:from-purple-950/30 dark:to-indigo-950/30 shadow-lg">
+          <div className="h-1 w-full bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-500 bg-[length:200%_100%] animate-shimmer" />
+          <CardContent className="flex flex-col items-center justify-center py-16 px-6">
+            <div className="animate-pulse-soft flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg">
+              <Brain className="h-10 w-10 text-white" />
+            </div>
+            <p className="mt-6 text-lg font-medium text-foreground">Analyzing your records</p>
+            <p className="mt-1 text-sm text-muted-foreground">Building your health summary…</p>
+            <div className="mt-6 flex gap-1.5">
+              <span
+                className="h-2 w-2 rounded-full bg-purple-500 animate-dot-bounce"
+                style={{ animationDelay: '0ms' }}
+              />
+              <span
+                className="h-2 w-2 rounded-full bg-indigo-500 animate-dot-bounce"
+                style={{ animationDelay: '160ms' }}
+              />
+              <span
+                className="h-2 w-2 rounded-full bg-purple-500 animate-dot-bounce"
+                style={{ animationDelay: '320ms' }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AI Summary from medical records – animated reveal when ready */}
+      {!isSummarizing && (aiSummary || contentFromRecords.length > 0 || recordCount > 0) && (
+        <Card className="animate-summary-fade border-2 border-purple-200 bg-gradient-to-br from-purple-50/80 to-indigo-50/80 dark:from-purple-950/20 dark:to-indigo-950/20">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-xl">
               <Brain className="h-6 w-6 text-purple-600" />
@@ -245,7 +306,13 @@ export function HealthSummaryPage() {
                 </p>
                 <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
                   {contentFromRecords.map((b, i) => (
-                    <li key={i}>{b}</li>
+                    <li
+                      key={i}
+                      className="opacity-0 animate-summary-stagger"
+                      style={{ animationDelay: `${(i + 1) * 80}ms` }}
+                    >
+                      {b}
+                    </li>
                   ))}
                 </ul>
               </div>
