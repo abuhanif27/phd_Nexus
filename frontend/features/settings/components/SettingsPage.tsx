@@ -97,7 +97,9 @@ export function SettingsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full grid-cols-2 gap-4 bg-white p-2 dark:bg-gray-800 ${isPatient ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`}>
+          <TabsList
+            className={`grid w-full grid-cols-2 gap-4 bg-white p-2 dark:bg-gray-800 ${isPatient ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`}
+          >
             <TabsTrigger
               value="profile"
               className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
