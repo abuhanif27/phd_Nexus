@@ -108,12 +108,22 @@ class FileServeView(views.APIView):
     def get(self, request, file_id):
         try:
             file_obj = File.objects.get(id=file_id)
-            if request.user.role == 'patient' and file_obj.patient.user != request.user:
+            # Allow if user owns the file (patient's user)
+            is_owner = file_obj.patient.user_id == request.user.id
+            if not is_owner:
                 return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
-            if not os.path.isfile(file_obj.storage_path):
+            # Resolve path: stored path, or MEDIA_ROOT/patient_id/filename
+            path = file_obj.storage_path
+            if not os.path.isfile(path):
+                path = os.path.join(settings.MEDIA_ROOT, str(file_obj.patient_id), file_obj.filename)
+            if not os.path.isfile(path):
+                alt = os.path.join(settings.MEDIA_ROOT, path) if not os.path.isabs(path) else path
+                if os.path.isfile(alt):
+                    path = alt
+            if not os.path.isfile(path):
                 return Response({'error': 'File not found on disk'}, status=status.HTTP_404_NOT_FOUND)
             response = FileResponse(
-                open(file_obj.storage_path, 'rb'),
+                open(path, 'rb'),
                 content_type=file_obj.mime or 'application/octet-stream',
                 as_attachment=False,
             )
