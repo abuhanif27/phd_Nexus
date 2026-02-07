@@ -41,11 +41,49 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import type { RecordType } from '@/features/records/types';
 
+function isImageFile(file: { mime?: string; filename: string }) {
+  const mime = (file.mime || '').toLowerCase();
+  const name = (file.filename || '').toLowerCase();
+  if (mime.startsWith('image/')) return true;
+  return /\.(jpg|jpeg|png|gif|webp|bmp|heic)$/.test(name);
+}
+
+function isPdfFile(file: { mime?: string; filename: string }) {
+  const mime = (file.mime || '').toLowerCase();
+  const name = (file.filename || '').toLowerCase();
+  return mime === 'application/pdf' || name.endsWith('.pdf');
+}
+
 export function MedicalRecordsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<RecordType>('all');
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [viewFile, setViewFile] = useState<{ id: number; filename: string; mime?: string } | null>(null);
+  const [viewUrl, setViewUrl] = useState<string | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  const handleViewFile = async (file: { id: number; filename: string; mime?: string }) => {
+    setViewFile(file);
+    setViewUrl(null);
+    setViewLoading(true);
+    try {
+      const blob = await getMedicalFileBlob(file.id);
+      const url = URL.createObjectURL(blob);
+      setViewUrl(url);
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not load file.' });
+      setViewFile(null);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const closeViewFile = () => {
+    if (viewUrl) URL.revokeObjectURL(viewUrl);
+    setViewFile(null);
+    setViewUrl(null);
+  };
 
   // Fetch all records
   const { data: filesData, isLoading: loadingFiles } = useQuery({
@@ -215,6 +253,7 @@ export function MedicalRecordsPage() {
             encounters={filteredEncounters}
             files={filteredFiles}
             isLoading={isLoading}
+            onViewFile={handleViewFile}
           />
         </TabsContent>
 
@@ -238,15 +277,92 @@ export function MedicalRecordsPage() {
 
         {/* Documents */}
         <TabsContent value="file">
-          <DocumentsTab files={filteredFiles} isLoading={loadingFiles} toast={toast} />
+          <DocumentsTab
+            files={filteredFiles}
+            isLoading={loadingFiles}
+            toast={toast}
+            onViewFile={handleViewFile}
+          />
         </TabsContent>
       </Tabs>
+
+      {/* Single view dialog for both All Records and Documents */}
+      <Dialog open={!!viewFile} onOpenChange={(open) => !open && closeViewFile()}>
+        <DialogContent className="max-w-3xl border bg-background shadow-lg sm:rounded-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              {viewFile?.filename}
+            </DialogTitle>
+            <DialogDescription>View document</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-[200px]">
+            {viewLoading && (
+              <div className="flex h-64 items-center justify-center text-muted-foreground">
+                Loading…
+              </div>
+            )}
+            {!viewLoading && viewUrl && viewFile && (
+              <>
+                {isImageFile(viewFile) && (
+                  <div className="rounded-lg border bg-muted/30 p-2">
+                    <img
+                      src={viewUrl}
+                      alt={viewFile.filename}
+                      className="max-h-[70vh] w-full rounded-md object-contain"
+                    />
+                  </div>
+                )}
+                {isPdfFile(viewFile) && (
+                  <div className="rounded-lg border bg-muted/30 p-2">
+                    <iframe
+                      src={viewUrl}
+                      title={viewFile.filename}
+                      className="h-[70vh] w-full rounded-md border-0"
+                    />
+                  </div>
+                )}
+                {!isImageFile(viewFile) && !isPdfFile(viewFile) && (
+                  <div className="rounded-lg border bg-muted/30 p-6 text-center">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <p className="mt-2 text-sm text-muted-foreground">Preview not available</p>
+                    <Button
+                      variant="default"
+                      className="mt-4"
+                      onClick={() => viewUrl && window.open(viewUrl, '_blank')}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Open in new tab
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 // All Records Tab Component
-function AllRecordsTab({ labResults, prescriptions, encounters, files, isLoading }: any) {
+function AllRecordsTab({
+  labResults,
+  prescriptions,
+  encounters,
+  files,
+  isLoading,
+  onViewFile,
+}: {
+  labResults: any[];
+  prescriptions: any[];
+  encounters: any[];
+  files: any[];
+  isLoading: boolean;
+  onViewFile: (file: { id: number; filename: string; mime?: string }) => void;
+}) {
   if (isLoading) {
     return (
       <Card>
@@ -284,7 +400,11 @@ function AllRecordsTab({ labResults, prescriptions, encounters, files, isLoading
   return (
     <div className="space-y-4">
       {allRecords.map((record: any, index) => (
-        <RecordCard key={`${record.type}-${record.id}-${index}`} record={record} />
+        <RecordCard
+          key={`${record.type}-${record.id}-${index}`}
+          record={record}
+          onViewFile={record.type === 'file' ? onViewFile : undefined}
+        />
       ))}
     </div>
   );
@@ -481,19 +601,14 @@ function DocumentsTab({
   files,
   isLoading,
   toast,
+  onViewFile,
 }: {
   files: any[];
   isLoading: boolean;
   toast: ReturnType<typeof useToast>['toast'];
+  onViewFile: (file: { id: number; filename: string; mime?: string }) => void;
 }) {
   const queryClient = useQueryClient();
-  const [viewFile, setViewFile] = useState<{
-    id: number;
-    filename: string;
-    mime?: string;
-  } | null>(null);
-  const [viewUrl, setViewUrl] = useState<string | null>(null);
-  const [viewLoading, setViewLoading] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: deleteMedicalFile,
@@ -517,41 +632,6 @@ function DocumentsTab({
     } catch {
       toast({ variant: 'destructive', title: 'Could not get download link.' });
     }
-  };
-
-  const handleView = async (file: { id: number; filename: string; mime?: string }) => {
-    setViewFile(file);
-    setViewUrl(null);
-    setViewLoading(true);
-    try {
-      const blob = await getMedicalFileBlob(file.id);
-      const url = URL.createObjectURL(blob);
-      setViewUrl(url);
-    } catch {
-      toast({ variant: 'destructive', title: 'Could not load file.' });
-      setViewFile(null);
-    } finally {
-      setViewLoading(false);
-    }
-  };
-
-  const closeView = () => {
-    if (viewUrl) URL.revokeObjectURL(viewUrl);
-    setViewFile(null);
-    setViewUrl(null);
-  };
-
-  const isImage = (file: { mime?: string; filename: string }) => {
-    const mime = (file.mime || '').toLowerCase();
-    const name = (file.filename || '').toLowerCase();
-    if (mime.startsWith('image/')) return true;
-    return /\.(jpg|jpeg|png|gif|webp|bmp|heic)$/.test(name);
-  };
-
-  const isPdf = (file: { mime?: string; filename: string }) => {
-    const mime = (file.mime || '').toLowerCase();
-    const name = (file.filename || '').toLowerCase();
-    return mime === 'application/pdf' || name.endsWith('.pdf');
   };
 
   const handleDelete = (fileId: number) => {
@@ -611,7 +691,7 @@ function DocumentsTab({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleView(file)}
+                  onClick={() => onViewFile(file)}
                   title="View"
                 >
                   <Eye className="h-4 w-4" />
@@ -639,70 +719,18 @@ function DocumentsTab({
           </CardContent>
         </Card>
       ))}
-
-      {/* View dialog – same UI as app */}
-      <Dialog open={!!viewFile} onOpenChange={(open) => !open && closeView()}>
-        <DialogContent className="max-w-3xl border bg-background shadow-lg sm:rounded-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              {viewFile?.filename}
-            </DialogTitle>
-            <DialogDescription>View document</DialogDescription>
-          </DialogHeader>
-          <div className="min-h-[200px]">
-            {viewLoading && (
-              <div className="flex h-64 items-center justify-center text-muted-foreground">
-                Loading…
-              </div>
-            )}
-            {!viewLoading && viewUrl && viewFile && (
-              <>
-                {isImage(viewFile) && (
-                  <div className="rounded-lg border bg-muted/30 p-2">
-                    <img
-                      src={viewUrl}
-                      alt={viewFile.filename}
-                      className="max-h-[70vh] w-full rounded-md object-contain"
-                    />
-                  </div>
-                )}
-                {isPdf(viewFile) && (
-                  <div className="rounded-lg border bg-muted/30 p-2">
-                    <iframe
-                      src={viewUrl}
-                      title={viewFile.filename}
-                      className="h-[70vh] w-full rounded-md border-0"
-                    />
-                  </div>
-                )}
-                {!isImage(viewFile) && !isPdf(viewFile) && (
-                  <div className="rounded-lg border bg-muted/30 p-6 text-center">
-                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <p className="mt-2 text-sm text-muted-foreground">Preview not available</p>
-                    <Button
-                      variant="default"
-                      className="mt-4"
-                      onClick={() => viewUrl && window.open(viewUrl, '_blank')}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Open in new tab
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
 // Record Card Component
-function RecordCard({ record }: any) {
+function RecordCard({
+  record,
+  onViewFile,
+}: {
+  record: any;
+  onViewFile?: (file: { id: number; filename: string; mime?: string }) => void;
+}) {
   const getRecordIcon = () => {
     switch (record.type) {
       case 'lab':
@@ -749,9 +777,20 @@ function RecordCard({ record }: any) {
               </div>
             </div>
           </div>
-          <Button variant="ghost" size="sm">
-            <Eye className="h-4 w-4" />
-          </Button>
+          {record.type === 'file' && onViewFile ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onViewFile({ id: record.id, filename: record.filename, mime: record.mime })}
+              title="View"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" title="View">
+              <Eye className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
