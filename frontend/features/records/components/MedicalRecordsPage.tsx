@@ -22,7 +22,6 @@ import {
   getLabResults,
   getPrescriptions,
   getEncounters,
-  getMedicalFileLink,
   getMedicalFileBlob,
   deleteMedicalFile,
 } from '@/features/records/api';
@@ -83,6 +82,24 @@ export function MedicalRecordsPage() {
     if (viewUrl) URL.revokeObjectURL(viewUrl);
     setViewFile(null);
     setViewUrl(null);
+  };
+
+  const handleDownloadToDevice = async (fileId: number, filename: string) => {
+    try {
+      const blob = await getMedicalFileBlob(fileId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'download';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: 'Downloaded', description: `"${filename}" saved to your device.` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not download file.' });
+    }
   };
 
   // Fetch all records
@@ -254,6 +271,7 @@ export function MedicalRecordsPage() {
             files={filteredFiles}
             isLoading={isLoading}
             onViewFile={handleViewFile}
+            onDownloadFile={handleDownloadToDevice}
           />
         </TabsContent>
 
@@ -282,6 +300,7 @@ export function MedicalRecordsPage() {
             isLoading={loadingFiles}
             toast={toast}
             onViewFile={handleViewFile}
+            onDownloadFile={handleDownloadToDevice}
           />
         </TabsContent>
       </Tabs>
@@ -338,6 +357,15 @@ export function MedicalRecordsPage() {
                     </Button>
                   </div>
                 )}
+                <div className="mt-4 flex justify-end border-t pt-4">
+                  <Button
+                    variant="default"
+                    onClick={() => handleDownloadToDevice(viewFile.id, viewFile.filename)}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download to device
+                  </Button>
+                </div>
               </>
             )}
           </div>
@@ -355,6 +383,7 @@ function AllRecordsTab({
   files,
   isLoading,
   onViewFile,
+  onDownloadFile,
 }: {
   labResults: any[];
   prescriptions: any[];
@@ -362,6 +391,7 @@ function AllRecordsTab({
   files: any[];
   isLoading: boolean;
   onViewFile: (file: { id: number; filename: string; mime?: string }) => void;
+  onDownloadFile: (fileId: number, filename: string) => void;
 }) {
   if (isLoading) {
     return (
@@ -404,6 +434,7 @@ function AllRecordsTab({
           key={`${record.type}-${record.id}-${index}`}
           record={record}
           onViewFile={record.type === 'file' ? onViewFile : undefined}
+          onDownloadFile={record.type === 'file' ? onDownloadFile : undefined}
         />
       ))}
     </div>
@@ -602,11 +633,13 @@ function DocumentsTab({
   isLoading,
   toast,
   onViewFile,
+  onDownloadFile,
 }: {
   files: any[];
   isLoading: boolean;
   toast: ReturnType<typeof useToast>['toast'];
   onViewFile: (file: { id: number; filename: string; mime?: string }) => void;
+  onDownloadFile: (fileId: number, filename: string) => void;
 }) {
   const queryClient = useQueryClient();
 
@@ -624,15 +657,6 @@ function DocumentsTab({
       });
     },
   });
-
-  const handleDownload = async (fileId: number) => {
-    try {
-      const { url } = await getMedicalFileLink(fileId);
-      window.open(url, '_blank');
-    } catch {
-      toast({ variant: 'destructive', title: 'Could not get download link.' });
-    }
-  };
 
   const handleDelete = (fileId: number) => {
     if (typeof window !== 'undefined' && window.confirm('Remove this document?')) {
@@ -699,8 +723,8 @@ function DocumentsTab({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDownload(file.id)}
-                  title="Download"
+                  onClick={() => onDownloadFile(file.id, file.filename)}
+                  title="Download to device"
                 >
                   <Download className="h-4 w-4" />
                 </Button>
@@ -727,9 +751,11 @@ function DocumentsTab({
 function RecordCard({
   record,
   onViewFile,
+  onDownloadFile,
 }: {
   record: any;
   onViewFile?: (file: { id: number; filename: string; mime?: string }) => void;
+  onDownloadFile?: (fileId: number, filename: string) => void;
 }) {
   const getRecordIcon = () => {
     switch (record.type) {
@@ -777,7 +803,7 @@ function RecordCard({
               </div>
             </div>
           </div>
-          {record.type === 'file' && onViewFile ? (
+          {record.type === 'file' && onViewFile && (
             <Button
               variant="ghost"
               size="sm"
@@ -786,7 +812,18 @@ function RecordCard({
             >
               <Eye className="h-4 w-4" />
             </Button>
-          ) : (
+          )}
+          {record.type === 'file' && onDownloadFile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDownloadFile(record.id, record.filename)}
+              title="Download"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          )}
+          {record.type !== 'file' && (
             <Button variant="ghost" size="sm" title="View">
               <Eye className="h-4 w-4" />
             </Button>
