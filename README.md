@@ -20,9 +20,8 @@
 
 This project has organized documentation:
 
-- **🚀 [SETUP.md](SETUP.md)** - **START HERE!** Complete beginner-friendly setup guide
-- **🪟 [SETUP_WINDOWS.md](SETUP_WINDOWS.md)** - **Windows Users** - Step-by-step Windows setup
-- **🧠 [AI_SYSTEM_REDESIGN.md](AI_SYSTEM_REDESIGN.md)** - **NEW!** Two-mode AI analysis system (Quick vs Deep)
+- **🚀 [SETUP.md](SETUP.md)** - **START HERE!** Complete beginner-friendly setup guide (Linux)
+- **🧠 [AI_SYSTEM_REDESIGN.md](AI_SYSTEM_REDESIGN.md)** - Two-mode AI analysis system (Quick vs Deep)
 - **README.md** (this file) - Project overview and features
 - **[frontend.md](frontend.md)** - Frontend pages, design system, and features
 - **[backend.md](backend.md)** - Backend API, database, and setup details
@@ -164,11 +163,9 @@ Before starting, make sure you have these installed:
 
 2. **Tesseract OCR** - For reading text from images### One-Line Launch:
 
-   - **Windows**: Download from https://github.com/UB-Mannheim/tesseract/wiki
+   - **Linux**: `sudo apt-get install tesseract-ocr````bash
 
-   - **Mac**: Open Terminal and run: `brew install tesseract````bash
-
-   - **Linux**: Open Terminal and run: `sudo apt-get install tesseract-ocr`cd /home/hn-hanif/Desktop/phd_Nexus && ./launch.sh
+cd /home/hn-hanif/Desktop/phd_Nexus && ./launch.sh
 
 ```````
 
@@ -206,29 +203,18 @@ cd frontend
 
 ```````
 
-Open a terminal/command prompt in the project folder:
+Open a terminal in the project folder:
 
 ### Access:
 
-**On Windows:**
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:8000/api
+- **Admin Panel:** http://localhost:8000/admin
 
-````bash- **Frontend:** http://localhost:8080
-
-# Go to backend folder- **Backend API:** http://localhost:8000/api
-
-cd backend- **Admin Panel:** http://localhost:8000/admin
-
-
-
-# Create virtual environment### Demo Accounts:
-
-python -m venv .venv
+### Demo Accounts:
 
 - **Patient:** `patient@example.com` / `Pass1234!`
-
-# Activate it- **Doctor:** `doctor@example.com` / `Pass1234!`
-
-.venv\Scripts\activate
+- **Doctor:** `doctor@example.com` / `Pass1234!`
 
 ---
 
@@ -264,7 +250,7 @@ python manage.py seed_demo│
 
 │   ├── css/            # 60-30-10 design system
 
-**On Mac/Linux:**│   ├── js/             # Authentication & dashboard
+│   ├── js/             # Authentication & dashboard
 
 ```bash│   └── *.html          # Pages (landing, login, dashboard)
 
@@ -384,7 +370,7 @@ Open a **NEW** terminal/command prompt:
 
 ````css
 
-**On Windows:**--accent-teal: #00d9b5; /* Primary buttons */
+--accent-teal: #00d9b5; /* Primary buttons */
 
 ```bash--accent-green: #48bb78; /* Success states */
 
@@ -396,7 +382,6 @@ python -m http.server 8080```
 
 ### Typography
 
-**On Mac/Linux:**
 
 ```bash- **Headings:** Poppins (600-700 weight)
 
@@ -564,9 +549,7 @@ cd backend
 
 cd backend### Backend Tests
 
-# Windows: .venv\Scripts\activate
-
-# Mac/Linux: source .venv/bin/activate```bash
+# Linux:```bash
 
 pip install -r requirements.txtcd backend
 
@@ -610,7 +593,7 @@ python -m http.server 8081```
 
 Then open http://localhost:8081 instead### Frontend Tests
 
-### Problem: Frontend can't connect to backend1. Open http://localhost:8080
+### Problem: Frontend can't connect to backend1. Open http://localhost:3000
 
 2. Click "Login"
 
@@ -632,19 +615,9 @@ Then open http://localhost:8081 instead### Frontend Tests
 
 **Solution:**1. **Store Medical Records**
 
-- **Windows**: Download and install from https://github.com/UB-Mannheim/tesseract/wiki
-
-  - After installation, add to PATH or update `settings.py`: - Upload lab results, prescriptions
-
-  ```python - OCR automatically extracts data
-
-  TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'   - Search across all documents
-
-  ```
-
-- **Mac**: `brew install tesseract`2. **Get AI Insights**
-
 - **Linux**: `sudo apt-get install tesseract-ocr`
+
+2. **Get AI Insights**
 
   - Describe symptoms
 
@@ -700,7 +673,7 @@ CORS_ALLOWED_ORIGINS = [
 
 cd backend   - Structured data extraction
 
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 
 ---
 
@@ -718,7 +691,7 @@ python manage.py train_sklearn## 🔒 Security & Privacy
 
 **Solution:**- ✅ SQLite database (file-based)
 
-- Hard refresh: **Ctrl + Shift + R** (Windows/Linux) or **Cmd + Shift + R** (Mac)- ✅ HMAC-signed file URLs (5min expiry)
+- Hard refresh: **Ctrl + Shift + R**- ✅ HMAC-signed file URLs (5min expiry)
 
 - Or clear browser cache completely- ✅ Password hashing (PBKDF2)
 
@@ -742,7 +715,7 @@ After you've done the initial setup, starting the project is easy:- ✅ Consent-
 
 cd backend
 
-source .venv/bin/activate  # Windows: .venv\Scripts\activate### API Security
+source .venv/bin/activate### API Security
 
 python manage.py runserver
 
@@ -756,13 +729,13 @@ python manage.py runserver
 
 cd frontend- ✅ SQL injection prevention (Django ORM)
 
-python -m http.server 8080  # Or python3 on Mac/Linux
+npm run dev
 
 ```---
 
 
 
-**Then open:** http://localhost:8080## 💰 Cost Breakdown
+**Then open:** http://localhost:3000## 💰 Cost Breakdown
 
 
 
@@ -786,9 +759,7 @@ We also have convenient scripts:| Service    | Traditional     | NexusCare | Sav
 
 | **TOTAL**  | **$100-700/mo** | **$0**    | **100%** |
 
-**Windows:**
-
-Double-click `launch.sh` or run in Git Bash**Infrastructure:** Run on any laptop/desktop with 2GB RAM
+**Infrastructure:** Run on any laptop/desktop with 2GB RAM
 
 
 
@@ -1066,12 +1037,12 @@ Follow the steps above and you'll have a working healthcare platform. If you get
 cd backend && source .venv/bin/activate && python manage.py runserver
 
 # Terminal 2
-cd frontend && python3 -m http.server 8080
+cd frontend && npm run dev
 ````
 
 ### Then:
 
-1. Open http://localhost:8080
+1. Open http://localhost:3000
 2. Click "Login"
 3. Use `patient@example.com` / `Pass1234!`
 4. Explore the dashboard! 🎉
@@ -1121,7 +1092,7 @@ cd frontend && python3 -m http.server 8080
 
 _Empowering individuals with control over their health data_
 
-🚀 **Ready to launch? Run `./launch.sh` and visit http://localhost:8080**
+🚀 **Ready to launch? Run `./launch.sh` and visit http://localhost:3000**
 
 ---
 

@@ -43,12 +43,12 @@ else
     echo -e "${YELLOW}ℹ️  Frontend was not running${NC}"
 fi
 
-# Also stop old frontend if running (port 8080)
+# Also stop any server on port 8080 if running
 if lsof -Pi :8080 -sTCP:LISTEN -t >/dev/null ; then
-    echo -e "${YELLOW}Stopping old frontend (port 8080)...${NC}"
+    echo -e "${YELLOW}Stopping service on port 8080...${NC}"
     pkill -f 'http.server 8080'
     kill -9 $(lsof -ti:8080) 2>/dev/null
-    echo -e "${GREEN}✅ Old frontend stopped${NC}"
+    echo -e "${GREEN}✅ Port 8080 cleared${NC}"
 fi
 
 echo ""

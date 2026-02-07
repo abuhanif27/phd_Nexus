@@ -1,7 +1,7 @@
 # 📁 Complete File Tree
 
 ```
-frontend-react/
+frontend/
 │
 ├── 📄 Configuration Files
 │   ├── .env.local                      # Environment variables

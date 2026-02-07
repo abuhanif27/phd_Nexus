@@ -41,7 +41,7 @@ if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null ; then
     echo -e "${YELLOW}⚠️  React Frontend already running on port 3000${NC}"
 else
     echo -e "${BLUE}⚛️  Starting React Frontend (Next.js)...${NC}"
-    cd "$SCRIPT_DIR/frontend-react"
+    cd "$SCRIPT_DIR/frontend"
     
     # Check if node_modules exists
     if [ ! -d "node_modules" ]; then

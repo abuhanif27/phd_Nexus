@@ -48,12 +48,9 @@ backend/
 cd backend
 
 # Create virtual environment
-python -m venv .venv
+python3 -m venv .venv
 
-# Activate (Windows)
-.venv\Scripts\activate
-
-# Activate (Mac/Linux)
+# Activate (Linux)
 source .venv/bin/activate
 
 # Install packages
@@ -65,22 +62,11 @@ python -m spacy download en_core_web_sm
 
 ### 2. Install Tesseract OCR
 
-**Ubuntu/Debian:**
+**Linux (Ubuntu/Debian):**
 
 ```bash
 sudo apt-get install tesseract-ocr
 ```
-
-**macOS:**
-
-```bash
-brew install tesseract
-```
-
-**Windows:**
-
-- Download from: https://github.com/UB-Mannheim/tesseract/wiki
-- Add to PATH or update `settings.py`
 
 ### 3. Set Up Environment
 
@@ -807,14 +793,8 @@ pip install -r requirements.txt
 **Problem**: `TesseractNotFoundError`
 
 ```bash
-# Ubuntu/Debian
+# Linux (Ubuntu/Debian)
 sudo apt-get install tesseract-ocr
-
-# Mac
-brew install tesseract
-
-# Windows - add to settings.py
-TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 ```
 
 ### Port Already in Use
@@ -823,8 +803,7 @@ TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 ```bash
 # Find process using port 8000
-lsof -i :8000  # Mac/Linux
-netstat -ano | findstr :8000  # Windows
+lsof -i :8000
 
 # Kill process or use different port
 python manage.py runserver 8001

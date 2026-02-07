@@ -201,7 +201,7 @@ python manage.py runserver
 
 ### 3. Start Frontend
 ```bash
-cd frontend-react
+cd frontend
 npm run dev
 ```
 

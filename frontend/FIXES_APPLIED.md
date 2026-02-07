@@ -309,7 +309,7 @@ Unknown at rule @apply
 ### 1. Start Development Server
 
 ```bash
-cd frontend-react
+cd frontend
 npm run dev
 ```
 

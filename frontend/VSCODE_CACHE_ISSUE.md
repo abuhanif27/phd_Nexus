@@ -30,7 +30,7 @@ VS Code's TypeScript language server has **stale cache** that hasn't updated aft
 ### Option 1: Run the Cache Fix Script (RECOMMENDED)
 
 ```bash
-cd /home/hn-hanif/Desktop/phd_Nexus/frontend-react
+cd /home/hn-hanif/Desktop/phd_Nexus/frontend
 ./fix-vscode-cache.sh
 ```
 
@@ -45,7 +45,7 @@ Then in VS Code:
 **Step 1: Clear Build Caches**
 
 ```bash
-cd /home/hn-hanif/Desktop/phd_Nexus/frontend-react
+cd /home/hn-hanif/Desktop/phd_Nexus/frontend
 rm -rf .next
 rm -f tsconfig.tsbuildinfo
 ```
@@ -141,9 +141,9 @@ All files have proper exports:
 
 ```bash
 $ npx tsc --noEmit --listFilesOnly | grep -E "(providers|AppHeader|AppSidebar)"
-/home/hn-hanif/Desktop/phd_Nexus/frontend-react/app/providers.tsx
-/home/hn-hanif/Desktop/phd_Nexus/frontend-react/components/app-shell/AppHeader.tsx
-/home/hn-hanif/Desktop/phd_Nexus/frontend-react/components/app-shell/AppSidebar.tsx
+/home/hn-hanif/Desktop/phd_Nexus/frontend/app/providers.tsx
+/home/hn-hanif/Desktop/phd_Nexus/frontend/components/app-shell/AppHeader.tsx
+/home/hn-hanif/Desktop/phd_Nexus/frontend/components/app-shell/AppSidebar.tsx
 ```
 
 ### Compilation ✓
@@ -207,7 +207,7 @@ If after all these steps you still see errors:
 1. **Close VS Code completely**
 2. **Clear all caches:**
    ```bash
-   cd /home/hn-hanif/Desktop/phd_Nexus/frontend-react
+   cd /home/hn-hanif/Desktop/phd_Nexus/frontend
    rm -rf .next node_modules/.cache tsconfig.tsbuildinfo
    ```
 3. **Reopen VS Code**

@@ -108,7 +108,7 @@ npm test
 ## Project Structure
 
 ```
-frontend-react/
+frontend/
 ├── app/                    # Next.js App Router
 │   ├── (auth)/            # Auth pages (login, register)
 │   ├── (protected)/       # Protected pages (dashboard)

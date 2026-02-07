@@ -93,7 +93,7 @@ The installation reported:
 These are typically in dev dependencies and don't affect production builds. To fix:
 
 ```bash
-cd frontend-react
+cd frontend
 npm audit fix
 ```
 
@@ -132,7 +132,7 @@ Your project now has:
 ### 🏃 Quick Start
 
 ```bash
-cd frontend-react
+cd frontend
 
 # Development
 npm run dev

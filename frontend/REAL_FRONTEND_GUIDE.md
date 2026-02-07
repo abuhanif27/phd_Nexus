@@ -35,7 +35,7 @@ This is a **PRODUCTION-READY** React frontend integrated with your Django backen
 ## 🏗️ Architecture
 
 ```
-frontend-react/
+frontend/
 ├── app/                          # Next.js App Router
 │   ├── (auth)/                   # Public auth pages
 │   │   └── login/                # Email-based login
@@ -254,7 +254,7 @@ export interface Patient {
 ### 1. Install Dependencies
 
 ```bash
-cd frontend-react
+cd frontend
 npm install
 ```
 
@@ -282,7 +282,7 @@ python manage.py runserver
 ### 4. Start Frontend
 
 ```bash
-cd ../frontend-react
+cd ../frontend
 npm run dev
 ```
 

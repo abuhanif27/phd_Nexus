@@ -20,9 +20,7 @@ Before starting, make sure you have:
 
 2. **Tesseract OCR** (for reading text from medical documents)
 
-   - **Windows**: https://github.com/UB-Mannheim/tesseract/wiki
-   - **Mac**: Open Terminal → `brew install tesseract`
-   - **Linux**: Open Terminal → `sudo apt-get install tesseract-ocr`
+   - **Linux**: `sudo apt-get install tesseract-ocr`
 
 3. **Git** (to download the project)
    - Download: https://git-scm.com/downloads
@@ -40,36 +38,6 @@ cd phd_Nexus
 ```
 
 ### Step 2: Set Up Backend
-
-**On Windows:**
-
-```bash
-# Go to backend folder
-cd backend
-
-# Create virtual environment
-python -m venv .venv
-
-# Activate virtual environment
-.venv\Scripts\activate
-
-# Install Python packages (takes 2-3 minutes)
-pip install -r requirements.txt
-
-# Download spaCy language model for medical text
-python -m spacy download en_core_web_sm
-
-# Set up database
-python manage.py migrate
-
-# Create admin account (follow the prompts)
-python manage.py createsuperuser
-
-# (Optional) Load demo data
-python manage.py seed_demo
-```
-
-**On Mac/Linux:**
 
 ```bash
 # Go to backend folder
@@ -115,7 +83,7 @@ python manage.py train_sklearn
 python manage.py train_pytorch --epochs 10
 
 # Option 3: Train Both (Best of both worlds)
-chmod +x train_all_models.sh  # On Mac/Linux
+chmod +x train_all_models.sh
 ./train_all_models.sh
 ```
 
@@ -161,24 +129,24 @@ Starting development server at http://127.0.0.1:8000/
 
 ### Step 5: Start the Frontend
 
-Open a **NEW terminal/command prompt**:
+Open a new terminal:
 
 ```bash
 # Go to frontend folder
 cd frontend
 
-# Start the web server
-# On Windows: double-click serve.sh or run in Git Bash
-# On Mac/Linux:
-chmod +x serve.sh
-./serve.sh
+# Install dependencies (first time only)
+npm install
+
+# Start the React/Next.js dev server
+npm run dev
 ```
 
 ### Step 6: Access the Application
 
 Open your browser and visit:
 
-- **🌐 Main Website:** http://localhost:8080
+- **🌐 Main Website:** http://localhost:3000
 - **👨‍⚕️ Admin Panel:** http://localhost:8000/admin
 - **🔌 API Docs:** http://localhost:8000/api
 
@@ -220,7 +188,7 @@ This will:
 
 ```bash
 cd backend
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+source .venv/bin/activate
 python manage.py train_sklearn
 ```
 
@@ -232,30 +200,25 @@ python manage.py train_sklearn
 
 ```bash
 cd backend
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+source .venv/bin/activate
 ```
 
-### Issue 3: "python: command not found" (Mac/Linux)
+### Issue 3: "python: command not found"
 
 **Problem:** Need to use `python3` instead of `python`.
 
 **Solution:** Replace `python` with `python3` in all commands.
 
-### Issue 4: Port already in use (8000 or 8080)
+### Issue 4: Port already in use (8000 or 3000)
 
 **Problem:** Another application is using the port.
 
 **Solution:**
 
 ```bash
-# Find and kill the process
-# On Linux/Mac:
+# Find and kill the process using the port
 lsof -ti:8000 | xargs kill -9
-lsof -ti:8080 | xargs kill -9
-
-# On Windows:
-netstat -ano | findstr :8000
-taskkill /PID <PID_NUMBER> /F
+lsof -ti:3000 | xargs kill -9
 ```
 
 ### Issue 5: AI analysis returns "No trained classifier"
@@ -309,7 +272,7 @@ symptom,specialist
 After setup, verify everything works:
 
 - [ ] Backend server running at http://localhost:8000
-- [ ] Frontend accessible at http://localhost:8080
+- [ ] Frontend accessible at http://localhost:3000
 - [ ] Can login to admin panel
 - [ ] AI models loaded successfully (check server logs)
 - [ ] Can create a patient account
@@ -341,7 +304,7 @@ If all the above checks pass, congratulations! Your PhD NexusCare installation i
 2. Make sure all prerequisites are installed
 3. Verify Python version: `python --version` (should be 3.10+)
 4. Ensure virtual environment is activated (you should see `(.venv)` in terminal)
-5. Check if all required ports (8000, 8080) are free
+5. Check if all required ports (8000, 3000) are free
 
 ---
 

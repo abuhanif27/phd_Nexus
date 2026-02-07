@@ -24,7 +24,7 @@ python manage.py runserver
 
 ### 2. Configure Frontend
 ```bash
-cd frontend-react
+cd frontend
 
 # Copy environment template
 cp .env.example .env.local
@@ -76,7 +76,7 @@ patient = Patient.objects.create(
 ## 📂 Project Structure
 
 ```
-frontend-react/
+frontend/
 ├── features/              # Feature modules
 │   ├── auth/             # ✅ Authentication (email login, JWT)
 │   ├── patients/         # ✅ Patient dashboard & API

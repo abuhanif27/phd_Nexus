@@ -123,7 +123,7 @@ I've generated a **production-grade Next.js + TypeScript frontend** application 
 ### Option 1: Automated Setup
 
 ```bash
-cd frontend-react
+cd frontend
 ./setup.sh
 ```
 
@@ -138,7 +138,7 @@ The script will:
 ### Option 2: Manual Setup
 
 ```bash
-cd frontend-react
+cd frontend
 
 # Install dependencies
 pnpm install

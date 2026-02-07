@@ -72,10 +72,7 @@ if command -v tesseract &> /dev/null; then
     echo "${GREEN}✓ $tesseract_version${NC}"
 else
     echo "${RED}✗ Tesseract not found${NC}"
-    echo "Please install Tesseract:"
-    echo "  Ubuntu/Debian: sudo apt-get install tesseract-ocr"
-    echo "  macOS: brew install tesseract"
-    echo "  Windows: Download from https://github.com/UB-Mannheim/tesseract/wiki"
+    echo "Please install Tesseract: sudo apt-get install tesseract-ocr"
 fi
 
 # Download spaCy model

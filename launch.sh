@@ -64,19 +64,24 @@ fi
 
 echo ""
 
-# Start frontend in background
-echo -e "${BLUE}[2/2] Starting Frontend Server...${NC}"
+# Start frontend in background (React/Next.js)
+echo -e "${BLUE}[2/2] Starting Frontend (React/Next.js)...${NC}"
 cd "$FRONTEND_DIR"
 
-python3 -m http.server 8080 > /tmp/nexuscare_frontend.log 2>&1 &
+if [ ! -d "node_modules" ]; then
+    echo -e "${YELLOW}Installing frontend dependencies (first time)...${NC}"
+    npm install
+fi
+
+npm run dev > /tmp/nexuscare_frontend.log 2>&1 &
 FRONTEND_PID=$!
 
-sleep 2
+sleep 3
 
 # Check if frontend started
 if ps -p $FRONTEND_PID > /dev/null; then
     echo -e "${GREEN}✓ Frontend started (PID: $FRONTEND_PID)${NC}"
-    echo -e "  ${BLUE}http://localhost:8080${NC}"
+    echo -e "  ${BLUE}http://localhost:3000${NC}"
 else
     echo -e "${RED}✗ Frontend failed to start!${NC}"
     kill $BACKEND_PID 2>/dev/null
@@ -89,7 +94,7 @@ echo -e "${GREEN}🎉 NexusCare is Running!${NC}"
 echo "=========================================="
 echo ""
 echo -e "${YELLOW}Access Points:${NC}"
-echo -e "  🌐 Frontend:    ${BLUE}http://localhost:8080${NC}"
+echo -e "  🌐 Frontend:    ${BLUE}http://localhost:3000${NC}"
 echo -e "  🔌 Backend API: ${BLUE}http://localhost:8000/api${NC}"
 echo -e "  ⚙️  Admin Panel: ${BLUE}http://localhost:8000/admin${NC}"
 echo ""

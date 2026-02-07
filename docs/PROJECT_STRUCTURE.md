@@ -9,12 +9,7 @@ phd_Nexus/
 │   ├── manage.py         # Django management
 │   └── train_free_distilbert.py  # Model training script
 │
-├── frontend/             # Simple HTML/CSS/JS frontend
-│   ├── *.html            # Static pages
-│   ├── css/              # Styles
-│   └── js/               # JavaScript
-│
-├── frontend-react/       # React + Next.js frontend (main)
+├── frontend/             # React + Next.js frontend (main)
 │   ├── app/              # Next.js app directory
 │   ├── components/       # React components
 │   ├── features/         # Feature modules
@@ -48,7 +43,7 @@ cd backend
 python manage.py runserver
 
 # Frontend (React)
-cd frontend-react
+cd frontend
 npm run dev
 ```
 

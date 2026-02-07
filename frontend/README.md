@@ -91,7 +91,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## 🏗️ Project Structure
 
 ```
-frontend-react/
+frontend/
 ├── app/                          # Next.js App Router
 │   ├── (auth)/                   # Auth routes (login, register)
 │   │   ├── login/page.tsx
