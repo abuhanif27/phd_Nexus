@@ -21,6 +21,8 @@ import {
   Brain,
   Download,
   Share2,
+  Copy,
+  Link2,
   Clock,
   Target,
   Zap,
@@ -31,6 +33,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 import { cn } from '@/lib/utils/cn';
 import { getHealthSummary } from '../api';
@@ -44,6 +53,7 @@ export function HealthSummaryPage() {
   });
   const [minLoadingUntil, setMinLoadingUntil] = useState<number | null>(null);
   const isSummarizing = isFetching || minLoadingUntil !== null;
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!isFetching && minLoadingUntil != null) {
@@ -56,6 +66,34 @@ export function HealthSummaryPage() {
   const handleSummarize = () => {
     setMinLoadingUntil(Date.now() + 2500);
     refetch();
+  };
+
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast({ title: 'Link copied', description: 'Health Summary link copied to clipboard.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not copy', description: 'Please copy the URL from the address bar.' });
+    }
+  };
+  const handleShare = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: 'NexusCare Health Summary',
+          text: 'View my health summary on NexusCare.',
+          url: shareUrl,
+        });
+        toast({ title: 'Shared', description: 'Thanks for sharing.' });
+      } catch (err: unknown) {
+        if ((err as Error)?.name !== 'AbortError') {
+          toast({ variant: 'destructive', title: 'Share failed', description: 'Could not open share dialog.' });
+        }
+      }
+    } else {
+      await handleCopyLink();
+    }
   };
   const { data: appointments = [] } = useQuery({
     queryKey: ['my-appointments'],
@@ -224,10 +262,24 @@ export function HealthSummaryPage() {
               </>
             )}
           </Button>
-          <Button variant="outline" className="gap-2">
-            <Share2 className="h-4 w-4" />
-            Share
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Share2 className="h-4 w-4" />
+                Share
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={handleCopyLink} className="gap-2">
+                <Copy className="h-4 w-4" />
+                Copy link
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleShare} className="gap-2">
+                <Link2 className="h-4 w-4" />
+                Share to other apps
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             onClick={() => {
               if (aiSummary || contentFromRecords.length > 0 || recordCount > 0) {
