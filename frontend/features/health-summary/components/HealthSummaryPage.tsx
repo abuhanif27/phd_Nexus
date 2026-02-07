@@ -23,6 +23,8 @@ import {
   Share2,
   Copy,
   Link2,
+  Mail,
+  MessageCircle,
   Clock,
   Target,
   Zap,
@@ -77,12 +79,15 @@ export function HealthSummaryPage() {
       toast({ variant: 'destructive', title: 'Could not copy', description: 'Please copy the URL from the address bar.' });
     }
   };
-  const handleShare = async () => {
+  const shareTitle = 'NexusCare Health Summary';
+  const shareText = 'View my health summary on NexusCare.';
+
+  const handleShareToApps = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: 'NexusCare Health Summary',
-          text: 'View my health summary on NexusCare.',
+          title: shareTitle,
+          text: shareText,
           url: shareUrl,
         });
         toast({ title: 'Shared', description: 'Thanks for sharing.' });
@@ -92,7 +97,37 @@ export function HealthSummaryPage() {
         }
       }
     } else {
-      await handleCopyLink();
+      toast({
+        title: 'Not supported in this browser',
+        description: 'Use "Copy link" and paste it in the app or site where you want to share (e.g. email, WhatsApp).',
+      });
+    }
+  };
+
+  const handleShareViaEmail = () => {
+    const subject = encodeURIComponent(shareTitle);
+    const body = encodeURIComponent(`${shareText}\n\n${shareUrl}`);
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank', 'noopener,noreferrer');
+    toast({ title: 'Opening email', description: 'Your email app will open with the link.' });
+  };
+
+  const handleShareOnX = () => {
+    const link = shareUrl || (typeof window !== 'undefined' ? window.location.href : '');
+    if (!link) {
+      toast({ variant: 'destructive', title: 'Cannot share', description: 'Page URL is not available.' });
+      return;
+    }
+    const text = encodeURIComponent(shareText);
+    const url = encodeURIComponent(link);
+    const intentUrl = `https://x.com/intent/tweet?text=${text}&url=${url}`;
+    const newWindow = window.open(intentUrl, '_blank', 'noopener,noreferrer');
+    if (!newWindow || newWindow.closed) {
+      toast({
+        title: 'Popup blocked',
+        description: 'Allow popups for this site, or use Copy link and paste in X.',
+        variant: 'destructive',
+      });
+      navigator.clipboard?.writeText(link);
     }
   };
   const { data: appointments = [] } = useQuery({
@@ -269,12 +304,20 @@ export function HealthSummaryPage() {
                 Share
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem onClick={handleCopyLink} className="gap-2">
                 <Copy className="h-4 w-4" />
                 Copy link
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleShare} className="gap-2">
+              <DropdownMenuItem onClick={handleShareViaEmail} className="gap-2">
+                <Mail className="h-4 w-4" />
+                Share via email
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleShareOnX} className="gap-2">
+                <MessageCircle className="h-4 w-4" />
+                Share on X
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleShareToApps} className="gap-2">
                 <Link2 className="h-4 w-4" />
                 Share to other apps
               </DropdownMenuItem>
