@@ -1,6 +1,7 @@
 """
 AI/ML models for embeddings and summaries.
 """
+import uuid
 from django.db import models
 from django.utils import timezone
 from apps.patients.models import Patient
@@ -50,3 +51,35 @@ class AISummary(models.Model):
     
     def __str__(self):
         return f"Summary for {self.patient.name} ({self.method})"
+
+
+class HealthSummaryShare(models.Model):
+    """
+    Shareable links for patient health summaries.
+    Generates unique UUID tokens to allow public/semi-public access to health summaries.
+    """
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='health_summary_shares')
+    share_token = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)  # Optional expiration date
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'health_summary_shares'
+        indexes = [
+            models.Index(fields=['share_token']),
+            models.Index(fields=['patient', 'is_active']),
+        ]
+    
+    def __str__(self):
+        return f"Share link for {self.patient.name} ({self.share_token})"
+    
+    def is_expired(self):
+        """Check if share link has expired."""
+        if self.expires_at is None:
+            return False
+        return timezone.now() > self.expires_at
+    
+    def is_valid(self):
+        """Check if share link is valid and active."""
+        return self.is_active and not self.is_expired()

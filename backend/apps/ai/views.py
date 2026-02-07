@@ -6,9 +6,11 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.patients.models import Patient
 from apps.records.models import SymptomLog
+from .models import HealthSummaryShare
 from .serializers import (
     SymptomAnalyzeSerializer, SpecialistPredictSerializer,
-    SummaryRequestSerializer, TextSummarySerializer, AISummarySerializer
+    SummaryRequestSerializer, TextSummarySerializer, AISummarySerializer,
+    HealthSummaryShareSerializer
 )
 from .services import ai_service
 
@@ -164,13 +166,44 @@ class HealthSummaryView(views.APIView):
     """
     GET: AI health summary from all existing medical records (most recent by date).
     Aggregates labs, prescriptions, encounters, documents and summarizes with TextRank + NER.
+    
+    Supports two access modes:
+    1. Authenticated user viewing their own summary (requires login)
+    2. Anyone with a valid share_token (public access via query param: ?share_token=xxx)
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = []  # Allow unauthenticated access for shared links
 
     def get(self, request):
-        patient, err = _get_patient_or_403(request)
-        if err is not None:
-            return err
+        share_token = request.query_params.get('share_token')
+        
+        # Mode 1: Shared link with token (public access)
+        if share_token:
+            try:
+                share = HealthSummaryShare.objects.select_related('patient').get(
+                    share_token=share_token
+                )
+                if not share.is_valid():
+                    return Response(
+                        {'error': 'This share link is no longer valid or has expired.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                patient = share.patient
+            except HealthSummaryShare.DoesNotExist:
+                return Response(
+                    {'error': 'Invalid share link.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        # Mode 2: Authenticated user viewing own summary
+        else:
+            if not request.user.is_authenticated:
+                return Response(
+                    {'error': 'Authentication required.'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            patient, err = _get_patient_or_403(request)
+            if err is not None:
+                return err
+        
         try:
             result = ai_service.generate_health_summary_from_records(patient.id)
             # Shape for frontend HealthSummary + AI fields
@@ -220,6 +253,102 @@ class HealthInsightsView(views.APIView):
             return Response(
                 {'error': str(e), 'insights': []},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class HealthSummaryShareView(views.APIView):
+    """
+    POST: Generate a shareable link for the patient's health summary.
+    GET: List all active share links for the current patient.
+    DELETE: Deactivate a share link.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Create a new share token for the authenticated patient."""
+        patient, err = _get_patient_or_403(request)
+        if err is not None:
+            return err
+        
+        # Check if an active share already exists
+        existing_share = HealthSummaryShare.objects.filter(
+            patient=patient,
+            is_active=True
+        ).first()
+        
+        if existing_share and existing_share.is_valid():
+            # Return existing valid share
+            serializer = HealthSummaryShareSerializer(existing_share)
+            return Response({
+                'share_token': str(existing_share.share_token),
+                'share_url': f'/share/health-summary/{existing_share.share_token}',
+                'created_at': existing_share.created_at,
+                'is_active': existing_share.is_active,
+                'message': 'Using existing share link'
+            })
+        
+        # Create new share
+        share = HealthSummaryShare.objects.create(
+            patient=patient,
+            expires_at=request.data.get('expires_at')  # Optional expiration
+        )
+        
+        serializer = HealthSummaryShareSerializer(share)
+        return Response({
+            'share_token': str(share.share_token),
+            'share_url': f'/share/health-summary/{share.share_token}',
+            'created_at': share.created_at,
+            'is_active': share.is_active,
+            'message': 'Share link created successfully'
+        }, status=status.HTTP_201_CREATED)
+    
+    def get(self, request):
+        """List all share links for the authenticated patient."""
+        patient, err = _get_patient_or_403(request)
+        if err is not None:
+            return err
+        
+        shares = HealthSummaryShare.objects.filter(patient=patient).order_by('-created_at')
+        
+        return Response({
+            'shares': [
+                {
+                    'share_token': str(s.share_token),
+                    'share_url': f'/share/health-summary/{s.share_token}',
+                    'created_at': s.created_at,
+                    'expires_at': s.expires_at,
+                    'is_active': s.is_active,
+                    'is_valid': s.is_valid()
+                }
+                for s in shares
+            ]
+        })
+    
+    def delete(self, request):
+        """Deactivate a share link."""
+        patient, err = _get_patient_or_403(request)
+        if err is not None:
+            return err
+        
+        share_token = request.data.get('share_token')
+        if not share_token:
+            return Response(
+                {'error': 'share_token is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            share = HealthSummaryShare.objects.get(
+                share_token=share_token,
+                patient=patient
+            )
+            share.is_active = False
+            share.save()
+            return Response({'message': 'Share link deactivated successfully'})
+        except HealthSummaryShare.DoesNotExist:
+            return Response(
+                {'error': 'Share link not found'},
+                status=status.HTTP_404_NOT_FOUND
             )
 
 

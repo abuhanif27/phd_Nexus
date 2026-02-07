@@ -44,18 +44,30 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 import { cn } from '@/lib/utils/cn';
-import { getHealthSummary } from '../api';
+import { getHealthSummary, createHealthSummaryShare } from '../api';
 import { getMyAppointments } from '@/features/scheduling/api';
 import { exportHealthSummaryPdf } from '../exportHealthSummaryPdf';
+import type { HealthSummary } from '../types';
 
-export function HealthSummaryPage() {
+interface HealthSummaryPageProps {
+  sharedData?: HealthSummary;
+  isSharedView?: boolean;
+}
+
+export function HealthSummaryPage({ sharedData, isSharedView = false }: HealthSummaryPageProps = {}) {
   const { data: summaryData, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['health-summary'],
     queryFn: getHealthSummary,
+    enabled: !sharedData, // Don't fetch if we already have shared data
   });
   const [minLoadingUntil, setMinLoadingUntil] = useState<number | null>(null);
   const isSummarizing = isFetching || minLoadingUntil !== null;
   const { toast } = useToast();
+  const [isGeneratingShare, setIsGeneratingShare] = useState(false);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+
+  // Use sharedData if available, otherwise use fetched data
+  const actualData = sharedData || summaryData;
 
   useEffect(() => {
     if (!isFetching && minLoadingUntil != null) {
@@ -70,8 +82,37 @@ export function HealthSummaryPage() {
     refetch();
   };
 
-  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const handleGenerateShareLink = async () => {
+    setIsGeneratingShare(true);
+    try {
+      const result = await createHealthSummaryShare();
+      const fullUrl = typeof window !== 'undefined' 
+        ? `${window.location.origin}/share/health-summary/${result.share_token}`
+        : '';
+      setShareLink(fullUrl);
+      toast({ 
+        title: 'Share link created!', 
+        description: 'Your unique shareable link has been generated.' 
+      });
+    } catch (error) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Failed to create share link', 
+        description: 'Please try again later.' 
+      });
+    } finally {
+      setIsGeneratingShare(false);
+    }
+  };
+
+  const shareUrl = shareLink || (typeof window !== 'undefined' ? window.location.href : '');
   const handleCopyLink = async () => {
+    // Generate share link first if not in shared view and no share link exists
+    if (!isSharedView && !shareLink) {
+      await handleGenerateShareLink();
+      return;
+    }
+    
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast({ title: 'Link copied', description: 'Health Summary link copied to clipboard.' });
@@ -142,17 +183,17 @@ export function HealthSummaryPage() {
     )
     .slice(0, 5);
 
-  const healthScore = summaryData?.health_score ?? 85;
-  const sourceCounts = summaryData?.source_counts ?? {};
-  const recordCount = summaryData?.record_count ?? 0;
-  const dateRange = summaryData?.date_range;
-  const professionalSummary = summaryData?.professional_summary ?? summaryData?.summary ?? '';
-  const professionalFindings = summaryData?.professional_findings ?? [];
-  const aiSummary = (professionalSummary || summaryData?.summary) ?? '';
-  const bullets = summaryData?.bullets ?? [];
-  const recordHighlights = summaryData?.record_highlights ?? [];
+  const healthScore = actualData?.health_score ?? 85;
+  const sourceCounts = actualData?.source_counts ?? {};
+  const recordCount = actualData?.record_count ?? 0;
+  const dateRange = actualData?.date_range;
+  const professionalSummary = actualData?.professional_summary ?? actualData?.summary ?? '';
+  const professionalFindings = actualData?.professional_findings ?? [];
+  const aiSummary = (professionalSummary || actualData?.summary) ?? '';
+  const bullets = actualData?.bullets ?? [];
+  const recordHighlights = actualData?.record_highlights ?? [];
   const contentFromRecords = professionalFindings.length > 0 ? professionalFindings : (recordHighlights.length > 0 ? recordHighlights : bullets);
-  const aiInsights = summaryData?.ai_insights ?? [];
+  const aiInsights = actualData?.ai_insights ?? [];
 
   const vitalSigns = [
     {
@@ -201,10 +242,10 @@ export function HealthSummaryPage() {
     },
   ];
 
-  const conditions = summaryData?.conditions ?? [];
-  const medications = summaryData?.medications ?? [];
+  const conditions = actualData?.conditions ?? [];
+  const medications = actualData?.medications ?? [];
 
-  const allergies = summaryData?.allergies ?? [];
+  const allergies = actualData?.allergies ?? [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -274,40 +315,45 @@ export function HealthSummaryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Health Summary</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            {isSharedView ? 'Shared Health Summary' : 'Health Summary'}
+          </h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Your comprehensive health overview powered by AI (from your most recent records)
+            {isSharedView
+              ? 'View-only access to this health summary'
+              : 'Your comprehensive health overview powered by AI (from your most recent records)'}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={handleSummarize}
-            disabled={isSummarizing}
-            className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all hover:shadow-lg disabled:opacity-70"
-          >
-            {isSummarizing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Summarizing…
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Summarize my records
-              </>
-            )}
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Share2 className="h-4 w-4" />
-                Share
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={handleCopyLink} className="gap-2">
-                <Copy className="h-4 w-4" />
-                Copy link
+        {!isSharedView && (
+          <div className="flex gap-2">
+            <Button
+              onClick={handleSummarize}
+              disabled={isSummarizing}
+              className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all hover:shadow-lg disabled:opacity-70"
+            >
+              {isSummarizing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Summarizing…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Summarize my records
+                </>
+              )}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={handleCopyLink} className="gap-2">
+                  <Copy className="h-4 w-4" />
+                  {shareLink ? 'Copy share link' : 'Generate & copy link'}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleShareViaEmail} className="gap-2">
                 <Mail className="h-4 w-4" />
@@ -347,8 +393,39 @@ export function HealthSummaryPage() {
             <Download className="h-4 w-4" />
             Export PDF
           </Button>
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* Share Link Display */}
+      {!isSharedView && shareLink && (
+        <Card className="border-2 border-green-200 bg-green-50 dark:bg-green-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-green-900 dark:text-green-300">
+                  ✓ Shareable link generated
+                </p>
+                <p className="mt-1 text-xs text-green-700 dark:text-green-400">
+                  Anyone with this link can view your health summary
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(shareLink);
+                  toast({ title: 'Link copied!' });
+                }}
+                className="ml-4"
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Copy Link
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Loading: beautiful animation while summarizing */}
       {isSummarizing && (

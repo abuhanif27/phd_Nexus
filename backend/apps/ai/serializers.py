@@ -26,3 +26,11 @@ class AISummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = AISummary
         fields = ['id', 'patient', 'source_ids', 'text', 'method', 'citations', 'ts']
+
+
+class HealthSummaryShareSerializer(serializers.Serializer):
+    """Serializer for creating and returning share tokens."""
+    share_token = serializers.UUIDField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    expires_at = serializers.DateTimeField(required=False, allow_null=True)
+    is_active = serializers.BooleanField(read_only=True)

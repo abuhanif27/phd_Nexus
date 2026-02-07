@@ -6,11 +6,12 @@ from .views import (
     SymptomAnalyzeView, SpecialistPredictView,
     PatientSummaryView, BuildIndexView, TextSummaryView, HealthAnalysisView,
     ModelStatusView, EnhancedAnalysisView,
-    HealthSummaryView, HealthInsightsView,
+    HealthSummaryView, HealthInsightsView, HealthSummaryShareView,
 )
 
 urlpatterns = [
     path('health/summary/', HealthSummaryView.as_view(), name='health_summary'),
+    path('health/summary/share/', HealthSummaryShareView.as_view(), name='health_summary_share'),
     path('health/insights/', HealthInsightsView.as_view(), name='health_insights'),
     path('symptoms/analyze/', SymptomAnalyzeView.as_view(), name='symptoms_analyze'),
     path('ai/specialist/', SpecialistPredictView.as_view(), name='ai_specialist'),
