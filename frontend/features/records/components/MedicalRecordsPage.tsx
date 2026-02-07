@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import {
@@ -61,6 +61,8 @@ export function MedicalRecordsPage() {
   const [viewFile, setViewFile] = useState<{ id: number; filename: string; mime?: string } | null>(null);
   const [viewUrl, setViewUrl] = useState<string | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ fileId: number; filename: string } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleViewFile = async (file: { id: number; filename: string; mime?: string }) => {
     setViewFile(file);
@@ -102,12 +104,21 @@ export function MedicalRecordsPage() {
     }
   };
 
+  const requestDeleteFile = (fileId: number, filename: string) => {
+    setDeleteConfirm({ fileId, filename });
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!deleteLoading) setDeleteConfirm(null);
+  };
+
   const handleDeleteFile = async (fileId: number) => {
-    if (typeof window !== 'undefined' && !window.confirm('Remove this document? This cannot be undone.')) return;
     try {
+      setDeleteLoading(true);
       await deleteMedicalFile(fileId);
       queryClient.invalidateQueries({ queryKey: ['medical-files'] });
       toast({ title: 'Deleted', description: 'Document removed.' });
+      setDeleteConfirm(null);
       if (viewFile?.id === fileId) closeViewFile();
     } catch (err: any) {
       toast({
@@ -115,6 +126,8 @@ export function MedicalRecordsPage() {
         title: 'Delete failed',
         description: err?.response?.data?.error || 'Please try again.',
       });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -288,7 +301,7 @@ export function MedicalRecordsPage() {
             isLoading={isLoading}
             onViewFile={handleViewFile}
             onDownloadFile={handleDownloadToDevice}
-            onDeleteFile={handleDeleteFile}
+            onDeleteFile={requestDeleteFile}
           />
         </TabsContent>
 
@@ -318,6 +331,7 @@ export function MedicalRecordsPage() {
             toast={toast}
             onViewFile={handleViewFile}
             onDownloadFile={handleDownloadToDevice}
+            onDeleteFile={requestDeleteFile}
           />
         </TabsContent>
       </Tabs>
@@ -378,7 +392,7 @@ export function MedicalRecordsPage() {
                   <Button
                     variant="outline"
                     className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => handleDeleteFile(viewFile.id)}
+                    onClick={() => requestDeleteFile(viewFile.id, viewFile.filename)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
@@ -393,6 +407,33 @@ export function MedicalRecordsPage() {
                 </div>
               </>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && closeDeleteConfirm()}>
+        <DialogContent className="max-w-sm border bg-background shadow-lg sm:rounded-lg">
+          <DialogHeader>
+            <DialogTitle>Remove document?</DialogTitle>
+            <DialogDescription>
+              {deleteConfirm?.filename && (
+                <span className="block font-medium text-foreground">{deleteConfirm.filename}</span>
+              )}
+              This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={closeDeleteConfirm} disabled={deleteLoading}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteConfirm && handleDeleteFile(deleteConfirm.fileId)}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? 'Deleting…' : 'Delete'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -418,7 +459,7 @@ function AllRecordsTab({
   isLoading: boolean;
   onViewFile: (file: { id: number; filename: string; mime?: string }) => void;
   onDownloadFile: (fileId: number, filename: string) => void;
-  onDeleteFile: (fileId: number) => void;
+  onDeleteFile: (fileId: number, filename: string) => void;
 }) {
   if (isLoading) {
     return (
@@ -662,35 +703,15 @@ function DocumentsTab({
   toast,
   onViewFile,
   onDownloadFile,
+  onDeleteFile,
 }: {
   files: any[];
   isLoading: boolean;
   toast: ReturnType<typeof useToast>['toast'];
   onViewFile: (file: { id: number; filename: string; mime?: string }) => void;
   onDownloadFile: (fileId: number, filename: string) => void;
+  onDeleteFile: (fileId: number, filename: string) => void;
 }) {
-  const queryClient = useQueryClient();
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteMedicalFile,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['medical-files'] });
-      toast({ title: 'Deleted', description: 'Document removed.' });
-    },
-    onError: (err: any) => {
-      toast({
-        variant: 'destructive',
-        title: 'Delete failed',
-        description: err?.response?.data?.error || 'Please try again.',
-      });
-    },
-  });
-
-  const handleDelete = (fileId: number) => {
-    if (typeof window !== 'undefined' && window.confirm('Remove this document?')) {
-      deleteMutation.mutate(fileId);
-    }
-  };
 
   if (isLoading) {
     return <div className="py-12 text-center text-muted-foreground">Loading documents...</div>;
@@ -760,8 +781,7 @@ function DocumentsTab({
                   variant="ghost"
                   size="sm"
                   className="text-destructive hover:text-destructive"
-                  onClick={() => handleDelete(file.id)}
-                  disabled={deleteMutation.isPending}
+                  onClick={() => onDeleteFile(file.id, file.filename)}
                   title="Delete"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -785,7 +805,7 @@ function RecordCard({
   record: any;
   onViewFile?: (file: { id: number; filename: string; mime?: string }) => void;
   onDownloadFile?: (fileId: number, filename: string) => void;
-  onDeleteFile?: (fileId: number) => void;
+  onDeleteFile?: (fileId: number, filename: string) => void;
 }) {
   const getRecordIcon = () => {
     switch (record.type) {
@@ -858,7 +878,7 @@ function RecordCard({
               variant="ghost"
               size="sm"
               className="text-destructive hover:text-destructive"
-              onClick={() => onDeleteFile(record.id)}
+              onClick={() => onDeleteFile(record.id, record.filename)}
               title="Delete"
             >
               <Trash2 className="h-4 w-4" />
