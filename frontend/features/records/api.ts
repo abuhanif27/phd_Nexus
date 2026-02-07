@@ -38,9 +38,9 @@ export async function getSymptomLogs(patientId?: number): Promise<{ results: Sym
   return response.data;
 }
 
-// Upload medical file
+// Upload medical file (backend expects multipart at files/upload/)
 export async function uploadMedicalFile(data: FormData): Promise<MedicalFile> {
-  const response = await apiClient.post('/api/records/files/', data, {
+  const response = await apiClient.post('/api/records/files/upload/', data, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -48,9 +48,15 @@ export async function uploadMedicalFile(data: FormData): Promise<MedicalFile> {
   return response.data;
 }
 
-// Download medical file
-export async function downloadMedicalFile(fileId: number): Promise<Blob> {
-  const response = await apiClient.get(`/api/records/files/${fileId}/download/`, {
+// Get signed download link for a file
+export async function getMedicalFileLink(fileId: number): Promise<{ url: string; expires_in: number }> {
+  const response = await apiClient.get(`/api/records/files/${fileId}/link/`);
+  return response.data;
+}
+
+// Fetch file content as blob (for in-app viewing; uses auth)
+export async function getMedicalFileBlob(fileId: number): Promise<Blob> {
+  const response = await apiClient.get(`/api/records/files/${fileId}/serve/`, {
     responseType: 'blob',
   });
   return response.data;

@@ -4,7 +4,7 @@ URL routing for medical records.
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    FileUploadView, FileSignedLinkView, FileViewSet, LabResultViewSet,
+    FileUploadView, FileSignedLinkView, FileServeView, FileViewSet, LabResultViewSet,
     PrescriptionViewSet, EncounterViewSet, RecordsSummaryView
 )
 
@@ -17,6 +17,7 @@ router.register('encounters', EncounterViewSet, basename='encounter')
 urlpatterns = [
     path('files/upload/', FileUploadView.as_view(), name='file_upload'),
     path('files/<int:file_id>/link/', FileSignedLinkView.as_view(), name='file_link'),
+    path('files/<int:file_id>/serve/', FileServeView.as_view(), name='file_serve'),
     path('summary/', RecordsSummaryView.as_view(), name='records_summary'),
     path('', include(router.urls)),
 ]

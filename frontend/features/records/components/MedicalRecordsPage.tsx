@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import { format } from 'date-fns';
 import {
   FileText,
@@ -21,17 +22,30 @@ import {
   getLabResults,
   getPrescriptions,
   getEncounters,
+  getMedicalFileLink,
+  getMedicalFileBlob,
+  deleteMedicalFile,
 } from '@/features/records/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
 import type { RecordType } from '@/features/records/types';
 
 export function MedicalRecordsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<RecordType>('all');
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch all records
   const { data: filesData, isLoading: loadingFiles } = useQuery({
@@ -119,14 +133,16 @@ export function MedicalRecordsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Medical Records</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          <h1 className="text-3xl font-bold tracking-tight">Medical Records</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             View and manage your health records
           </p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          <Upload className="mr-2 h-4 w-4" />
-          Upload Document
+        <Button asChild className="bg-primary hover:bg-primary/90">
+          <Link href="/dashboard/records/upload">
+            <Upload className="mr-2 h-4 w-4" />
+            Upload Document
+          </Link>
         </Button>
       </div>
 
@@ -222,7 +238,7 @@ export function MedicalRecordsPage() {
 
         {/* Documents */}
         <TabsContent value="file">
-          <DocumentsTab files={filteredFiles} isLoading={loadingFiles} />
+          <DocumentsTab files={filteredFiles} isLoading={loadingFiles} toast={toast} />
         </TabsContent>
       </Tabs>
     </div>
@@ -461,20 +477,107 @@ function EncountersTab({ encounters, isLoading }: any) {
 }
 
 // Documents Tab
-function DocumentsTab({ files, isLoading }: any) {
+function DocumentsTab({
+  files,
+  isLoading,
+  toast,
+}: {
+  files: any[];
+  isLoading: boolean;
+  toast: ReturnType<typeof useToast>['toast'];
+}) {
+  const queryClient = useQueryClient();
+  const [viewFile, setViewFile] = useState<{
+    id: number;
+    filename: string;
+    mime?: string;
+  } | null>(null);
+  const [viewUrl, setViewUrl] = useState<string | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteMedicalFile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['medical-files'] });
+      toast({ title: 'Deleted', description: 'Document removed.' });
+    },
+    onError: (err: any) => {
+      toast({
+        variant: 'destructive',
+        title: 'Delete failed',
+        description: err?.response?.data?.error || 'Please try again.',
+      });
+    },
+  });
+
+  const handleDownload = async (fileId: number) => {
+    try {
+      const { url } = await getMedicalFileLink(fileId);
+      window.open(url, '_blank');
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not get download link.' });
+    }
+  };
+
+  const handleView = async (file: { id: number; filename: string; mime?: string }) => {
+    setViewFile(file);
+    setViewUrl(null);
+    setViewLoading(true);
+    try {
+      const blob = await getMedicalFileBlob(file.id);
+      const url = URL.createObjectURL(blob);
+      setViewUrl(url);
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not load file.' });
+      setViewFile(null);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const closeView = () => {
+    if (viewUrl) URL.revokeObjectURL(viewUrl);
+    setViewFile(null);
+    setViewUrl(null);
+  };
+
+  const isImage = (file: { mime?: string; filename: string }) => {
+    const mime = (file.mime || '').toLowerCase();
+    const name = (file.filename || '').toLowerCase();
+    if (mime.startsWith('image/')) return true;
+    return /\.(jpg|jpeg|png|gif|webp|bmp|heic)$/.test(name);
+  };
+
+  const isPdf = (file: { mime?: string; filename: string }) => {
+    const mime = (file.mime || '').toLowerCase();
+    const name = (file.filename || '').toLowerCase();
+    return mime === 'application/pdf' || name.endsWith('.pdf');
+  };
+
+  const handleDelete = (fileId: number) => {
+    if (typeof window !== 'undefined' && window.confirm('Remove this document?')) {
+      deleteMutation.mutate(fileId);
+    }
+  };
+
   if (isLoading) {
-    return <div className="py-12 text-center">Loading documents...</div>;
+    return <div className="py-12 text-center text-muted-foreground">Loading documents...</div>;
   }
 
   if (files.length === 0) {
     return (
-      <Card>
+      <Card className="border shadow-sm">
         <CardContent className="flex h-64 flex-col items-center justify-center">
-          <FileText className="h-12 w-12 text-gray-300" />
-          <p className="mt-4 text-sm font-medium text-gray-600">No documents found</p>
-          <Button className="mt-4" variant="outline">
-            <Upload className="mr-2 h-4 w-4" />
-            Upload Document
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+            <FileText className="h-6 w-6 text-primary" />
+          </div>
+          <p className="mt-4 text-sm font-medium text-muted-foreground">No documents found</p>
+          <p className="text-xs text-muted-foreground">Upload your first document to get started</p>
+          <Button className="mt-4" variant="default" asChild>
+            <Link href="/dashboard/records/upload">
+              <Upload className="mr-2 h-4 w-4" />
+              Upload Document
+            </Link>
           </Button>
         </CardContent>
       </Card>
@@ -484,31 +587,51 @@ function DocumentsTab({ files, isLoading }: any) {
   return (
     <div className="space-y-4">
       {files.map((file: any) => (
-        <Card key={file.id} className="border-none shadow-sm">
+        <Card key={file.id} className="border shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-50 dark:bg-orange-950/20">
-                  <FileText className="h-6 w-6 text-orange-600" />
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <FileText className="h-6 w-6 text-primary" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">{file.filename}</h3>
-                  <div className="mt-1 flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold">{file.filename}</h3>
+                  <div className="mt-1 flex flex-wrap items-center gap-3">
                     <Badge variant="outline">{file.kind}</Badge>
-                    <span className="text-xs text-gray-500">
-                      {(file.size / 1024).toFixed(2)} KB
+                    <span className="text-xs text-muted-foreground">
+                      {file.size != null ? `${(file.size / 1024).toFixed(1)} KB` : ''}
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       {format(new Date(file.created_at), 'MMM d, yyyy')}
                     </span>
                   </div>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleView(file)}
+                  title="View"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDownload(file.id)}
+                  title="Download"
+                >
                   <Download className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => handleDelete(file.id)}
+                  disabled={deleteMutation.isPending}
+                  title="Delete"
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -516,6 +639,64 @@ function DocumentsTab({ files, isLoading }: any) {
           </CardContent>
         </Card>
       ))}
+
+      {/* View dialog – same UI as app */}
+      <Dialog open={!!viewFile} onOpenChange={(open) => !open && closeView()}>
+        <DialogContent className="max-w-3xl border bg-background shadow-lg sm:rounded-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              {viewFile?.filename}
+            </DialogTitle>
+            <DialogDescription>View document</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-[200px]">
+            {viewLoading && (
+              <div className="flex h-64 items-center justify-center text-muted-foreground">
+                Loading…
+              </div>
+            )}
+            {!viewLoading && viewUrl && viewFile && (
+              <>
+                {isImage(viewFile) && (
+                  <div className="rounded-lg border bg-muted/30 p-2">
+                    <img
+                      src={viewUrl}
+                      alt={viewFile.filename}
+                      className="max-h-[70vh] w-full rounded-md object-contain"
+                    />
+                  </div>
+                )}
+                {isPdf(viewFile) && (
+                  <div className="rounded-lg border bg-muted/30 p-2">
+                    <iframe
+                      src={viewUrl}
+                      title={viewFile.filename}
+                      className="h-[70vh] w-full rounded-md border-0"
+                    />
+                  </div>
+                )}
+                {!isImage(viewFile) && !isPdf(viewFile) && (
+                  <div className="rounded-lg border bg-muted/30 p-6 text-center">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <p className="mt-2 text-sm text-muted-foreground">Preview not available</p>
+                    <Button
+                      variant="default"
+                      className="mt-4"
+                      onClick={() => viewUrl && window.open(viewUrl, '_blank')}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Open in new tab
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

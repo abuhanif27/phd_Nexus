@@ -49,7 +49,7 @@ const patientNavigation = [
   },
   {
     name: 'Medical Records',
-    href: '/records',
+    href: '/dashboard/records',
     icon: FileText,
     description: 'Lab results & documents',
   },
@@ -110,7 +110,7 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
       <nav className="flex flex-col gap-1 p-3">
         {mounted
           ? navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
               const Icon = item.icon;
 
               return (

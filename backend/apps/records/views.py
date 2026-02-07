@@ -101,6 +101,28 @@ class FileSignedLinkView(views.APIView):
             )
 
 
+class FileServeView(views.APIView):
+    """Serve file content with authentication (for in-app viewing)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, file_id):
+        try:
+            file_obj = File.objects.get(id=file_id)
+            if request.user.role == 'patient' and file_obj.patient.user != request.user:
+                return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+            if not os.path.isfile(file_obj.storage_path):
+                return Response({'error': 'File not found on disk'}, status=status.HTTP_404_NOT_FOUND)
+            response = FileResponse(
+                open(file_obj.storage_path, 'rb'),
+                content_type=file_obj.mime or 'application/octet-stream',
+                as_attachment=False,
+            )
+            response['Content-Disposition'] = f'inline; filename="{file_obj.filename}"'
+            return response
+        except File.DoesNotExist:
+            return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
 class FileViewSet(viewsets.ModelViewSet):
     """CRUD operations for medical files."""
     queryset = File.objects.all()
