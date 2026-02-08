@@ -32,7 +32,9 @@ export function RegisterForm() {
   });
 
   // Handle input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
@@ -52,7 +54,7 @@ export function RegisterForm() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     try {
       setIsLoading(true);
       setError(null);
@@ -108,7 +110,7 @@ export function RegisterForm() {
       }
 
       setSuccess('Account created successfully! Redirecting...');
-      
+
       // Redirect after a short delay
       setTimeout(() => {
         router.push('/dashboard');
@@ -146,14 +148,14 @@ export function RegisterForm() {
     <form onSubmit={handleSubmit} className="mt-8 space-y-6">
       <div className="rounded-2xl bg-white p-8 shadow-2xl">
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 border border-red-200">
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
             <p className="font-medium">❌ Error:</p>
             <p>{error}</p>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-800 border border-green-200">
+          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
             <p className="font-medium">✅ {success}</p>
           </div>
         )}
@@ -172,12 +174,12 @@ export function RegisterForm() {
                     : 'border-gray-200 hover:border-blue-300'
                 }`}
               >
-                <input 
-                  type="radio" 
-                  value="patient" 
+                <input
+                  type="radio"
+                  value="patient"
                   checked={role === 'patient'}
                   onChange={(e) => setRole(e.target.value as 'patient' | 'doctor')}
-                  className="sr-only" 
+                  className="sr-only"
                 />
                 <User className="mr-2 h-5 w-5" />
                 <span className="font-medium">Patient</span>
@@ -189,12 +191,12 @@ export function RegisterForm() {
                     : 'border-gray-200 hover:border-blue-300'
                 }`}
               >
-                <input 
-                  type="radio" 
-                  value="doctor" 
+                <input
+                  type="radio"
+                  value="doctor"
                   checked={role === 'doctor'}
                   onChange={(e) => setRole(e.target.value as 'patient' | 'doctor')}
-                  className="sr-only" 
+                  className="sr-only"
                 />
                 <Stethoscope className="mr-2 h-5 w-5" />
                 <span className="font-medium">Doctor</span>
