@@ -70,7 +70,7 @@ export function DoctorPatientsPage() {
     // Track which patients have appointments
     const patientsWithAppointments = new Set<number>();
     const uniquePatients = new Map<number, Appointment>();
-    
+
     for (const appointment of appointments) {
       patientsWithAppointments.add(appointment.patient);
       if (!uniquePatients.has(appointment.patient)) {
@@ -80,7 +80,7 @@ export function DoctorPatientsPage() {
 
     const registered: Appointment[] = [];
     const unregistered: Appointment[] = [];
-    
+
     // Separate appointments into registered/unregistered
     uniquePatients.forEach((appointment) => {
       if (consentPatientIds.has(appointment.patient)) {
@@ -131,7 +131,10 @@ export function DoctorPatientsPage() {
   }
 
   const isLoading = appointmentsLoading || consentsLoading;
-  const hasPatients = registeredPatients.length > 0 || unregisteredPatients.length > 0 || consentOnlyPatients.length > 0;
+  const hasPatients =
+    registeredPatients.length > 0 ||
+    unregisteredPatients.length > 0 ||
+    consentOnlyPatients.length > 0;
   const searchResults = searchData?.results || [];
 
   return (
@@ -393,9 +396,7 @@ function ConsentOnlyPatientCard({ consent }: ConsentOnlyPatientCardProps): React
               <CheckCircle2 className="h-3 w-3" />
               Access granted (no appointments yet)
             </span>
-            <span>
-              Expires: {expiresAt}
-            </span>
+            <span>Expires: {expiresAt}</span>
           </div>
         </div>
       </div>
