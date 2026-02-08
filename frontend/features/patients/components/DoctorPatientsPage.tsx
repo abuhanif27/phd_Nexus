@@ -150,7 +150,10 @@ export function DoctorPatientsPage() {
           ) : (
             <div className="space-y-2">
               {searchResults.map((patient: Patient) => (
-                <div key={patient.id} className="flex items-center justify-between rounded-lg border p-3">
+                <div
+                  key={patient.id}
+                  className="flex items-center justify-between rounded-lg border p-3"
+                >
                   <div>
                     <p className="font-medium">{patient.name}</p>
                     <p className="text-xs text-muted-foreground">{patient.email}</p>
@@ -271,9 +274,7 @@ function handleRequestAccess({
   appointmentDate: string | null;
   requestAccess: (params: { patientId: number; message: string }) => void;
 }) {
-  const nextVisit = appointmentDate
-    ? format(new Date(appointmentDate), 'MMM d, yyyy')
-    : null;
+  const nextVisit = appointmentDate ? format(new Date(appointmentDate), 'MMM d, yyyy') : null;
   const message = nextVisit
     ? `Hi ${patientName}, please grant me access to your medical records for our appointment on ${nextVisit}. You can do this in your consent settings.`
     : `Hi ${patientName}, please grant me access to your medical records so I can review your history. You can do this in your consent settings.`;
