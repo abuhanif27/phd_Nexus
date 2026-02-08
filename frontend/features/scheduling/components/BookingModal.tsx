@@ -74,7 +74,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
   );
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
-  const [grantConsent, setGrantConsent] = useState<boolean>(true);  // Default to true for convenience
+  const [grantConsent, setGrantConsent] = useState<boolean>(true); // Default to true for convenience
 
   const {
     register,
@@ -170,7 +170,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
       start_time: startTime,
       end_time: endTime,
       notes: data.notes || '',
-      grant_consent: grantConsent,  // Include consent preference
+      grant_consent: grantConsent, // Include consent preference
     });
   };
 
@@ -595,14 +595,15 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                         <div className="flex-1">
                           <label
                             htmlFor="consent"
-                            className="flex items-center gap-2 text-sm font-medium cursor-pointer"
+                            className="flex cursor-pointer items-center gap-2 text-sm font-medium"
                           >
                             <Shield className="h-4 w-4 text-blue-600" />
                             Grant access to my medical records
                           </label>
                           <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            Allow Dr. {selectedDoctor?.name} to view your medical history during your appointment.
-                            This helps provide better care. You can revoke access anytime.
+                            Allow Dr. {selectedDoctor?.name} to view your medical history during
+                            your appointment. This helps provide better care. You can revoke access
+                            anytime.
                           </p>
                         </div>
                       </div>

@@ -48,21 +48,36 @@ export function ConsentManagement() {
 
   const getStatusBadge = (status: string, expiresAt: string) => {
     const isExpired = new Date(expiresAt) < new Date();
-    
+
     if (status === 'revoked') {
-      return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Revoked</Badge>;
+      return (
+        <Badge variant="destructive" className="gap-1">
+          <XCircle className="h-3 w-3" />
+          Revoked
+        </Badge>
+      );
     }
     if (isExpired || status === 'expired') {
-      return <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" />Expired</Badge>;
+      return (
+        <Badge variant="secondary" className="gap-1">
+          <Clock className="h-3 w-3" />
+          Expired
+        </Badge>
+      );
     }
-    return <Badge variant="default" className="gap-1 bg-green-600"><CheckCircle className="h-3 w-3" />Active</Badge>;
+    return (
+      <Badge variant="default" className="gap-1 bg-green-600">
+        <CheckCircle className="h-3 w-3" />
+        Active
+      </Badge>
+    );
   };
 
-  const activeConsents = consents.filter((c: Consent) => 
-    c.status === 'active' && new Date(c.expires_at) > new Date()
+  const activeConsents = consents.filter(
+    (c: Consent) => c.status === 'active' && new Date(c.expires_at) > new Date()
   );
-  const inactiveConsents = consents.filter((c: Consent) => 
-    c.status !== 'active' || new Date(c.expires_at) <= new Date()
+  const inactiveConsents = consents.filter(
+    (c: Consent) => c.status !== 'active' || new Date(c.expires_at) <= new Date()
   );
 
   return (
@@ -84,9 +99,7 @@ export function ConsentManagement() {
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   Active Access
                 </p>
-                <p className="mt-2 text-3xl font-bold text-green-600">
-                  {activeConsents.length}
-                </p>
+                <p className="mt-2 text-3xl font-bold text-green-600">{activeConsents.length}</p>
               </div>
               <div className="rounded-full bg-green-50 p-3 dark:bg-green-950/20">
                 <Shield className="h-6 w-6 text-green-600" />
@@ -169,7 +182,7 @@ export function ConsentManagement() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       {getStatusBadge(consent.status, consent.expires_at)}
                       <Badge variant="outline" className="gap-1">
@@ -251,8 +264,8 @@ export function ConsentManagement() {
               Revoke Medical Record Access?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This doctor will immediately lose access to your medical records. You can grant
-              access again later when booking future appointments.
+              This doctor will immediately lose access to your medical records. You can grant access
+              again later when booking future appointments.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

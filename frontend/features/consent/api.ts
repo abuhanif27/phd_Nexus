@@ -11,7 +11,7 @@ const BASE = '/api/consent';
  */
 export async function getConsents(): Promise<PaginatedResponse<Consent>> {
   const { data } = await apiClient.get<Consent[] | PaginatedResponse<Consent>>(`${BASE}/list/`);
-  
+
   // Handle both array and paginated response
   if (Array.isArray(data)) {
     return { count: data.length, next: null, previous: null, results: data };
@@ -22,10 +22,10 @@ export async function getConsents(): Promise<PaginatedResponse<Consent>> {
 /**
  * Grant consent to a doctor
  */
-export async function grantConsent(request: ConsentGrantRequest): Promise<{ 
-  consent_id: number; 
-  otp_last4: string; 
-  message: string; 
+export async function grantConsent(request: ConsentGrantRequest): Promise<{
+  consent_id: number;
+  otp_last4: string;
+  message: string;
 }> {
   const { data } = await apiClient.post(`${BASE}/grant/`, request);
   return data;
