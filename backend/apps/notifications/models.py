@@ -13,6 +13,7 @@ class Notification(models.Model):
     CHANNEL_CHOICES = [
         ('email', 'Email'),
         ('sms', 'SMS'),
+        ('in_app', 'In-App'),
     ]
     
     STATUS_CHOICES = [

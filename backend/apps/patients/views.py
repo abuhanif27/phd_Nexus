@@ -1,12 +1,13 @@
 """
 Views for patient profiles.
 """
+from django.db.models import Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from apps.consent.permissions import IsPatient
+from apps.consent.permissions import IsPatient, IsDoctor
 from .models import Patient
 from .serializers import PatientSerializer
 
@@ -79,3 +80,21 @@ class PatientViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(patient)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='search', permission_classes=[IsAuthenticated, IsDoctor])
+    def search_patients(self, request):
+        """Search patients by name, email, or phone (doctors only)."""
+        query = (request.query_params.get('q') or '').strip()
+        if not query:
+            return Response({'results': []})
+
+        patients = Patient.objects.filter(
+            user__role='patient'
+        ).filter(
+            Q(name__icontains=query) |
+            Q(user__email__icontains=query) |
+            Q(phone__icontains=query)
+        ).order_by('name')[:20]
+
+        serializer = self.get_serializer(patients, many=True)
+        return Response({'results': serializer.data})

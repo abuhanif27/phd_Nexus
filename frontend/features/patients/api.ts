@@ -107,3 +107,13 @@ export async function getDashboardStats(): Promise<{
   const { data } = await apiClient.get(`${BASE}/dashboard/stats/`);
   return data;
 }
+
+/**
+ * Search patients by name, email, or phone (doctor only)
+ */
+export async function searchPatients(query: string): Promise<PaginatedResponse<Patient>> {
+  const { data } = await apiClient.get<PaginatedResponse<Patient>>(`${BASE}/search/`, {
+    params: { q: query },
+  });
+  return data;
+}

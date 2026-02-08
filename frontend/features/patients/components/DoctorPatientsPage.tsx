@@ -1,21 +1,26 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useCurrentUser } from '@/features/auth/hooks';
 import { getMyAppointments } from '@/features/scheduling/api';
 import { getConsents } from '@/features/consent/api';
+import { searchPatients } from '@/features/patients/api';
+import { requestAccessNotification } from '@/features/notifications/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { User, ShieldCheck, ShieldX, Calendar, Phone } from 'lucide-react';
 import Link from 'next/link';
-import type { Appointment, Consent } from '@/types/api';
+import type { Appointment, Consent, Patient } from '@/types/api';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 export function DoctorPatientsPage() {
   const { data: user, isLoading: userLoading } = useCurrentUser();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { data: appointmentsData, isLoading: appointmentsLoading } = useQuery({
     queryKey: ['doctor', 'appointments'],
@@ -27,6 +32,23 @@ export function DoctorPatientsPage() {
     queryKey: ['doctor', 'consents'],
     queryFn: () => getConsents(),
     enabled: !!user && user.role === 'doctor',
+  });
+
+  const { data: searchData, isLoading: searchLoading } = useQuery({
+    queryKey: ['doctor', 'patients-search', searchQuery],
+    queryFn: () => searchPatients(searchQuery.trim()),
+    enabled: !!user && user.role === 'doctor' && searchQuery.trim().length >= 2,
+  });
+
+  const requestAccessMutation = useMutation({
+    mutationFn: ({ patientId, message }: { patientId: number; message: string }) =>
+      requestAccessNotification(patientId, message),
+    onSuccess: () => {
+      toast.success('Access request sent');
+    },
+    onError: () => {
+      toast.error('Failed to send request');
+    },
   });
 
   const appointments = Array.isArray(appointmentsData)
@@ -89,6 +111,7 @@ export function DoctorPatientsPage() {
 
   const isLoading = appointmentsLoading || consentsLoading;
   const hasPatients = registeredPatients.length > 0 || unregisteredPatients.length > 0;
+  const searchResults = searchData?.results || [];
 
   return (
     <div className="space-y-6 p-6">
@@ -103,6 +126,56 @@ export function DoctorPatientsPage() {
           <Link href="/appointments">View Appointments</Link>
         </Button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Find a Patient</CardTitle>
+          <CardDescription>Search by name, email, or phone</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Input
+            placeholder="Search patients..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+
+          {searchQuery.trim().length < 2 ? (
+            <p className="text-sm text-muted-foreground">Type at least 2 characters to search.</p>
+          ) : searchLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : searchResults.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              No patients found.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {searchResults.map((patient: Patient) => (
+                <div key={patient.id} className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <p className="font-medium">{patient.name}</p>
+                    <p className="text-xs text-muted-foreground">{patient.email}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={requestAccessMutation.isPending}
+                    onClick={() =>
+                      handleRequestAccess({
+                        patientId: patient.id,
+                        patientName: patient.name,
+                        appointmentDate: null,
+                        requestAccess: requestAccessMutation.mutate,
+                      })
+                    }
+                  >
+                    Request Access
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -168,6 +241,14 @@ export function DoctorPatientsPage() {
                     key={appointment.patient}
                     appointment={appointment}
                     status="unregistered"
+                    onRequestAccess={(appt) =>
+                      handleRequestAccess({
+                        patientId: appt.patient,
+                        patientName: appt.patient_name || `Patient #${appt.patient}`,
+                        appointmentDate: `${appt.date}T${appt.start_time}`,
+                        requestAccess: requestAccessMutation.mutate,
+                      })
+                    }
                   />
                 ))
               )}
@@ -179,12 +260,37 @@ export function DoctorPatientsPage() {
   );
 }
 
+function handleRequestAccess({
+  patientId,
+  patientName,
+  appointmentDate,
+  requestAccess,
+}: {
+  patientId: number;
+  patientName: string;
+  appointmentDate: string | null;
+  requestAccess: (params: { patientId: number; message: string }) => void;
+}) {
+  const nextVisit = appointmentDate
+    ? format(new Date(appointmentDate), 'MMM d, yyyy')
+    : null;
+  const message = nextVisit
+    ? `Hi ${patientName}, please grant me access to your medical records for our appointment on ${nextVisit}. You can do this in your consent settings.`
+    : `Hi ${patientName}, please grant me access to your medical records so I can review your history. You can do this in your consent settings.`;
+
+  requestAccess({ patientId, message });
+}
+
 function PatientCard({
   appointment,
   status,
+  onRequestAccess,
+  requestDisabled,
 }: {
   appointment: Appointment;
   status: 'registered' | 'unregistered';
+  onRequestAccess?: (appointment: Appointment) => void;
+  requestDisabled?: boolean;
 }) {
   const patientName = appointment.patient_name || `Patient #${appointment.patient}`;
   const nextVisit = format(
@@ -214,9 +320,22 @@ function PatientCard({
           </div>
         </div>
       </div>
-      <Badge variant={status === 'registered' ? 'default' : 'secondary'}>
-        {status === 'registered' ? 'Access Granted' : 'No Access'}
-      </Badge>
+      <div className="flex items-center gap-3">
+        {status === 'unregistered' && onRequestAccess && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onRequestAccess(appointment)}
+            disabled={requestDisabled}
+          >
+            Request Access
+          </Button>
+        )}
+        <Badge variant={status === 'registered' ? 'default' : 'secondary'}>
+          {status === 'registered' ? 'Access Granted' : 'No Access'}
+        </Badge>
+      </div>
     </div>
   );
 }

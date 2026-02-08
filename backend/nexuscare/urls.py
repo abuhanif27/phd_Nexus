@@ -20,6 +20,7 @@ urlpatterns = [
     path('api/records/', include('apps.records.urls')),
     path('api/scheduling/', include('apps.scheduling.urls')),
     path('api/billing/', include('apps.billing.urls')),
+    path('api/notifications/', include('apps.notifications.urls')),
     path('api/', include('apps.ai.urls')),
 ]
 
