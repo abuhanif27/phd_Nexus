@@ -58,10 +58,14 @@ export function MedicalRecordsPage() {
   const [activeTab, setActiveTab] = useState<RecordType>('all');
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [viewFile, setViewFile] = useState<{ id: number; filename: string; mime?: string } | null>(null);
+  const [viewFile, setViewFile] = useState<{ id: number; filename: string; mime?: string } | null>(
+    null
+  );
   const [viewUrl, setViewUrl] = useState<string | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ fileId: number; filename: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ fileId: number; filename: string } | null>(
+    null
+  );
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleViewFile = async (file: { id: number; filename: string; mime?: string }) => {
@@ -218,9 +222,7 @@ export function MedicalRecordsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Medical Records</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            View and manage your health records
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">View and manage your health records</p>
         </div>
         <Button asChild className="bg-primary hover:bg-primary/90">
           <Link href="/dashboard/records/upload">
@@ -709,7 +711,6 @@ function DocumentsTab({
   onDownloadFile: (fileId: number, filename: string) => void;
   onDeleteFile: (fileId: number, filename: string) => void;
 }) {
-
   if (isLoading) {
     return <div className="py-12 text-center text-muted-foreground">Loading documents...</div>;
   }
@@ -758,12 +759,7 @@ function DocumentsTab({
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onViewFile(file)}
-                  title="View"
-                >
+                <Button variant="ghost" size="sm" onClick={() => onViewFile(file)} title="View">
                   <Eye className="h-4 w-4" />
                 </Button>
                 <Button
@@ -854,7 +850,9 @@ function RecordCard({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onViewFile({ id: record.id, filename: record.filename, mime: record.mime })}
+              onClick={() =>
+                onViewFile({ id: record.id, filename: record.filename, mime: record.mime })
+              }
               title="View"
             >
               <Eye className="h-4 w-4" />
