@@ -12,29 +12,31 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { User, ShieldCheck, ShieldX, Calendar, Phone } from 'lucide-react';
+import { User, ShieldCheck, ShieldX, Calendar, Phone, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
-import type { Appointment, Consent, Patient } from '@/types/api';
+import type { Appointment, Consent, Patient, PaginatedResponse } from '@/types/api';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import React from 'react';
 
 export function DoctorPatientsPage() {
   const { data: user, isLoading: userLoading } = useCurrentUser();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sentRequestPatientIds, setSentRequestPatientIds] = useState<Set<number>>(new Set());
 
-  const { data: appointmentsData, isLoading: appointmentsLoading } = useQuery({
+  const { data: appointmentsData, isLoading: appointmentsLoading } = useQuery<Appointment[]>({
     queryKey: ['doctor', 'appointments'],
     queryFn: () => getMyAppointments(),
     enabled: !!user && user.role === 'doctor',
   });
 
-  const { data: consentsData, isLoading: consentsLoading } = useQuery({
+  const { data: consentsData, isLoading: consentsLoading } = useQuery<PaginatedResponse<Consent>>({
     queryKey: ['doctor', 'consents'],
     queryFn: () => getConsents(),
     enabled: !!user && user.role === 'doctor',
   });
 
-  const { data: searchData, isLoading: searchLoading } = useQuery({
+  const { data: searchData, isLoading: searchLoading } = useQuery<PaginatedResponse<Patient>>({
     queryKey: ['doctor', 'patients-search', searchQuery],
     queryFn: () => searchPatients(searchQuery.trim()),
     enabled: !!user && user.role === 'doctor' && searchQuery.trim().length >= 2,
@@ -43,28 +45,34 @@ export function DoctorPatientsPage() {
   const requestAccessMutation = useMutation({
     mutationFn: ({ patientId, message }: { patientId: number; message: string }) =>
       requestAccessNotification(patientId, message),
-    onSuccess: () => {
-      toast.success('Access request sent');
+    onSuccess: (_, variables) => {
+      console.log('Request sent to patient:', variables.patientId);
+      setSentRequestPatientIds((prev) => new Set([...prev, variables.patientId]));
+      toast.success('Access request sent to patient');
     },
-    onError: () => {
-      toast.error('Failed to send request');
+    onError: (error: any) => {
+      const errorMsg = error?.response?.data?.error || error?.message || 'Failed to send request';
+      console.error('Error sending request:', errorMsg);
+      toast.error(errorMsg);
     },
   });
 
-  const appointments = Array.isArray(appointmentsData)
-    ? appointmentsData
-    : appointmentsData?.results || [];
+  const appointments = appointmentsData || [];
   const consents = consentsData?.results || [];
 
-  const { registeredPatients, unregisteredPatients } = useMemo(() => {
+  const { registeredPatients, unregisteredPatients, consentOnlyPatients } = useMemo(() => {
     const consentPatientIds = new Set(
       consents
         .filter((consent: Consent) => consent.status === 'active')
         .map((consent: Consent) => consent.patient)
     );
 
+    // Track which patients have appointments
+    const patientsWithAppointments = new Set<number>();
     const uniquePatients = new Map<number, Appointment>();
+    
     for (const appointment of appointments) {
+      patientsWithAppointments.add(appointment.patient);
       if (!uniquePatients.has(appointment.patient)) {
         uniquePatients.set(appointment.patient, appointment);
       }
@@ -72,7 +80,8 @@ export function DoctorPatientsPage() {
 
     const registered: Appointment[] = [];
     const unregistered: Appointment[] = [];
-
+    
+    // Separate appointments into registered/unregistered
     uniquePatients.forEach((appointment) => {
       if (consentPatientIds.has(appointment.patient)) {
         registered.push(appointment);
@@ -81,7 +90,19 @@ export function DoctorPatientsPage() {
       }
     });
 
-    return { registeredPatients: registered, unregisteredPatients: unregistered };
+    // Find patients with consent but no appointments
+    const consentOnly = consents
+      .filter(
+        (consent: Consent) =>
+          consent.status === 'active' && !patientsWithAppointments.has(consent.patient)
+      )
+      .map((consent: Consent) => consent);
+
+    return {
+      registeredPatients: registered,
+      unregisteredPatients: unregistered,
+      consentOnlyPatients: consentOnly,
+    };
   }, [appointments, consents]);
 
   if (userLoading) {
@@ -110,7 +131,7 @@ export function DoctorPatientsPage() {
   }
 
   const isLoading = appointmentsLoading || consentsLoading;
-  const hasPatients = registeredPatients.length > 0 || unregisteredPatients.length > 0;
+  const hasPatients = registeredPatients.length > 0 || unregisteredPatients.length > 0 || consentOnlyPatients.length > 0;
   const searchResults = searchData?.results || [];
 
   return (
@@ -161,7 +182,9 @@ export function DoctorPatientsPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={requestAccessMutation.isPending}
+                    disabled={
+                      requestAccessMutation.isPending || sentRequestPatientIds.has(patient.id)
+                    }
                     onClick={() =>
                       handleRequestAccess({
                         patientId: patient.id,
@@ -171,7 +194,7 @@ export function DoctorPatientsPage() {
                       })
                     }
                   >
-                    Request Access
+                    {sentRequestPatientIds.has(patient.id) ? 'Request Sent' : 'Request Access'}
                   </Button>
                 </div>
               ))}
@@ -207,18 +230,23 @@ export function DoctorPatientsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {registeredPatients.length === 0 ? (
+              {registeredPatients.length === 0 && consentOnlyPatients.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                   No patients have granted access yet.
                 </div>
               ) : (
-                registeredPatients.map((appointment) => (
-                  <PatientCard
-                    key={appointment.patient}
-                    appointment={appointment}
-                    status="registered"
-                  />
-                ))
+                <>
+                  {registeredPatients.map((appointment) => (
+                    <PatientCard
+                      key={appointment.patient}
+                      appointment={appointment}
+                      status="registered"
+                    />
+                  ))}
+                  {consentOnlyPatients.map((consent: Consent) => (
+                    <ConsentOnlyPatientCard key={consent.patient} consent={consent} />
+                  ))}
+                </>
               )}
             </CardContent>
           </Card>
@@ -244,6 +272,7 @@ export function DoctorPatientsPage() {
                     key={appointment.patient}
                     appointment={appointment}
                     status="unregistered"
+                    sentRequestPatientIds={sentRequestPatientIds}
                     onRequestAccess={(appt) =>
                       handleRequestAccess({
                         patientId: appt.patient,
@@ -273,7 +302,7 @@ function handleRequestAccess({
   patientName: string;
   appointmentDate: string | null;
   requestAccess: (params: { patientId: number; message: string }) => void;
-}) {
+}): void {
   const nextVisit = appointmentDate ? format(new Date(appointmentDate), 'MMM d, yyyy') : null;
   const message = nextVisit
     ? `Hi ${patientName}, please grant me access to your medical records for our appointment on ${nextVisit}. You can do this in your consent settings.`
@@ -282,22 +311,25 @@ function handleRequestAccess({
   requestAccess({ patientId, message });
 }
 
+interface PatientCardProps {
+  appointment: Appointment;
+  status: 'registered' | 'unregistered';
+  onRequestAccess?: (appointment: Appointment) => void;
+  sentRequestPatientIds?: Set<number>;
+}
+
 function PatientCard({
   appointment,
   status,
   onRequestAccess,
-  requestDisabled,
-}: {
-  appointment: Appointment;
-  status: 'registered' | 'unregistered';
-  onRequestAccess?: (appointment: Appointment) => void;
-  requestDisabled?: boolean;
-}) {
+  sentRequestPatientIds,
+}: PatientCardProps): React.ReactElement {
   const patientName = appointment.patient_name || `Patient #${appointment.patient}`;
   const nextVisit = format(
     new Date(`${appointment.date}T${appointment.start_time}`),
     'MMM d, yyyy'
   );
+  const hasRequestBeenSent = sentRequestPatientIds?.has(appointment.patient) || false;
 
   return (
     <div className="flex items-center justify-between rounded-lg border p-4">
@@ -328,14 +360,50 @@ function PatientCard({
             variant="outline"
             size="sm"
             onClick={() => onRequestAccess(appointment)}
-            disabled={requestDisabled}
+            disabled={hasRequestBeenSent}
           >
-            Request Access
+            {hasRequestBeenSent ? 'Request Sent' : 'Request Access'}
           </Button>
         )}
         <Badge variant={status === 'registered' ? 'default' : 'secondary'}>
           {status === 'registered' ? 'Access Granted' : 'No Access'}
         </Badge>
+      </div>
+    </div>
+  );
+}
+
+interface ConsentOnlyPatientCardProps {
+  consent: Consent;
+}
+
+function ConsentOnlyPatientCard({ consent }: ConsentOnlyPatientCardProps): React.ReactElement {
+  const expiresAt = format(new Date(consent.expires_at), 'MMM d, yyyy h:mm a');
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border p-4">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
+          <User className="h-5 w-5 text-blue-600" />
+        </div>
+        <div>
+          <p className="font-semibold">Patient #{consent.patient}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Access granted (no appointments yet)
+            </span>
+            <span>
+              Expires: {expiresAt}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <Badge variant="default">Access Granted</Badge>
+        <Button asChild size="sm" variant="outline">
+          <Link href={`/records?patient=${consent.patient}`}>View Records</Link>
+        </Button>
       </div>
     </div>
   );

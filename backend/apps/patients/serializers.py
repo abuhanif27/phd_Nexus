@@ -22,9 +22,7 @@ class PatientSerializer(serializers.ModelSerializer):
             'gender', 
             'blood_group', 
             'address',
-            'medical_conditions',
-            'emergency_contact_name',
-            'emergency_contact_phone',
+            'emergency_contact',
             'created_at',
             'updated_at'
         ]
