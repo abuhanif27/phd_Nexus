@@ -32,7 +32,7 @@ export const loginResponseSchema = z.object({
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
 
 /**
- * Register request schema
+ * Register request schema - matches Django backend
  */
 export const registerSchema = z
   .object({
@@ -49,7 +49,29 @@ export const registerSchema = z
     path: ['confirmPassword'],
   });
 
-export type RegisterInput = z.infer<typeof registerSchema>;
+// Backend expects a different structure with nested profiles
+export interface RegisterInput {
+  email: string;
+  password: string;
+  password_confirm: string;
+  role: 'patient' | 'doctor';
+  phone?: string;
+  patient_profile?: {
+    name: string;
+    dob?: string;
+    gender?: 'M' | 'F' | 'O' | 'N';
+    blood_group?: string;
+    address?: string;
+    emergency_contact?: string;
+  };
+  doctor_profile?: {
+    name: string;
+    specialty?: string;
+    qualifications?: string;
+    bio?: string;
+    location?: string;
+  };
+}
 
 /**
  * 2FA verification schema

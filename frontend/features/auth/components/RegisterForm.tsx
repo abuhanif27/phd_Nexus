@@ -1,147 +1,139 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UserPlus, Mail, Lock, Phone, User, Stethoscope, Calendar, MapPin } from 'lucide-react';
+import { UserPlus, Mail, Lock, Phone, User, Stethoscope, MapPin } from 'lucide-react';
 import { authService } from '../api';
-
-// Registration schema based on backend models
-const registerSchema = z
-  .object({
-    // User model - MANDATORY fields
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    password_confirm: z.string(),
-    role: z.enum(['patient', 'doctor'], {
-      required_error: 'Please select a role',
-    }),
-
-    // User model - OPTIONAL
-    phone: z.string().optional(),
-
-    // Profile fields - MANDATORY for proper setup
-    name: z.string().min(2, 'Name must be at least 2 characters'),
-
-    // Patient-specific OPTIONAL fields
-    dob: z.string().optional(),
-    gender: z.enum(['M', 'F', 'O', 'N']).optional(),
-    blood_group: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).optional(),
-    address: z.string().optional(),
-    emergency_contact: z.string().optional(),
-
-    // Doctor-specific OPTIONAL fields
-    specialty: z.string().optional(),
-    qualifications: z.string().optional(),
-    bio: z.string().optional(),
-    location: z.string().optional(),
-  })
-  .refine((data) => data.password === data.password_confirm, {
-    message: "Passwords don't match",
-    path: ['password_confirm'],
-  });
-
-type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      role: 'patient',
-    },
+  // Form state
+  const [role, setRole] = useState<'patient' | 'doctor'>('patient');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    password_confirm: '',
+    name: '',
+    phone: '',
+    specialty: '',
+    qualifications: '',
+    location: '',
+    bio: '',
+    dob: '',
+    gender: '',
+    blood_group: '',
+    address: '',
+    emergency_contact: '',
   });
 
-  const selectedRole = watch('role');
+  // Handle input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+  };
 
-  const onSubmit = async (data: RegisterFormData) => {
+  // Validate form
+  const validateForm = (): string | null => {
+    if (!formData.email) return 'Email is required';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return 'Invalid email format';
+    if (!formData.password) return 'Password is required';
+    if (formData.password.length < 8) return 'Password must be at least 8 characters';
+    if (formData.password !== formData.password_confirm) return 'Passwords do not match';
+    if (!formData.name) return 'Full name is required';
+    if (formData.name.length < 2) return 'Name must be at least 2 characters';
+    return null;
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
     try {
       setIsLoading(true);
       setError(null);
+      setSuccess(null);
 
-      // Prepare the payload for backend
+      // Validate
+      const validationError = validateForm();
+      if (validationError) {
+        setError(validationError);
+        setIsLoading(false);
+        return;
+      }
+
+      // Build payload
       const payload: any = {
-        email: data.email,
-        password: data.password,
-        password_confirm: data.password_confirm,
-        role: data.role,
-        phone: data.phone,
+        email: formData.email,
+        password: formData.password,
+        password_confirm: formData.password_confirm,
+        role: role,
+        phone: formData.phone || null,
       };
 
-      // Add profile fields based on role
-      if (data.role === 'patient') {
+      if (role === 'patient') {
         payload.patient_profile = {
-          name: data.name,
-          dob: data.dob,
-          gender: data.gender,
-          blood_group: data.blood_group,
-          address: data.address,
-          emergency_contact: data.emergency_contact,
+          name: formData.name,
+          dob: formData.dob || null,
+          gender: formData.gender || null,
+          blood_group: formData.blood_group || null,
+          address: formData.address || null,
+          emergency_contact: formData.emergency_contact || null,
         };
-      } else if (data.role === 'doctor') {
+      } else if (role === 'doctor') {
         payload.doctor_profile = {
-          name: data.name,
-          specialty: data.specialty,
-          qualifications: data.qualifications,
-          bio: data.bio,
-          location: data.location,
+          name: formData.name,
+          specialty: formData.specialty || null,
+          qualifications: formData.qualifications || null,
+          bio: formData.bio || null,
+          location: formData.location || null,
         };
       }
 
-      // Call register API
+      console.log('📤 Submitting registration:', payload);
+
+      // Submit to API
       const response = await authService.register(payload);
 
+      console.log('✅ Registration successful:', response);
+
       // Save tokens
-      if (response.access) {
+      if (response.access && response.refresh) {
         localStorage.setItem('access_token', response.access);
         localStorage.setItem('refresh_token', response.refresh);
       }
 
-      // Redirect to dashboard
-      router.push('/dashboard');
+      setSuccess('Account created successfully! Redirecting...');
+      
+      // Redirect after a short delay
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1000);
     } catch (err: any) {
-      const resp = err?.response?.data;
+      console.error('❌ Registration error:', err);
       let message = 'Registration failed. Please try again.';
 
-      if (resp) {
-        if (typeof resp === 'string') {
-          // Backend returned an HTML error page (Django debug) — extract useful text
-          const html = resp;
-          const preMatch = html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
-          if (preMatch && preMatch[1]) {
-            const extracted = preMatch[1].replace(/<[^>]+>/g, '').trim();
-            message = extracted.substring(0, 1000);
-          } else {
-            // Strip tags and shorten to avoid dumping full HTML into the UI
-            const text = html
-              .replace(/<[^>]+>/g, ' ')
-              .replace(/\s+/g, ' ')
-              .trim();
-            message = text.substring(0, 500) + (text.length > 500 ? '...' : '');
-          }
-          // Keep full HTML in console for debugging
-          console.error('Full HTML error from register endpoint:', resp);
-        } else if (resp.detail) {
-          message = resp.detail;
-        } else if (typeof resp === 'object') {
+      if (err?.response?.data) {
+        const resp = err.response.data;
+        if (typeof resp === 'object') {
           const msgs: string[] = [];
           for (const v of Object.values(resp)) {
-            if (Array.isArray(v)) msgs.push(...v.filter((x) => !!x));
-            else if (typeof v === 'string') msgs.push(v);
+            if (Array.isArray(v)) {
+              msgs.push(...v.map((item) => String(item)).filter((x) => !!x));
+            } else if (typeof v === 'string') {
+              msgs.push(v);
+            }
           }
-          if (msgs.length) message = msgs.join(' ');
+          if (msgs.length > 0) message = msgs.join(', ');
+        } else if (typeof resp === 'string') {
+          message = resp;
         }
+      } else if (err?.message) {
+        message = err.message;
       }
 
       setError(message);
@@ -151,9 +143,20 @@ export function RegisterForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
+    <form onSubmit={handleSubmit} className="mt-8 space-y-6">
       <div className="rounded-2xl bg-white p-8 shadow-2xl">
-        {error && <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800">{error}</div>}
+        {error && (
+          <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 border border-red-200">
+            <p className="font-medium">❌ Error:</p>
+            <p>{error}</p>
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-800 border border-green-200">
+            <p className="font-medium">✅ {success}</p>
+          </div>
+        )}
 
         <div className="space-y-5">
           {/* Role Selection - MANDATORY */}
@@ -164,28 +167,39 @@ export function RegisterForm() {
             <div className="grid grid-cols-2 gap-4">
               <label
                 className={`flex cursor-pointer items-center justify-center rounded-lg border-2 p-4 transition-all ${
-                  selectedRole === 'patient'
+                  role === 'patient'
                     ? 'border-blue-600 bg-blue-50'
                     : 'border-gray-200 hover:border-blue-300'
                 }`}
               >
-                <input type="radio" value="patient" {...register('role')} className="sr-only" />
+                <input 
+                  type="radio" 
+                  value="patient" 
+                  checked={role === 'patient'}
+                  onChange={(e) => setRole(e.target.value as 'patient' | 'doctor')}
+                  className="sr-only" 
+                />
                 <User className="mr-2 h-5 w-5" />
                 <span className="font-medium">Patient</span>
               </label>
               <label
                 className={`flex cursor-pointer items-center justify-center rounded-lg border-2 p-4 transition-all ${
-                  selectedRole === 'doctor'
+                  role === 'doctor'
                     ? 'border-blue-600 bg-blue-50'
                     : 'border-gray-200 hover:border-blue-300'
                 }`}
               >
-                <input type="radio" value="doctor" {...register('role')} className="sr-only" />
+                <input 
+                  type="radio" 
+                  value="doctor" 
+                  checked={role === 'doctor'}
+                  onChange={(e) => setRole(e.target.value as 'patient' | 'doctor')}
+                  className="sr-only" 
+                />
                 <Stethoscope className="mr-2 h-5 w-5" />
                 <span className="font-medium">Doctor</span>
               </label>
             </div>
-            {errors.role && <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>}
           </div>
 
           {/* Full Name - MANDATORY */}
@@ -200,12 +214,12 @@ export function RegisterForm() {
               <input
                 id="name"
                 type="text"
-                {...register('name')}
+                value={formData.name}
+                onChange={handleInputChange}
                 className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                 placeholder="John Doe"
               />
             </div>
-            {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
           </div>
 
           {/* Email - MANDATORY */}
@@ -220,12 +234,12 @@ export function RegisterForm() {
               <input
                 id="email"
                 type="email"
-                {...register('email')}
+                value={formData.email}
+                onChange={handleInputChange}
                 className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                 placeholder="john@example.com"
               />
             </div>
-            {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
           </div>
 
           {/* Phone - OPTIONAL */}
@@ -240,7 +254,8 @@ export function RegisterForm() {
               <input
                 id="phone"
                 type="tel"
-                {...register('phone')}
+                value={formData.phone}
+                onChange={handleInputChange}
                 className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                 placeholder="+1 234 567 8900"
               />
@@ -259,14 +274,12 @@ export function RegisterForm() {
               <input
                 id="password"
                 type="password"
-                {...register('password')}
+                value={formData.password}
+                onChange={handleInputChange}
                 className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                 placeholder="••••••••"
               />
             </div>
-            {errors.password && (
-              <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-            )}
           </div>
 
           {/* Confirm Password - MANDATORY */}
@@ -281,18 +294,16 @@ export function RegisterForm() {
               <input
                 id="password_confirm"
                 type="password"
-                {...register('password_confirm')}
+                value={formData.password_confirm}
+                onChange={handleInputChange}
                 className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                 placeholder="••••••••"
               />
             </div>
-            {errors.password_confirm && (
-              <p className="mt-1 text-sm text-red-600">{errors.password_confirm.message}</p>
-            )}
           </div>
 
           {/* Patient-specific fields */}
-          {selectedRole === 'patient' && (
+          {role === 'patient' && (
             <>
               <div className="grid grid-cols-2 gap-4">
                 {/* Date of Birth - OPTIONAL */}
@@ -300,17 +311,13 @@ export function RegisterForm() {
                   <label htmlFor="dob" className="block text-sm font-medium text-gray-700">
                     Date of Birth
                   </label>
-                  <div className="relative mt-1">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <Calendar className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      id="dob"
-                      type="date"
-                      {...register('dob')}
-                      className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                    />
-                  </div>
+                  <input
+                    id="dob"
+                    type="date"
+                    value={formData.dob}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                  />
                 </div>
 
                 {/* Gender - OPTIONAL */}
@@ -320,7 +327,8 @@ export function RegisterForm() {
                   </label>
                   <select
                     id="gender"
-                    {...register('gender')}
+                    value={formData.gender}
+                    onChange={handleInputChange}
                     className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                   >
                     <option value="">Select...</option>
@@ -339,7 +347,8 @@ export function RegisterForm() {
                 </label>
                 <select
                   id="blood_group"
-                  {...register('blood_group')}
+                  value={formData.blood_group}
+                  onChange={handleInputChange}
                   className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                 >
                   <option value="">Select...</option>
@@ -369,7 +378,8 @@ export function RegisterForm() {
                   <input
                     id="emergency_contact"
                     type="tel"
-                    {...register('emergency_contact')}
+                    value={formData.emergency_contact}
+                    onChange={handleInputChange}
                     className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                     placeholder="+1 234 567 8900"
                   />
@@ -383,7 +393,8 @@ export function RegisterForm() {
                 </label>
                 <textarea
                   id="address"
-                  {...register('address')}
+                  value={formData.address}
+                  onChange={handleInputChange}
                   rows={2}
                   className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                   placeholder="Street address, city, state, zip code"
@@ -393,7 +404,7 @@ export function RegisterForm() {
           )}
 
           {/* Doctor-specific fields */}
-          {selectedRole === 'doctor' && (
+          {role === 'doctor' && (
             <>
               {/* Specialty - OPTIONAL */}
               <div>
@@ -404,13 +415,30 @@ export function RegisterForm() {
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <Stethoscope className="h-5 w-5 text-gray-400" />
                   </div>
-                  <input
+                  <select
                     id="specialty"
-                    type="text"
-                    {...register('specialty')}
+                    value={formData.specialty}
+                    onChange={handleInputChange}
                     className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                    placeholder="Cardiology, Neurology, etc."
-                  />
+                  >
+                    <option value="">Select Specialty...</option>
+                    <option value="Cardiology">Cardiology</option>
+                    <option value="Neurology">Neurology</option>
+                    <option value="Pulmonology">Pulmonology</option>
+                    <option value="Gastroenterology">Gastroenterology</option>
+                    <option value="ENT">ENT (Ear, Nose & Throat)</option>
+                    <option value="Dermatology">Dermatology</option>
+                    <option value="Orthopedics">Orthopedics</option>
+                    <option value="Ophthalmology">Ophthalmology</option>
+                    <option value="Psychiatry">Psychiatry</option>
+                    <option value="Gynecology">Gynecology</option>
+                    <option value="Urology">Urology</option>
+                    <option value="Rheumatology">Rheumatology</option>
+                    <option value="General Physician">General Physician</option>
+                    <option value="Pediatrics">Pediatrics</option>
+                    <option value="Oncology">Oncology</option>
+                    <option value="Endocrinology">Endocrinology</option>
+                  </select>
                 </div>
               </div>
 
@@ -421,7 +449,8 @@ export function RegisterForm() {
                 </label>
                 <textarea
                   id="qualifications"
-                  {...register('qualifications')}
+                  value={formData.qualifications}
+                  onChange={handleInputChange}
                   rows={2}
                   className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                   placeholder="MD, MBBS, etc."
@@ -440,7 +469,8 @@ export function RegisterForm() {
                   <input
                     id="location"
                     type="text"
-                    {...register('location')}
+                    value={formData.location}
+                    onChange={handleInputChange}
                     className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                     placeholder="City, State"
                   />
@@ -454,7 +484,8 @@ export function RegisterForm() {
                 </label>
                 <textarea
                   id="bio"
-                  {...register('bio')}
+                  value={formData.bio}
+                  onChange={handleInputChange}
                   rows={3}
                   className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                   placeholder="Tell us about yourself..."
@@ -469,7 +500,7 @@ export function RegisterForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="group relative flex w-full justify-center rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="group relative flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
           >
             <span className="absolute inset-y-0 left-0 flex items-center pl-3">
               <UserPlus className="h-5 w-5" />

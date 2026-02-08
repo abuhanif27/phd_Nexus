@@ -2,6 +2,7 @@
 
 import { useCurrentUser } from '@/features/auth/hooks';
 import { PatientDashboard } from '@/features/patients/components/PatientDashboard';
+import { DoctorDashboard } from '@/features/doctors/components/DoctorDashboard';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
@@ -21,13 +22,17 @@ export default function DashboardPage() {
     );
   }
 
-  // For now, show patient dashboard for all users
-  // In production, you'd switch based on user.role
-  if (user?.role === 'patient' || !user?.role) {
+  // Render role-specific dashboard
+  if (user?.role === 'patient') {
     return <PatientDashboard />;
   }
 
-  // TODO: Implement DoctorDashboard and AdminDashboard
+  if (user?.role === 'doctor') {
+    return <DoctorDashboard />;
+  }
+
+  // TODO: Implement AdminDashboard
+  // Fallback for admin or unknown roles
   return (
     <div className="space-y-8">
       <div>
