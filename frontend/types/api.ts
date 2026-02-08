@@ -126,6 +126,8 @@ export interface Appointment {
   end_time: string;
   status: AppointmentStatus;
   notes?: string;
+  consent_granted: boolean;  // Whether patient granted record access
+  consent: number | null;    // ID of linked consent
   created_at: string;
 }
 
@@ -136,6 +138,7 @@ export interface AppointmentCreateRequest {
   start_time: string;
   end_time: string;
   notes?: string;
+  grant_consent?: boolean;  // Auto-create consent for this appointment
 }
 
 export interface DoctorAvailability {
@@ -257,6 +260,29 @@ export interface Invoice {
 // ========================================
 // CONSENT
 // ========================================
+
+export type ConsentStatus = 'active' | 'revoked' | 'expired';
+
+export interface ConsentScope {
+  read?: string[];  // e.g., ["labs", "prescriptions", "encounters", "files"]
+  write?: string[];
+}
+
+export interface Consent {
+  id: number;
+  patient: number;
+  doctor: number;
+  scope: ConsentScope;
+  expires_at: string;
+  status: ConsentStatus;
+  created_at: string;
+}
+
+export interface ConsentGrantRequest {
+  doctor_id: number;
+  scope: ConsentScope;
+  duration_hours: number;  // How long consent is valid
+}
 
 export interface ConsentRequest {
   id: number;

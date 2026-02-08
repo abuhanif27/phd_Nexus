@@ -3,13 +3,16 @@ Views for medical records management.
 """
 import os
 from django.conf import settings
+from django.db import models
 from django.http import FileResponse, Http404
+from django.utils import timezone
 from rest_framework import viewsets, views, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from apps.consent.permissions import IsPatient, IsDoctor
+from apps.consent.models import Consent
 from .models import File, LabResult, Prescription, Encounter, SymptomLog
 from .serializers import (
     FileSerializer, LabResultSerializer, PrescriptionSerializer,
@@ -17,6 +20,16 @@ from .serializers import (
 )
 from .utils import sign_file_path, verify_file_signature
 from apps.ai.tasks import process_file_task
+
+
+def get_patients_with_consent(doctor_user):
+    """Helper: Get patient IDs that have granted active consent to this doctor."""
+    consents = Consent.objects.filter(
+        doctor__user=doctor_user,
+        status='active',
+        expires_at__gt=timezone.now()
+    ).values_list('patient_id', flat=True)
+    return list(consents)
 
 
 class FileUploadView(views.APIView):
@@ -84,8 +97,21 @@ class FileSignedLinkView(views.APIView):
                         status=status.HTTP_403_FORBIDDEN
                     )
             elif request.user.role == 'doctor':
-                # TODO: Check consent scope
-                pass
+                # Check if doctor has active consent to view this patient's files
+                from apps.consent.models import Consent
+                
+                has_consent = Consent.objects.filter(
+                    patient=file_obj.patient,
+                    doctor__user=request.user,
+                    status='active',
+                    expires_at__gt=timezone.now()
+                ).exists()
+                
+                if not has_consent:
+                    return Response(
+                        {'error': 'No active consent to access this patient\'s records'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
             
             # Generate signed URL
             relative_path = os.path.relpath(file_obj.storage_path, settings.MEDIA_ROOT)
@@ -111,10 +137,24 @@ class FileServeView(views.APIView):
     def get(self, request, file_id):
         try:
             file_obj = File.objects.get(id=file_id)
-            # Allow if user owns the file (patient's user)
+            
+            # Check ownership or consent
             is_owner = file_obj.patient.user_id == request.user.id
+            
             if not is_owner:
-                return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+                # Check if doctor has consent
+                if request.user.role == 'doctor':
+                    has_consent = Consent.objects.filter(
+                        patient=file_obj.patient,
+                        doctor__user=request.user,
+                        status='active',
+                        expires_at__gt=timezone.now()
+                    ).exists()
+                    if not has_consent:
+                        return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+                else:
+                    return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+            
             # Resolve path: stored path, or MEDIA_ROOT/patient_id/filename
             path = file_obj.storage_path
             if not os.path.isfile(path):
@@ -147,9 +187,9 @@ class FileViewSet(viewsets.ModelViewSet):
         if self.request.user.role == 'patient':
             return self.queryset.filter(patient__user=self.request.user).order_by('-created_at')
         elif self.request.user.role == 'doctor':
-            # Doctors can see files from patients with consent
-            # TODO: Filter by consent
-            return self.queryset.order_by('-created_at')
+            # Doctors can only see files from patients with active consent
+            patient_ids = get_patients_with_consent(self.request.user)
+            return self.queryset.filter(patient_id__in=patient_ids).order_by('-created_at')
         return self.queryset.order_by('-created_at')
     
     def perform_create(self, serializer):
@@ -169,6 +209,10 @@ class LabResultViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if self.request.user.role == 'patient':
             return self.queryset.filter(patient__user=self.request.user).order_by('-ts')
+        elif self.request.user.role == 'doctor':
+            # Doctors can only see lab results from patients with active consent
+            patient_ids = get_patients_with_consent(self.request.user)
+            return self.queryset.filter(patient_id__in=patient_ids).order_by('-ts')
         return self.queryset.order_by('-ts')
 
 
@@ -182,7 +226,11 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         if self.request.user.role == 'patient':
             return self.queryset.filter(patient__user=self.request.user).order_by('-ts')
         elif self.request.user.role == 'doctor':
-            return self.queryset.filter(doctor__user=self.request.user).order_by('-ts')
+            # Doctors see prescriptions they wrote OR from patients with active consent
+            patient_ids = get_patients_with_consent(self.request.user)
+            return self.queryset.filter(
+                models.Q(doctor__user=self.request.user) | models.Q(patient_id__in=patient_ids)
+            ).order_by('-ts')
         return self.queryset.order_by('-ts')
 
 
@@ -196,7 +244,11 @@ class EncounterViewSet(viewsets.ModelViewSet):
         if self.request.user.role == 'patient':
             return self.queryset.filter(patient__user=self.request.user).order_by('-ts')
         elif self.request.user.role == 'doctor':
-            return self.queryset.filter(doctor__user=self.request.user).order_by('-ts')
+            # Doctors see encounters they created OR from patients with active consent
+            patient_ids = get_patients_with_consent(self.request.user)
+            return self.queryset.filter(
+                models.Q(doctor__user=self.request.user) | models.Q(patient_id__in=patient_ids)
+            ).order_by('-ts')
         return self.queryset.order_by('-ts')
 
 

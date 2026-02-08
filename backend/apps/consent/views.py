@@ -140,6 +140,24 @@ class RevokeConsentView(views.APIView):
             )
 
 
+class ConsentListView(generics.ListAPIView):
+    """List user's consents (patient sees granted, doctor sees received)."""
+    serializer_class = ConsentSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        
+        if user.role == 'patient':
+            # Patient sees consents they've granted
+            return Consent.objects.filter(patient__user=user).order_by('-created_at')
+        elif user.role == 'doctor':
+            # Doctor sees consents they've received
+            return Consent.objects.filter(doctor__user=user, status='active').order_by('-created_at')
+        
+        return Consent.objects.none()
+
+
 class AuditLogListView(generics.ListAPIView):
     """View audit logs (admin only)."""
     queryset = AuditLog.objects.all().order_by('-ts')

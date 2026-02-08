@@ -2,9 +2,10 @@
 URL routing for consent management.
 """
 from django.urls import path
-from .views import GrantConsentView, ClaimConsentView, RevokeConsentView, AuditLogListView
+from .views import GrantConsentView, ClaimConsentView, RevokeConsentView, ConsentListView, AuditLogListView
 
 urlpatterns = [
+    path('list/', ConsentListView.as_view(), name='list_consents'),
     path('grant/', GrantConsentView.as_view(), name='grant_consent'),
     path('claim/', ClaimConsentView.as_view(), name='claim_consent'),
     path('revoke/<int:consent_id>/', RevokeConsentView.as_view(), name='revoke_consent'),

@@ -42,6 +42,8 @@ class Appointment(models.Model):
     end_time = models.TimeField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='scheduled')
     notes = models.TextField(blank=True)
+    consent_granted = models.BooleanField(default=False)  # Track if patient granted record access
+    consent = models.ForeignKey('consent.Consent', on_delete=models.SET_NULL, null=True, blank=True, related_name='appointments')  # Link to created consent
     created_at = models.DateTimeField(default=timezone.now)
     
     class Meta:

@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Sparkles,
   CheckCircle2,
+  Shield,
 } from 'lucide-react';
 import { getDoctors } from '@/features/doctors/api';
 import { getAvailableSlots, bookAppointment } from '@/features/scheduling/api';
@@ -33,6 +34,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -72,6 +74,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
   );
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
+  const [grantConsent, setGrantConsent] = useState<boolean>(true);  // Default to true for convenience
 
   const {
     register,
@@ -167,6 +170,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
       start_time: startTime,
       end_time: endTime,
       notes: data.notes || '',
+      grant_consent: grantConsent,  // Include consent preference
     });
   };
 
@@ -577,6 +581,33 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                       className="resize-none"
                     />
                   </div>
+
+                  {/* Consent Checkbox */}
+                  <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          id="consent"
+                          checked={grantConsent}
+                          onCheckedChange={(checked) => setGrantConsent(checked === true)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <label
+                            htmlFor="consent"
+                            className="flex items-center gap-2 text-sm font-medium cursor-pointer"
+                          >
+                            <Shield className="h-4 w-4 text-blue-600" />
+                            Grant access to my medical records
+                          </label>
+                          <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                            Allow Dr. {selectedDoctor?.name} to view your medical history during your appointment.
+                            This helps provide better care. You can revoke access anytime.
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </>
             )}

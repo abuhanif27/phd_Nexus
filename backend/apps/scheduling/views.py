@@ -114,6 +114,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return self.queryset
     
     def create(self, request, *args, **kwargs):
+        from datetime import datetime
+        from apps.consent.models import Consent
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -121,6 +124,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         doctor = serializer.validated_data['doctor']
         date = serializer.validated_data['date']
         start_time = serializer.validated_data['start_time']
+        end_time = serializer.validated_data['end_time']
+        grant_consent = serializer.validated_data.pop('grant_consent', False)
         
         conflict = Appointment.objects.filter(
             doctor=doctor,
@@ -135,8 +140,30 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT
             )
         
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # Create appointment
+        appointment = serializer.save()
+        
+        # Auto-create consent if requested
+        if grant_consent and request.user.role == 'patient':
+            # Calculate appointment duration for consent expiration (appointment time + 1 hour buffer)
+            appointment_dt = datetime.combine(date, end_time)
+            expires_at = timezone.make_aware(appointment_dt) + timedelta(hours=1)
+            
+            # Create consent with full medical record access
+            consent = Consent.objects.create(
+                patient=appointment.patient,
+                doctor=doctor,
+                scope={"read": ["labs", "prescriptions", "encounters", "files"]},
+                expires_at=expires_at,
+                status='active'
+            )
+            
+            # Link consent to appointment
+            appointment.consent_granted = True
+            appointment.consent = consent
+            appointment.save()
+        
+        return Response(AppointmentSerializer(appointment).data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['patch'])
     def cancel(self, request, pk=None):
