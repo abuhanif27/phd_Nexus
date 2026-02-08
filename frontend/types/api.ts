@@ -121,6 +121,8 @@ export interface Appointment {
   specialty?: string;
   doctor_details?: Doctor;
   patient_details?: Patient;
+  patient_name?: string;
+  patient_phone?: string;
   date: string;
   start_time: string;
   end_time: string;
