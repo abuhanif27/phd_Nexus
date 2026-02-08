@@ -155,8 +155,8 @@ export function LoginForm() {
             onClick={() => {
               const form = document.querySelector('form');
               if (form) {
-                (form.querySelector('#email') as HTMLInputElement).value = 'patient@demo.com';
-                (form.querySelector('#password') as HTMLInputElement).value = 'demo123';
+                (form.querySelector('#email') as HTMLInputElement).value = 'patient@example.com';
+                (form.querySelector('#password') as HTMLInputElement).value = 'Pass1234!';
               }
             }}
             className="rounded-lg border-2 border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
@@ -168,8 +168,8 @@ export function LoginForm() {
             onClick={() => {
               const form = document.querySelector('form');
               if (form) {
-                (form.querySelector('#email') as HTMLInputElement).value = 'doctor@demo.com';
-                (form.querySelector('#password') as HTMLInputElement).value = 'demo123';
+                (form.querySelector('#email') as HTMLInputElement).value = 'doctor@example.com';
+                (form.querySelector('#password') as HTMLInputElement).value = 'Pass1234!';
               }
             }}
             className="rounded-lg border-2 border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700 transition-colors hover:bg-green-100"
