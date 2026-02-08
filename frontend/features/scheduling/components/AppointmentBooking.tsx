@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { Clock, User, Search, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { useCurrentUser } from '@/features/auth/hooks';
 import { getDoctors } from '@/features/doctors/api';
 import { getAvailableSlots, bookAppointment } from '@/features/scheduling/api';
 import { format, addDays, parseISO } from 'date-fns';
@@ -42,6 +43,7 @@ export function AppointmentBooking() {
   const [searchQuery, setSearchQuery] = React.useState('');
 
   const queryClient = useQueryClient();
+  const { data: currentUser } = useCurrentUser();
 
   const { register, handleSubmit, setValue } = useForm<BookingInput>({
     resolver: zodResolver(bookingSchema),
@@ -98,9 +100,18 @@ export function AppointmentBooking() {
   };
 
   const onSubmit = (data: BookingInput) => {
+    if (!currentUser?.id) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'User information not available',
+      });
+      return;
+    }
     const [startTime, endTime] = data.time_slot.split(' - ');
     book({
       doctor: data.doctor_id,
+      patient: currentUser.id,
       date: data.date,
       start_time: startTime,
       end_time: endTime,
@@ -212,19 +223,23 @@ export function AppointmentBooking() {
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
               </div>
-            ) : availableSlots && availableSlots.length > 0 ? (
+            ) : availableSlots && availableSlots.slots && availableSlots.slots.length > 0 ? (
               <>
                 <div className="grid grid-cols-3 gap-3">
-                  {availableSlots.map((slot) => (
-                    <Button
-                      key={slot}
-                      variant={selectedSlot === slot ? 'default' : 'outline'}
-                      onClick={() => handleSlotSelect(slot)}
-                    >
-                      <Clock className="mr-2 h-4 w-4" />
-                      {slot}
-                    </Button>
-                  ))}
+                  {availableSlots.slots.map((slot) => {
+                    const slotLabel = `${slot.start_time} - ${slot.end_time}`;
+                    return (
+                      <Button
+                        key={slotLabel}
+                        variant={selectedSlot === slotLabel ? 'default' : 'outline'}
+                        onClick={() => handleSlotSelect(slotLabel)}
+                        disabled={!slot.available}
+                      >
+                        <Clock className="mr-2 h-4 w-4" />
+                        {slotLabel}
+                      </Button>
+                    );
+                  })}
                 </div>
                 {selectedSlot && (
                   <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">

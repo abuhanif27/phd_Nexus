@@ -40,7 +40,6 @@ export function ShareLinksManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deleteToken, setDeleteToken] = useState<string | null>(null);
-  const [deleteMode, setDeleteMode] = useState<'deactivate' | 'permanent'>('deactivate');
   const [showInactive, setShowInactive] = useState(true);
 
   const { data, isLoading, error } = useQuery({
@@ -390,7 +389,6 @@ export function ShareLinksManager() {
                           variant="destructive"
                           size="sm"
                           onClick={() => {
-                            setDeleteMode('permanent');
                             setDeleteToken(share.share_token);
                           }}
                           disabled={deleteMutation.isPending}

@@ -43,7 +43,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
-import { cn } from '@/lib/utils/cn';
 import { getHealthSummary, createHealthSummaryShare } from '../api';
 import { getMyAppointments } from '@/features/scheduling/api';
 import { exportHealthSummaryPdf } from '../exportHealthSummaryPdf';
@@ -72,7 +71,6 @@ export function HealthSummaryPage({
   const [minLoadingUntil, setMinLoadingUntil] = useState<number | null>(null);
   const isSummarizing = isFetching || minLoadingUntil !== null;
   const { toast } = useToast();
-  const [isGeneratingShare, setIsGeneratingShare] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
 
   // Use sharedData if available, otherwise use fetched data
@@ -92,7 +90,6 @@ export function HealthSummaryPage({
   };
 
   const handleGenerateShareLink = async () => {
-    setIsGeneratingShare(true);
     try {
       const result = await createHealthSummaryShare();
       const fullUrl =
@@ -110,8 +107,6 @@ export function HealthSummaryPage({
         title: 'Failed to create share link',
         description: 'Please try again later.',
       });
-    } finally {
-      setIsGeneratingShare(false);
     }
   };
 

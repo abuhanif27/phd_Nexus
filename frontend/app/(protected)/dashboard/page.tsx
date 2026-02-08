@@ -33,6 +33,14 @@ export default function DashboardPage() {
 
   // TODO: Implement AdminDashboard
   // Fallback for admin or unknown roles
+  if (!user) {
+    return (
+      <div className="space-y-8">
+        <p className="text-muted-foreground">Loading user information...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div>

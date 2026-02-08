@@ -328,7 +328,6 @@ export function MedicalRecordsPage() {
           <DocumentsTab
             files={filteredFiles}
             isLoading={loadingFiles}
-            toast={toast}
             onViewFile={handleViewFile}
             onDownloadFile={handleDownloadToDevice}
             onDeleteFile={requestDeleteFile}
@@ -700,14 +699,12 @@ function EncountersTab({ encounters, isLoading }: any) {
 function DocumentsTab({
   files,
   isLoading,
-  toast,
   onViewFile,
   onDownloadFile,
   onDeleteFile,
 }: {
   files: any[];
   isLoading: boolean;
-  toast: ReturnType<typeof useToast>['toast'];
   onViewFile: (file: { id: number; filename: string; mime?: string }) => void;
   onDownloadFile: (fileId: number, filename: string) => void;
   onDeleteFile: (fileId: number, filename: string) => void;
