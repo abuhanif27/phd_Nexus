@@ -8,10 +8,15 @@ from typing import Dict, List
 try:
     import pytesseract
     from PIL import Image
-    import spacy
 except ImportError:
     pytesseract = None
     Image = None
+
+# spaCy can raise runtime/config errors on unsupported Python versions.
+# Keep backend startup resilient by treating it as optional.
+try:
+    import spacy
+except Exception:
     spacy = None
 
 from django.conf import settings

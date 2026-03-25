@@ -18,9 +18,15 @@ try:
     from sumy.parsers.plaintext import PlaintextParser
     from sumy.nlp.tokenizers import Tokenizer
     from sumy.summarizers.text_rank import TextRankSummarizer
-except ImportError:
+except Exception:
     # Dependencies not yet installed
-    pass
+    spacy = None
+    joblib = None
+    faiss = None
+    SentenceTransformer = None
+    PlaintextParser = None
+    Tokenizer = None
+    TextRankSummarizer = None
 
 from django.conf import settings
 from django.utils import timezone
