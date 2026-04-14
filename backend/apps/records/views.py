@@ -13,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from apps.consent.permissions import IsPatient, IsDoctor
 from apps.consent.models import Consent
+from apps.patients.models import Patient
 from .models import File, LabResult, Prescription, Encounter, SymptomLog
 from .serializers import (
     FileSerializer, LabResultSerializer, PrescriptionSerializer,
@@ -20,6 +21,7 @@ from .serializers import (
 )
 from .utils import sign_file_path, verify_file_signature
 from apps.ai.tasks import process_file_task
+from apps.ai.services import ai_service
 
 
 def get_patients_with_consent(doctor_user):
@@ -30,6 +32,15 @@ def get_patients_with_consent(doctor_user):
         expires_at__gt=timezone.now()
     ).values_list('patient_id', flat=True)
     return list(consents)
+
+
+def doctor_has_active_consent_for_patient(doctor_user, patient):
+    return Consent.objects.filter(
+        patient=patient,
+        doctor__user=doctor_user,
+        status='active',
+        expires_at__gt=timezone.now()
+    ).exists()
 
 
 class FileUploadView(views.APIView):
@@ -189,7 +200,11 @@ class FileViewSet(viewsets.ModelViewSet):
         elif self.request.user.role == 'doctor':
             # Doctors can only see files from patients with active consent
             patient_ids = get_patients_with_consent(self.request.user)
-            return self.queryset.filter(patient_id__in=patient_ids).order_by('-created_at')
+            queryset = self.queryset.filter(patient_id__in=patient_ids)
+            patient_id = self.request.query_params.get('patient')
+            if patient_id:
+                queryset = queryset.filter(patient_id=patient_id)
+            return queryset.order_by('-created_at')
         return self.queryset.order_by('-created_at')
     
     def perform_create(self, serializer):
@@ -272,4 +287,107 @@ class RecordsSummaryView(views.APIView):
                 patient.encounters.all().order_by('-ts')[:5],
                 many=True
             ).data
+        })
+
+
+class DoctorPatientDocumentsByCodeView(views.APIView):
+    """Doctor-only: get all uploaded documents for a patient by unique patient code."""
+    permission_classes = [IsAuthenticated, IsDoctor]
+
+    def get(self, request):
+        patient_code = (request.query_params.get('patient_code') or '').strip().upper()
+        if not patient_code:
+            return Response(
+                {'error': 'patient_code is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            patient = Patient.objects.get(patient_code=patient_code, user__role='patient')
+        except Patient.DoesNotExist:
+            return Response(
+                {'error': 'Patient not found for this code'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not doctor_has_active_consent_for_patient(request.user, patient):
+            return Response(
+                {'error': 'No active consent to access this patient records'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        files = File.objects.filter(patient=patient).order_by('-created_at')
+
+        return Response({
+            'patient': {
+                'id': patient.id,
+                'patient_code': patient.patient_code,
+                'name': patient.name,
+                'email': patient.user.email,
+            },
+            'results': FileSerializer(files, many=True).data,
+        })
+
+
+class DoctorPatientDocumentSummaryByCodeView(views.APIView):
+    """Doctor-only: summarize a patient's uploaded documents by patient code."""
+    permission_classes = [IsAuthenticated, IsDoctor]
+
+    def post(self, request):
+        patient_code = (request.data.get('patient_code') or '').strip().upper()
+        if not patient_code:
+            return Response(
+                {'error': 'patient_code is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            patient = Patient.objects.get(patient_code=patient_code, user__role='patient')
+        except Patient.DoesNotExist:
+            return Response(
+                {'error': 'Patient not found for this code'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not doctor_has_active_consent_for_patient(request.user, patient):
+            return Response(
+                {'error': 'No active consent to access this patient records'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        files = File.objects.filter(patient=patient).order_by('-created_at')
+        if not files.exists():
+            return Response({
+                'patient': {
+                    'id': patient.id,
+                    'patient_code': patient.patient_code,
+                    'name': patient.name,
+                },
+                'summary': '',
+                'key_points': [],
+                'entities': {},
+                'conditions': [],
+                'medications': [],
+                'document_count': 0,
+            })
+
+        text_parts = []
+        for file_obj in files:
+            header = f"[{file_obj.created_at.date()}] {file_obj.filename} ({file_obj.kind})"
+            body = (file_obj.extracted_text or '').strip()
+            if not body:
+                body = 'No extracted text available for this document.'
+            text_parts.append(f"{header}\n{body}")
+
+        combined_text = '\n\n'.join(text_parts)
+        summary_payload = ai_service.summarize_text(combined_text)
+
+        return Response({
+            'patient': {
+                'id': patient.id,
+                'patient_code': patient.patient_code,
+                'name': patient.name,
+            },
+            'document_count': files.count(),
+            **summary_payload,
         })

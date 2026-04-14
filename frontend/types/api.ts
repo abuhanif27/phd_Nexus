@@ -60,6 +60,7 @@ export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-'
 
 export interface Patient {
   id: number;
+  patient_code?: string;
   user: number;
   email: string;
   name: string;

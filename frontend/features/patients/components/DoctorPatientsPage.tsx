@@ -6,15 +6,20 @@ import { useCurrentUser } from '@/features/auth/hooks';
 import { getMyAppointments } from '@/features/scheduling/api';
 import { getConsents } from '@/features/consent/api';
 import { searchPatients } from '@/features/patients/api';
+import {
+  getDoctorPatientDocumentsByCode,
+  summarizeDoctorPatientDocumentsByCode,
+  type DoctorPatientDocumentsSummaryResponse,
+} from '@/features/records/api';
 import { requestAccessNotification } from '@/features/notifications/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { User, ShieldCheck, ShieldX, Calendar, Phone, CheckCircle2 } from 'lucide-react';
+import { User, ShieldCheck, ShieldX, Calendar, Phone, CheckCircle2, Search, FileText } from 'lucide-react';
 import Link from 'next/link';
-import type { Appointment, Consent, Patient, PaginatedResponse } from '@/types/api';
+import type { Appointment, Consent, Patient, PaginatedResponse, MedicalFile } from '@/types/api';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import React from 'react';
@@ -22,6 +27,17 @@ import React from 'react';
 export function DoctorPatientsPage() {
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [patientCodeQuery, setPatientCodeQuery] = useState<string>('');
+  const [patientCodeResult, setPatientCodeResult] = useState<{
+    patient: {
+      id: number;
+      patient_code: string;
+      name: string;
+      email?: string;
+    };
+    results: MedicalFile[];
+  } | null>(null);
+  const [patientCodeSummary, setPatientCodeSummary] = useState<DoctorPatientDocumentsSummaryResponse | null>(null);
   const [sentRequestPatientIds, setSentRequestPatientIds] = useState<Set<number>>(new Set());
 
   const { data: appointmentsData, isLoading: appointmentsLoading } = useQuery<Appointment[]>({
@@ -53,6 +69,35 @@ export function DoctorPatientsPage() {
     onError: (error: any) => {
       const errorMsg = error?.response?.data?.error || error?.message || 'Failed to send request';
       console.error('Error sending request:', errorMsg);
+      toast.error(errorMsg);
+    },
+  });
+
+  const patientDocsMutation = useMutation({
+    mutationFn: (patientCode: string) => getDoctorPatientDocumentsByCode(patientCode),
+    onSuccess: (data) => {
+      setPatientCodeResult(data);
+      setPatientCodeSummary(null);
+      toast.success(`Found ${data.results.length} uploaded documents`);
+    },
+    onError: (error: any) => {
+      setPatientCodeResult(null);
+      setPatientCodeSummary(null);
+      const errorMsg =
+        error?.response?.data?.error || error?.message || 'Failed to search documents by patient code';
+      toast.error(errorMsg);
+    },
+  });
+
+  const patientSummaryMutation = useMutation({
+    mutationFn: (patientCode: string) => summarizeDoctorPatientDocumentsByCode(patientCode),
+    onSuccess: (data) => {
+      setPatientCodeSummary(data);
+      toast.success('Document summary generated');
+    },
+    onError: (error: any) => {
+      const errorMsg =
+        error?.response?.data?.error || error?.message || 'Failed to summarize patient documents';
       toast.error(errorMsg);
     },
   });
@@ -137,6 +182,24 @@ export function DoctorPatientsPage() {
     consentOnlyPatients.length > 0;
   const searchResults = searchData?.results || [];
 
+  const handlePatientCodeSearch = () => {
+    const code = patientCodeQuery.trim().toUpperCase();
+    if (!code) {
+      toast.error('Enter a patient code');
+      return;
+    }
+    patientDocsMutation.mutate(code);
+  };
+
+  const handlePatientCodeSummary = () => {
+    const code = patientCodeQuery.trim().toUpperCase();
+    if (!code) {
+      toast.error('Enter a patient code');
+      return;
+    }
+    patientSummaryMutation.mutate(code);
+  };
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -154,7 +217,7 @@ export function DoctorPatientsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Find a Patient</CardTitle>
-          <CardDescription>Search by name, email, or phone</CardDescription>
+          <CardDescription>Search by patient code, name, email, or phone</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Input
@@ -181,6 +244,9 @@ export function DoctorPatientsPage() {
                   <div>
                     <p className="font-medium">{patient.name}</p>
                     <p className="text-xs text-muted-foreground">{patient.email}</p>
+                    {patient.patient_code && (
+                      <p className="text-xs text-muted-foreground">Code: {patient.patient_code}</p>
+                    )}
                   </div>
                   <Button
                     size="sm"
@@ -201,6 +267,92 @@ export function DoctorPatientsPage() {
                   </Button>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-blue-600" />
+            Search Documents by Patient Code
+          </CardTitle>
+          <CardDescription>
+            Doctor-only. Enter the unique patient code to open uploaded documents and summarize them.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              placeholder="Example: PT-AB12CD34"
+              value={patientCodeQuery}
+              onChange={(e) => setPatientCodeQuery(e.target.value.toUpperCase())}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePatientCodeSearch}
+              disabled={patientDocsMutation.isPending}
+            >
+              <Search className="mr-2 h-4 w-4" />
+              {patientDocsMutation.isPending ? 'Searching...' : 'Search Documents'}
+            </Button>
+          </div>
+
+          {patientCodeResult && (
+            <div className="space-y-3 rounded-lg border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-medium">{patientCodeResult.patient.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Code: {patientCodeResult.patient.patient_code}
+                  </p>
+                </div>
+                <Badge variant="secondary">{patientCodeResult.results.length} uploaded documents</Badge>
+              </div>
+
+              <div className="space-y-2">
+                {patientCodeResult.results.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No uploaded documents found.</p>
+                ) : (
+                  patientCodeResult.results.map((file) => (
+                    <div key={file.id} className="rounded-md border p-3">
+                      <p className="font-medium">{file.filename}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {file.kind} • {format(new Date(file.created_at), 'MMM d, yyyy h:mm a')}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  onClick={handlePatientCodeSummary}
+                  disabled={patientSummaryMutation.isPending}
+                >
+                  {patientSummaryMutation.isPending ? 'Summarizing...' : 'Summarize Documents'}
+                </Button>
+              </div>
+
+              {patientCodeSummary && (
+                <div className="space-y-3 rounded-md border bg-muted/20 p-4">
+                  <p className="text-sm font-semibold">AI Summary</p>
+                  <p className="text-sm text-muted-foreground">{patientCodeSummary.summary || 'No summary available.'}</p>
+                  {patientCodeSummary.key_points.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Key points</p>
+                      <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                        {patientCodeSummary.key_points.map((point, idx) => (
+                          <li key={`${idx}-${point.slice(0, 20)}`}>{point}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </CardContent>

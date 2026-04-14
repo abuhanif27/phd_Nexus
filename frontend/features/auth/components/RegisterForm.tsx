@@ -146,70 +146,60 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-      <div className="rounded-2xl bg-white p-8 shadow-2xl">
+      <div className="rounded-2xl bg-white p-6 shadow-xl sm:p-8">
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
             <p className="font-medium">❌ Error:</p>
             <p>{error}</p>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
             <p className="font-medium">✅ {success}</p>
           </div>
         )}
 
-        <div className="space-y-5">
+        <div className="space-y-6">
           {/* Role Selection - MANDATORY */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-3 block text-sm font-semibold text-gray-900">
               I am a <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-4">
-              <label
-                className={`flex cursor-pointer items-center justify-center rounded-lg border-2 p-4 transition-all ${
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRole('patient')}
+                className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 p-4 font-medium transition-all duration-200 ${
                   role === 'patient'
-                    ? 'border-blue-600 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300'
+                    ? 'border-blue-500 bg-blue-50 text-blue-900'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
                 }`}
               >
-                <input
-                  type="radio"
-                  value="patient"
-                  checked={role === 'patient'}
-                  onChange={(e) => setRole(e.target.value as 'patient' | 'doctor')}
-                  className="sr-only"
-                />
-                <User className="mr-2 h-5 w-5" />
-                <span className="font-medium">Patient</span>
-              </label>
-              <label
-                className={`flex cursor-pointer items-center justify-center rounded-lg border-2 p-4 transition-all ${
+                <User className="h-5 w-5" />
+                <span>Patient</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('doctor')}
+                className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 p-4 font-medium transition-all duration-200 ${
                   role === 'doctor'
-                    ? 'border-blue-600 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300'
+                    ? 'border-blue-500 bg-blue-50 text-blue-900'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
                 }`}
               >
-                <input
-                  type="radio"
-                  value="doctor"
-                  checked={role === 'doctor'}
-                  onChange={(e) => setRole(e.target.value as 'patient' | 'doctor')}
-                  className="sr-only"
-                />
-                <Stethoscope className="mr-2 h-5 w-5" />
-                <span className="font-medium">Doctor</span>
-              </label>
+                <Stethoscope className="h-5 w-5" />
+                <span>Doctor</span>
+              </button>
             </div>
           </div>
 
           {/* Full Name - MANDATORY */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="name" className="block text-sm font-semibold text-gray-900">
               Full Name <span className="text-red-500">*</span>
             </label>
-            <div className="relative mt-1">
+            <div className="relative mt-2">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <User className="h-5 w-5 text-gray-400" />
               </div>
@@ -218,7 +208,7 @@ export function RegisterForm() {
                 type="text"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                 placeholder="John Doe"
               />
             </div>
@@ -226,10 +216,10 @@ export function RegisterForm() {
 
           {/* Email - MANDATORY */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="block text-sm font-semibold text-gray-900">
               Email Address <span className="text-red-500">*</span>
             </label>
-            <div className="relative mt-1">
+            <div className="relative mt-2">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <Mail className="h-5 w-5 text-gray-400" />
               </div>
@@ -238,7 +228,7 @@ export function RegisterForm() {
                 type="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                 placeholder="john@example.com"
               />
             </div>
@@ -246,10 +236,10 @@ export function RegisterForm() {
 
           {/* Phone - OPTIONAL */}
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="phone" className="block text-sm font-semibold text-gray-900">
               Phone Number
             </label>
-            <div className="relative mt-1">
+            <div className="relative mt-2">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <Phone className="h-5 w-5 text-gray-400" />
               </div>
@@ -258,7 +248,7 @@ export function RegisterForm() {
                 type="tel"
                 value={formData.phone}
                 onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                 placeholder="+1 234 567 8900"
               />
             </div>
@@ -266,10 +256,10 @@ export function RegisterForm() {
 
           {/* Password - MANDATORY */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="block text-sm font-semibold text-gray-900">
               Password <span className="text-red-500">*</span>
             </label>
-            <div className="relative mt-1">
+            <div className="relative mt-2">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <Lock className="h-5 w-5 text-gray-400" />
               </div>
@@ -278,7 +268,7 @@ export function RegisterForm() {
                 type="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                 placeholder="••••••••"
               />
             </div>
@@ -286,10 +276,10 @@ export function RegisterForm() {
 
           {/* Confirm Password - MANDATORY */}
           <div>
-            <label htmlFor="password_confirm" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="password_confirm" className="block text-sm font-semibold text-gray-900">
               Confirm Password <span className="text-red-500">*</span>
             </label>
-            <div className="relative mt-1">
+            <div className="relative mt-2">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <Lock className="h-5 w-5 text-gray-400" />
               </div>
@@ -298,7 +288,7 @@ export function RegisterForm() {
                 type="password"
                 value={formData.password_confirm}
                 onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                 placeholder="••••••••"
               />
             </div>
@@ -310,7 +300,7 @@ export function RegisterForm() {
               <div className="grid grid-cols-2 gap-4">
                 {/* Date of Birth - OPTIONAL */}
                 <div>
-                  <label htmlFor="dob" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="dob" className="block text-sm font-semibold text-gray-900">
                     Date of Birth
                   </label>
                   <input
@@ -318,20 +308,20 @@ export function RegisterForm() {
                     type="date"
                     value={formData.dob}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                   />
                 </div>
 
                 {/* Gender - OPTIONAL */}
                 <div>
-                  <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="gender" className="block text-sm font-semibold text-gray-900">
                     Gender
                   </label>
                   <select
                     id="gender"
                     value={formData.gender}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                   >
                     <option value="">Select...</option>
                     <option value="M">Male</option>
@@ -344,14 +334,14 @@ export function RegisterForm() {
 
               {/* Blood Group - OPTIONAL */}
               <div>
-                <label htmlFor="blood_group" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="blood_group" className="block text-sm font-semibold text-gray-900">
                   Blood Group
                 </label>
                 <select
                   id="blood_group"
                   value={formData.blood_group}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                 >
                   <option value="">Select...</option>
                   <option value="A+">A+</option>
@@ -369,11 +359,11 @@ export function RegisterForm() {
               <div>
                 <label
                   htmlFor="emergency_contact"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-semibold text-gray-900"
                 >
                   Emergency Contact
                 </label>
-                <div className="relative mt-1">
+                <div className="relative mt-2">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <Phone className="h-5 w-5 text-gray-400" />
                   </div>
@@ -382,7 +372,7 @@ export function RegisterForm() {
                     type="tel"
                     value={formData.emergency_contact}
                     onChange={handleInputChange}
-                    className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                     placeholder="+1 234 567 8900"
                   />
                 </div>
@@ -390,7 +380,7 @@ export function RegisterForm() {
 
               {/* Address - OPTIONAL */}
               <div>
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="address" className="block text-sm font-semibold text-gray-900">
                   Address
                 </label>
                 <textarea
@@ -398,7 +388,7 @@ export function RegisterForm() {
                   value={formData.address}
                   onChange={handleInputChange}
                   rows={2}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                   placeholder="Street address, city, state, zip code"
                 />
               </div>
@@ -410,10 +400,10 @@ export function RegisterForm() {
             <>
               {/* Specialty - OPTIONAL */}
               <div>
-                <label htmlFor="specialty" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="specialty" className="block text-sm font-semibold text-gray-900">
                   Specialty
                 </label>
-                <div className="relative mt-1">
+                <div className="relative mt-2">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <Stethoscope className="h-5 w-5 text-gray-400" />
                   </div>
@@ -421,7 +411,7 @@ export function RegisterForm() {
                     id="specialty"
                     value={formData.specialty}
                     onChange={handleInputChange}
-                    className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                   >
                     <option value="">Select Specialty...</option>
                     <option value="Cardiology">Cardiology</option>
@@ -446,7 +436,7 @@ export function RegisterForm() {
 
               {/* Qualifications - OPTIONAL */}
               <div>
-                <label htmlFor="qualifications" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="qualifications" className="block text-sm font-semibold text-gray-900">
                   Qualifications
                 </label>
                 <textarea
@@ -454,17 +444,17 @@ export function RegisterForm() {
                   value={formData.qualifications}
                   onChange={handleInputChange}
                   rows={2}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                   placeholder="MD, MBBS, etc."
                 />
               </div>
 
               {/* Location - OPTIONAL */}
               <div>
-                <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="location" className="block text-sm font-semibold text-gray-900">
                   Location
                 </label>
-                <div className="relative mt-1">
+                <div className="relative mt-2">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <MapPin className="h-5 w-5 text-gray-400" />
                   </div>
@@ -473,7 +463,7 @@ export function RegisterForm() {
                     type="text"
                     value={formData.location}
                     onChange={handleInputChange}
-                    className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                     placeholder="City, State"
                   />
                 </div>
@@ -481,7 +471,7 @@ export function RegisterForm() {
 
               {/* Bio - OPTIONAL */}
               <div>
-                <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="bio" className="block text-sm font-semibold text-gray-900">
                   Bio
                 </label>
                 <textarea
@@ -489,7 +479,7 @@ export function RegisterForm() {
                   value={formData.bio}
                   onChange={handleInputChange}
                   rows={3}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                   placeholder="Tell us about yourself..."
                 />
               </div>
@@ -498,23 +488,21 @@ export function RegisterForm() {
         </div>
 
         {/* Submit Button */}
-        <div className="mt-6">
+        <div className="mt-8">
           <button
             type="submit"
             disabled={isLoading}
-            className="group relative flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+            className="group relative flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 font-semibold text-white shadow-lg transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:from-blue-600 disabled:hover:to-indigo-600"
           >
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <UserPlus className="h-5 w-5" />
-            </span>
+            <UserPlus className="h-5 w-5" />
             {isLoading ? 'Creating account...' : 'Create Account'}
           </button>
         </div>
 
         {/* Login Link */}
-        <div className="mt-4 text-center text-sm">
+        <div className="mt-6 text-center text-sm">
           <span className="text-gray-600">Already have an account? </span>
-          <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+          <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-500">
             Sign in
           </Link>
         </div>

@@ -83,7 +83,7 @@ class PatientViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='search', permission_classes=[IsAuthenticated, IsDoctor])
     def search_patients(self, request):
-        """Search patients by name, email, or phone (doctors only)."""
+        """Search patients by code, name, email, or phone (doctors only)."""
         query = (request.query_params.get('q') or '').strip()
         if not query:
             return Response({'results': []})
@@ -91,6 +91,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         patients = Patient.objects.filter(
             user__role='patient'
         ).filter(
+            Q(patient_code__icontains=query) |
             Q(name__icontains=query) |
             Q(user__email__icontains=query) |
             Q(phone__icontains=query)

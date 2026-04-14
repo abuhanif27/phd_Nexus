@@ -13,6 +13,7 @@ class PatientSerializer(serializers.ModelSerializer):
         model = Patient
         fields = [
             'id', 
+            'patient_code',
             'email', 
             'name', 
             'profile_photo',
@@ -26,7 +27,7 @@ class PatientSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
-        read_only_fields = ['id', 'email', 'created_at', 'updated_at', 'profile_photo_url']
+        read_only_fields = ['id', 'patient_code', 'email', 'created_at', 'updated_at', 'profile_photo_url']
     
     def get_profile_photo_url(self, obj):
         if obj.profile_photo:

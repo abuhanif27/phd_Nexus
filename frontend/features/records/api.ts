@@ -1,6 +1,30 @@
 import { apiClient } from '@/lib/api/axios';
 import type { MedicalFile, LabResult, Prescription, Encounter, SymptomLog } from './types';
 
+export interface DoctorPatientDocumentsResponse {
+  patient: {
+    id: number;
+    patient_code: string;
+    name: string;
+    email?: string;
+  };
+  results: MedicalFile[];
+}
+
+export interface DoctorPatientDocumentsSummaryResponse {
+  patient: {
+    id: number;
+    patient_code: string;
+    name: string;
+  };
+  document_count: number;
+  summary: string;
+  key_points: string[];
+  entities: Record<string, string[]>;
+  conditions: string[];
+  medications: string[];
+}
+
 // Get all medical files
 export async function getMedicalFiles(params?: {
   kind?: string;
@@ -65,4 +89,22 @@ export async function getMedicalFileBlob(fileId: number): Promise<Blob> {
 // Delete medical file
 export async function deleteMedicalFile(fileId: number): Promise<void> {
   await apiClient.delete(`/api/records/files/${fileId}/`);
+}
+
+export async function getDoctorPatientDocumentsByCode(
+  patientCode: string
+): Promise<DoctorPatientDocumentsResponse> {
+  const response = await apiClient.get('/api/records/doctor/patient-documents/', {
+    params: { patient_code: patientCode.trim().toUpperCase() },
+  });
+  return response.data;
+}
+
+export async function summarizeDoctorPatientDocumentsByCode(
+  patientCode: string
+): Promise<DoctorPatientDocumentsSummaryResponse> {
+  const response = await apiClient.post('/api/records/doctor/patient-documents/summary/', {
+    patient_code: patientCode.trim().toUpperCase(),
+  });
+  return response.data;
 }

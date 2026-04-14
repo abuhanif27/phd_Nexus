@@ -1,6 +1,8 @@
 """
 Patient model and related data.
 """
+import random
+import string
 from django.db import models
 from django.conf import settings
 
@@ -28,6 +30,7 @@ class Patient(models.Model):
     ]
     
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='patient_profile')
+    patient_code = models.CharField(max_length=16, unique=True, db_index=True, editable=False)
     name = models.CharField(max_length=200)
     profile_photo = models.ImageField(upload_to='profile_photos/', null=True, blank=True)
     phone = models.CharField(max_length=20, blank=True)
@@ -41,6 +44,20 @@ class Patient(models.Model):
     
     class Meta:
         db_table = 'patients'
+
+    @staticmethod
+    def _generate_patient_code() -> str:
+        prefix = 'PT-'
+        alphabet = string.ascii_uppercase + string.digits
+        while True:
+            code = prefix + ''.join(random.choices(alphabet, k=8))
+            if not Patient.objects.filter(patient_code=code).exists():
+                return code
+
+    def save(self, *args, **kwargs):
+        if not self.patient_code:
+            self.patient_code = self._generate_patient_code()
+        return super().save(*args, **kwargs)
     
     def __str__(self):
         return self.name
