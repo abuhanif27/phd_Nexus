@@ -8,10 +8,12 @@ django-cors-headers==4.3.1
 pytz
 python-dotenv
 Pillow
+requests>=2.31.0
+urllib3>=2.0.0,<3.0
 
 # OCR and Text Processing
 pytesseract
-spacy==3.7.2
+spacy>=3.8.0
 sumy==0.11.0
 nltk
 

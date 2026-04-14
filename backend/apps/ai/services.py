@@ -139,15 +139,15 @@ class AIService:
         if self.model_type in ['sklearn', 'auto']:
             if os.path.exists(sklearn_model_path) and os.path.exists(sklearn_labels_path):
                 try:
-                    from apps.ai.sklearn_classifier import SklearnSpecialistClassifier
-                    self.specialist_classifier = SklearnSpecialistClassifier.load(
-                        sklearn_model_path, sklearn_labels_path
-                    )
+                    # Try to load precomputed sklearn models
+                    model = joblib.load(sklearn_model_path)
+                    labels = joblib.load(sklearn_labels_path)
+                    self.specialist_classifier = model
                     self.specialist_classifier_type = 'sklearn'
                     print(f"✓ Loaded sklearn specialist classifier")
                     return
                 except Exception as e:
-                    print(f"Warning: Could not load sklearn classifier: {e}")
+                    print(f"Note: sklearn classifier models not yet trained: {e}")
         
         # Legacy fallback - try old joblib path
         if os.path.exists(settings.SYMPTOM_MODEL_PATH):
