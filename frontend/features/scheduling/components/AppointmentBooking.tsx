@@ -182,7 +182,7 @@ export function AppointmentBooking() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               {Array.from({ length: 14 }, (_, i) => {
                 const date = addDays(new Date(), i);
                 const dateString = format(date, 'yyyy-MM-dd');
@@ -218,14 +218,14 @@ export function AppointmentBooking() {
           </CardHeader>
           <CardContent className="space-y-4">
             {slotsLoading ? (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
               </div>
             ) : availableSlots && availableSlots.slots && availableSlots.slots.length > 0 ? (
               <>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                   {availableSlots.slots.map((slot) => {
                     const slotLabel = `${slot.start_time} - ${slot.end_time}`;
                     return (

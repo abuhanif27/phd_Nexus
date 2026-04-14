@@ -62,14 +62,14 @@ export default function AppointmentsPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Appointments</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Appointments</h1>
           <p className="text-muted-foreground">Manage your medical appointments</p>
         </div>
-        <Button onClick={() => setShowBookingModal(true)} size="lg">
+        <Button onClick={() => setShowBookingModal(true)} size="lg" className="w-full sm:w-auto">
           <Plus className="mr-2 h-5 w-5" />
           Book Appointment
         </Button>
@@ -99,9 +99,9 @@ export default function AppointmentsPage() {
               {upcomingAppointments.map((appointment: Appointment) => (
                 <div
                   key={appointment.id}
-                  className="flex items-start justify-between rounded-lg border p-4 transition-colors hover:bg-accent/50"
+                  className="flex flex-col gap-3 rounded-lg border p-4 transition-colors hover:bg-accent/50 sm:flex-row sm:items-start sm:justify-between"
                 >
-                  <div className="flex gap-4">
+                  <div className="flex gap-3 sm:gap-4">
                     <div className="rounded-full bg-blue-100 p-3 dark:bg-blue-900/30">
                       <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
@@ -114,7 +114,7 @@ export default function AppointmentsPage() {
                           {appointment.doctor_details?.specialty}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground sm:gap-4">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           {format(new Date(appointment.date), 'EEE, MMM d, yyyy')}
@@ -161,9 +161,9 @@ export default function AppointmentsPage() {
               {pastAppointments.map((appointment: Appointment) => (
                 <div
                   key={appointment.id}
-                  className="flex items-start justify-between rounded-lg border p-4 opacity-75"
+                  className="flex flex-col gap-3 rounded-lg border p-4 opacity-75 sm:flex-row sm:items-start sm:justify-between"
                 >
-                  <div className="flex gap-4">
+                  <div className="flex gap-3 sm:gap-4">
                     <div className="rounded-full bg-gray-100 p-3 dark:bg-gray-800">
                       <User className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                     </div>
@@ -176,7 +176,7 @@ export default function AppointmentsPage() {
                           {appointment.doctor_details?.specialty}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground sm:gap-4">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           {format(new Date(appointment.date), 'EEE, MMM d, yyyy')}

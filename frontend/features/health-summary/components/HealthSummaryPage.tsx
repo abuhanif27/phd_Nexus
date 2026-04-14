@@ -574,8 +574,8 @@ export function HealthSummaryPage({
               </div>
               <div className="mt-6">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-6xl font-bold text-blue-600">{healthScore}</span>
-                  <span className="text-3xl text-gray-500">/100</span>
+                  <span className="text-4xl font-bold text-blue-600 sm:text-6xl">{healthScore}</span>
+                  <span className="text-2xl text-gray-500 sm:text-3xl">/100</span>
                 </div>
                 <Progress value={healthScore} className="mt-4 h-4" />
                 <p className="mt-3 text-base font-medium text-green-600">
@@ -583,9 +583,9 @@ export function HealthSummaryPage({
                 </p>
               </div>
             </div>
-            <div className="flex h-36 w-36 flex-shrink-0 items-center justify-center rounded-full border-8 border-blue-600 bg-white dark:bg-gray-900">
+            <div className="flex h-28 w-28 flex-shrink-0 items-center justify-center rounded-full border-8 border-blue-600 bg-white dark:bg-gray-900 sm:h-36 sm:w-36">
               <div className="text-center">
-                <Target className="mx-auto h-10 w-10 text-blue-600" />
+                <Target className="mx-auto h-8 w-8 text-blue-600 sm:h-10 sm:w-10" />
                 <p className="mt-2 text-sm font-medium text-gray-600">On Track</p>
               </div>
             </div>
@@ -649,7 +649,7 @@ export function HealthSummaryPage({
 
           {/* Conditions & Medications Tabs */}
           <Tabs defaultValue="conditions" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid h-auto w-full grid-cols-1 gap-2 sm:grid-cols-3">
               <TabsTrigger value="conditions">Conditions</TabsTrigger>
               <TabsTrigger value="medications">Medications</TabsTrigger>
               <TabsTrigger value="allergies">Allergies</TabsTrigger>

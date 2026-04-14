@@ -19,6 +19,7 @@ import { useAuthStore } from '@/features/auth/store';
 
 interface AppSidebarProps {
   isOpen: boolean;
+  onNavigate?: () => void;
 }
 
 // Patient navigation
@@ -87,7 +88,7 @@ const doctorNavigation = [
   { name: 'Settings', href: '/settings', icon: Settings, description: 'Profile & availability' },
 ];
 
-export function AppSidebar({ isOpen }: AppSidebarProps) {
+export function AppSidebar({ isOpen, onNavigate }: AppSidebarProps) {
   const pathname = usePathname();
   const { user } = useAuthStore();
   const [mounted, setMounted] = React.useState(false);
@@ -101,8 +102,8 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
 
   // Compute a stable aside class so server/client markup match during hydration
   const asideClass = cn(
-    'border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-700 dark:bg-gray-900',
-    isOpen ? 'w-64' : 'w-0 overflow-hidden'
+    'fixed inset-y-0 left-0 z-40 w-72 border-r border-gray-200 bg-white transition-transform duration-300 dark:border-gray-700 dark:bg-gray-900 lg:static lg:z-auto lg:w-64 lg:translate-x-0',
+    isOpen ? 'translate-x-0' : '-translate-x-full'
   );
 
   return (
@@ -117,6 +118,7 @@ export function AppSidebar({ isOpen }: AppSidebarProps) {
                 <Link
                   key={item.name}
                   href={item.href}
+                  onClick={onNavigate}
                   className={cn(
                     'group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all',
                     isActive

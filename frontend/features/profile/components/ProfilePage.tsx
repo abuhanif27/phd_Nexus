@@ -67,7 +67,7 @@ export function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-4 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950 sm:p-6">
       <div className="mx-auto max-w-7xl">
         {/* Header with Save Success */}
         {saved && (
@@ -83,16 +83,16 @@ export function ProfilePage() {
 
         {/* Profile Header Card */}
         <Card className="mb-8 border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 dark:border-blue-800 dark:from-gray-800 dark:to-blue-950/30">
-          <CardContent className="p-8">
+          <CardContent className="p-5 sm:p-8">
             <div className="flex flex-col items-center gap-8 md:flex-row">
               {/* Profile Picture */}
               <div className="relative">
-                <div className="flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-5xl font-bold text-white shadow-xl ring-4 ring-blue-200 dark:ring-blue-800">
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-4xl font-bold text-white shadow-xl ring-4 ring-blue-200 dark:ring-blue-800 sm:h-32 sm:w-32 sm:text-5xl">
                   {user?.email?.charAt(0).toUpperCase()}
                 </div>
                 <Button
                   size="sm"
-                  className="absolute bottom-0 right-0 h-10 w-10 rounded-full bg-white p-0 shadow-lg hover:bg-gray-50"
+                  className="absolute bottom-0 right-0 h-9 w-9 rounded-full bg-white p-0 shadow-lg hover:bg-gray-50 sm:h-10 sm:w-10"
                 >
                   <Camera className="h-5 w-5 text-gray-700" />
                 </Button>

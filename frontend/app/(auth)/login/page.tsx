@@ -4,8 +4,8 @@ import { Heart, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
+    <div className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-6 sm:space-y-8">
         {/* Logo & Header */}
         <div className="space-y-4 text-center">
           <Link href="/" className="inline-flex items-center justify-center space-x-3">
@@ -18,8 +18,10 @@ export default function LoginPage() {
           </Link>
 
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900">Welcome back</h2>
-            <p className="mt-2 flex items-center justify-center space-x-2 text-sm text-gray-600">
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-3xl">
+              Welcome back
+            </h2>
+            <p className="mt-2 flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
               <Sparkles className="h-4 w-4 text-blue-600" />
               <span>AI-powered healthcare at your fingertips</span>
             </p>
@@ -31,7 +33,7 @@ export default function LoginPage() {
 
         {/* Additional Links */}
         <div className="space-y-3 text-center">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-600 dark:text-gray-300">
             Don't have an account?{' '}
             <Link
               href="/register"
@@ -41,7 +43,7 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <div className="flex items-center justify-center space-x-4 text-xs text-gray-500">
+          <div className="flex items-center justify-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
             <Link href="/" className="transition-colors hover:text-blue-600">
               About
             </Link>

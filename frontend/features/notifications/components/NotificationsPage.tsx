@@ -212,11 +212,11 @@ export function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-4 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950 sm:p-6">
       <div className="mx-auto max-w-5xl">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <div className="relative">
                 <div className="rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 p-3">
@@ -229,7 +229,7 @@ export function NotificationsPage() {
                 )}
               </div>
               <div>
-                <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Notifications</h1>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">Notifications</h1>
                 <p className="mt-2 text-gray-600 dark:text-gray-400">
                   {unreadCount > 0
                     ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`
@@ -238,9 +238,9 @@ export function NotificationsPage() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:gap-3">
               {unreadCount > 0 && (
-                <Button variant="outline" onClick={markAllAsRead} className="hidden sm:flex">
+                <Button variant="outline" onClick={markAllAsRead} className="w-full sm:w-auto">
                   <CheckCheck className="mr-2 h-4 w-4" />
                   Mark All Read
                 </Button>
@@ -248,7 +248,7 @@ export function NotificationsPage() {
               <Button
                 variant="outline"
                 onClick={deleteAllRead}
-                className="text-red-600 hover:bg-red-50"
+                className="w-full text-red-600 hover:bg-red-50 sm:w-auto"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Clear Read

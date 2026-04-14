@@ -201,15 +201,15 @@ export function DoctorPatientsPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Patients</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Patients</h1>
           <p className="text-muted-foreground">
             View your patients and their medical record access status
           </p>
         </div>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href="/appointments">View Appointments</Link>
         </Button>
       </div>
@@ -239,7 +239,7 @@ export function DoctorPatientsPage() {
               {searchResults.map((patient: Patient) => (
                 <div
                   key={patient.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <p className="font-medium">{patient.name}</p>
@@ -487,8 +487,8 @@ function PatientCard({
   const hasRequestBeenSent = sentRequestPatientIds?.has(appointment.patient) || false;
 
   return (
-    <div className="flex items-center justify-between rounded-lg border p-4">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3 sm:gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
           <User className="h-5 w-5 text-blue-600" />
         </div>
@@ -508,7 +508,7 @@ function PatientCard({
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         {status === 'unregistered' && onRequestAccess && (
           <Button
             type="button"
@@ -536,8 +536,8 @@ function ConsentOnlyPatientCard({ consent }: ConsentOnlyPatientCardProps): React
   const expiresAt = format(new Date(consent.expires_at), 'MMM d, yyyy h:mm a');
 
   return (
-    <div className="flex items-center justify-between rounded-lg border p-4">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3 sm:gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
           <User className="h-5 w-5 text-blue-600" />
         </div>
@@ -552,7 +552,7 @@ function ConsentOnlyPatientCard({ consent }: ConsentOnlyPatientCardProps): React
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <Badge variant="default">Access Granted</Badge>
         <Button asChild size="sm" variant="outline">
           <Link href={`/records?patient=${consent.patient}`}>View Records</Link>

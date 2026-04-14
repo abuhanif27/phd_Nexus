@@ -217,11 +217,11 @@ export function MedicalRecordsPage() {
   ];
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Medical Records</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Medical Records</h1>
           <p className="mt-1 text-sm text-muted-foreground">View and manage your health records</p>
         </div>
         <Button asChild className="bg-primary hover:bg-primary/90">
@@ -261,7 +261,7 @@ export function MedicalRecordsPage() {
       {/* Search and Filter */}
       <Card className="border-none shadow-sm">
         <CardContent className="p-6">
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
@@ -285,7 +285,7 @@ export function MedicalRecordsPage() {
         onValueChange={(v) => setActiveTab(v as RecordType)}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           <TabsTrigger value="all">All Records</TabsTrigger>
           <TabsTrigger value="lab">Lab Results</TabsTrigger>
           <TabsTrigger value="prescription">Prescriptions</TabsTrigger>

@@ -76,13 +76,13 @@ export function SettingsPage() {
   const isDoctor = user?.role === 'doctor';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-4 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950 sm:p-6">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Settings</h1>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">Settings</h1>
               <p className="mt-2 text-gray-600 dark:text-gray-400">
                 Manage your account preferences and application settings
               </p>

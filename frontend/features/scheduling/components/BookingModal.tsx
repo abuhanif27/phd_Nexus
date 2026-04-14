@@ -267,7 +267,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                 </div>
 
                 {/* Search and Filter */}
-                <div className="flex gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <Input
@@ -278,7 +278,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                     />
                   </div>
                   <Select value={selectedSpecialty} onValueChange={setSelectedSpecialty}>
-                    <SelectTrigger className="mx-1 w-[180px]">
+                    <SelectTrigger className="mx-1 w-full sm:w-[180px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -476,7 +476,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                       <p className="mt-2 text-sm text-gray-500">Loading available slots...</p>
                     </div>
                   ) : availableSlots.length > 0 ? (
-                    <div className="grid grid-cols-3 gap-3 md:grid-cols-5">
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
                       {availableSlots.map((slot) => {
                         const slotValue = `${slot.start_time}-${slot.end_time}`;
                         const isSelected = selectedTimeSlot === slotValue;

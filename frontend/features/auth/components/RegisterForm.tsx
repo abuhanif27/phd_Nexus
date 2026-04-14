@@ -145,17 +145,17 @@ export function RegisterForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-      <div className="rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+    <form onSubmit={handleSubmit} className="mt-6 space-y-6 sm:mt-8">
+      <div className="rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-900 sm:p-8">
         {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/50 dark:text-red-300">
             <p className="font-medium">❌ Error:</p>
             <p>{error}</p>
           </div>
         )}
 
         {success && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-300">
             <p className="font-medium">✅ {success}</p>
           </div>
         )}
@@ -163,7 +163,7 @@ export function RegisterForm() {
         <div className="space-y-6">
           {/* Role Selection - MANDATORY */}
           <div>
-            <label className="mb-3 block text-sm font-semibold text-gray-900">
+            <label className="mb-3 block text-sm font-semibold text-gray-900 dark:text-gray-200">
               I am a <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -172,8 +172,8 @@ export function RegisterForm() {
                 onClick={() => setRole('patient')}
                 className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 p-4 font-medium transition-all duration-200 ${
                   role === 'patient'
-                    ? 'border-blue-500 bg-blue-50 text-blue-900'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
+                    ? 'border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-200'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200'
                 }`}
               >
                 <User className="h-5 w-5" />
@@ -184,8 +184,8 @@ export function RegisterForm() {
                 onClick={() => setRole('doctor')}
                 className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 p-4 font-medium transition-all duration-200 ${
                   role === 'doctor'
-                    ? 'border-blue-500 bg-blue-50 text-blue-900'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
+                    ? 'border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-200'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200'
                 }`}
               >
                 <Stethoscope className="h-5 w-5" />
@@ -208,7 +208,7 @@ export function RegisterForm() {
                 type="text"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                 placeholder="John Doe"
               />
             </div>
@@ -228,7 +228,7 @@ export function RegisterForm() {
                 type="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                 placeholder="john@example.com"
               />
             </div>
@@ -248,7 +248,7 @@ export function RegisterForm() {
                 type="tel"
                 value={formData.phone}
                 onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                 placeholder="+1 234 567 8900"
               />
             </div>
@@ -268,7 +268,7 @@ export function RegisterForm() {
                 type="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                 placeholder="••••••••"
               />
             </div>
@@ -288,7 +288,7 @@ export function RegisterForm() {
                 type="password"
                 value={formData.password_confirm}
                 onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                 placeholder="••••••••"
               />
             </div>
@@ -297,7 +297,7 @@ export function RegisterForm() {
           {/* Patient-specific fields */}
           {role === 'patient' && (
             <>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Date of Birth - OPTIONAL */}
                 <div>
                   <label htmlFor="dob" className="block text-sm font-semibold text-gray-900">
@@ -501,14 +501,14 @@ export function RegisterForm() {
 
         {/* Login Link */}
         <div className="mt-6 text-center text-sm">
-          <span className="text-gray-600">Already have an account? </span>
+          <span className="text-gray-600 dark:text-gray-300">Already have an account? </span>
           <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-500">
             Sign in
           </Link>
         </div>
 
         {/* Required Fields Note */}
-        <p className="mt-4 text-center text-xs text-gray-500">
+        <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
           <span className="text-red-500">*</span> Required fields
         </p>
       </div>

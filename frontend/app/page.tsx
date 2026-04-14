@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useState } from 'react';
 import {
   Brain,
   Shield,
@@ -8,13 +11,18 @@ import {
   Sparkles,
   ArrowRight,
   CheckCircle2,
+  Menu,
+  X,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export default function HomePage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
       {/* Premium Navbar */}
-      <nav className="fixed top-0 z-50 w-full border-b border-white/20 bg-white/80 backdrop-blur-xl">
+      <nav className="fixed top-0 z-50 w-full border-b border-white/20 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/85">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
@@ -31,46 +39,90 @@ export default function HomePage() {
             <div className="hidden items-center space-x-8 md:flex">
               <Link
                 href="#features"
-                className="text-sm font-medium text-gray-700 transition-colors hover:text-blue-600"
+                className="text-sm font-medium text-gray-700 transition-colors hover:text-blue-600 dark:text-gray-200"
               >
                 Features
               </Link>
               <Link
                 href="#ai-analysis"
-                className="text-sm font-medium text-gray-700 transition-colors hover:text-blue-600"
+                className="text-sm font-medium text-gray-700 transition-colors hover:text-blue-600 dark:text-gray-200"
               >
                 AI Analysis
               </Link>
               <Link
                 href="#dashboard"
-                className="text-sm font-medium text-gray-700 transition-colors hover:text-blue-600"
+                className="text-sm font-medium text-gray-700 transition-colors hover:text-blue-600 dark:text-gray-200"
               >
                 Dashboard
               </Link>
               <Link
                 href="#about"
-                className="text-sm font-medium text-gray-700 transition-colors hover:text-blue-600"
+                className="text-sm font-medium text-gray-700 transition-colors hover:text-blue-600 dark:text-gray-200"
               >
                 About
               </Link>
             </div>
 
             {/* CTA Buttons */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <ThemeToggle className="hover:bg-blue-50 dark:hover:bg-slate-800" />
+              <button
+                type="button"
+                className="rounded-lg p-2 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-slate-800 md:hidden"
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
               <Link
                 href="/login"
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+                className="hidden rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-slate-800 sm:inline-flex"
               >
                 Login
               </Link>
               <Link
                 href="/register"
-                className="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-2 text-sm font-medium text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+                className="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl sm:px-6"
               >
                 Get Started
               </Link>
             </div>
           </div>
+
+          {mobileMenuOpen && (
+            <div className="border-t border-slate-200 py-3 dark:border-slate-800 md:hidden">
+              <div className="grid gap-2">
+                <Link
+                  href="#features"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-slate-800"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Features
+                </Link>
+                <Link
+                  href="#ai-analysis"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-slate-800"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  AI Analysis
+                </Link>
+                <Link
+                  href="#dashboard"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-slate-800"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/login"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-slate-800"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Login
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
@@ -85,14 +137,14 @@ export default function HomePage() {
                 <span>AI-Powered Healthcare Assistant</span>
               </div>
 
-              <h1 className="text-5xl font-bold leading-tight tracking-tight text-gray-900 lg:text-6xl">
+              <h1 className="text-4xl font-bold leading-tight tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl lg:text-6xl">
                 Your Health,
                 <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   Intelligently Analyzed
                 </span>
               </h1>
 
-              <p className="text-xl leading-relaxed text-gray-600">
+              <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300 sm:text-xl">
                 Advanced AI analysis for symptom understanding, specialist recommendations, and
                 comprehensive health insights. Privacy-first, locally-powered, instant results.
               </p>
@@ -102,29 +154,29 @@ export default function HomePage() {
                 <div className="flex items-start space-x-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-600" />
                   <div>
-                    <p className="font-semibold text-gray-900">Quick Analysis</p>
-                    <p className="text-sm text-gray-600">Results in 1-2 seconds</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">Quick Analysis</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Results in 1-2 seconds</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-600" />
                   <div>
-                    <p className="font-semibold text-gray-900">Deep Learning</p>
-                    <p className="text-sm text-gray-600">85-95% accuracy</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">Deep Learning</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">85-95% accuracy</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-600" />
                   <div>
-                    <p className="font-semibold text-gray-900">100% Private</p>
-                    <p className="text-sm text-gray-600">All data stays local</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">100% Private</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">All data stays local</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-600" />
                   <div>
-                    <p className="font-semibold text-gray-900">No Subscription</p>
-                    <p className="text-sm text-gray-600">Free forever</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">No Subscription</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Free forever</p>
                   </div>
                 </div>
               </div>
@@ -140,7 +192,7 @@ export default function HomePage() {
                 </Link>
                 <Link
                   href="/login"
-                  className="inline-flex items-center justify-center space-x-2 rounded-xl border-2 border-gray-300 bg-white px-8 py-4 text-base font-semibold text-gray-700 transition-all hover:border-blue-600 hover:text-blue-600"
+                  className="inline-flex items-center justify-center space-x-2 rounded-xl border-2 border-gray-300 bg-white px-8 py-4 text-base font-semibold text-gray-700 transition-all hover:border-blue-600 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-200"
                 >
                   <span>Sign In</span>
                 </Link>
@@ -151,14 +203,14 @@ export default function HomePage() {
             <div className="relative">
               <div className="grid gap-6">
                 {/* AI Analysis Card */}
-                <div className="group relative rounded-2xl border border-gray-200 bg-white p-6 shadow-xl transition-all hover:scale-105 hover:shadow-2xl">
+                <div className="group relative rounded-2xl border border-gray-200 bg-white p-6 shadow-xl transition-all hover:scale-105 hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900">
                   <div className="flex items-start space-x-4">
                     <div className="rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-3 shadow-lg">
                       <Brain className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">AI Symptom Analysis</h3>
-                      <p className="mt-2 text-sm text-gray-600">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">AI Symptom Analysis</h3>
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                         Advanced NLP extracts medical entities and provides intelligent specialist
                         recommendations
                       </p>
@@ -167,14 +219,14 @@ export default function HomePage() {
                 </div>
 
                 {/* Quick Mode Card */}
-                <div className="group relative rounded-2xl border border-gray-200 bg-white p-6 shadow-xl transition-all hover:scale-105 hover:shadow-2xl">
+                <div className="group relative rounded-2xl border border-gray-200 bg-white p-6 shadow-xl transition-all hover:scale-105 hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900">
                   <div className="flex items-start space-x-4">
                     <div className="rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 p-3 shadow-lg">
                       <Zap className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">Quick Answer Mode</h3>
-                      <p className="mt-2 text-sm text-gray-600">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Quick Answer Mode</h3>
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                         Fast sklearn analysis in 1-2 seconds for simple symptoms and urgent needs
                       </p>
                     </div>
@@ -182,14 +234,14 @@ export default function HomePage() {
                 </div>
 
                 {/* Deep Analysis Card */}
-                <div className="group relative rounded-2xl border border-gray-200 bg-white p-6 shadow-xl transition-all hover:scale-105 hover:shadow-2xl">
+                <div className="group relative rounded-2xl border border-gray-200 bg-white p-6 shadow-xl transition-all hover:scale-105 hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900">
                   <div className="flex items-start space-x-4">
                     <div className="rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 p-3 shadow-lg">
                       <Activity className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">Deep Analysis Mode</h3>
-                      <p className="mt-2 text-sm text-gray-600">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Deep Analysis Mode</h3>
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                         Comprehensive PyTorch + medical history review with 85-95% accuracy
                       </p>
                     </div>
@@ -197,14 +249,14 @@ export default function HomePage() {
                 </div>
 
                 {/* Privacy Card */}
-                <div className="group relative rounded-2xl border border-gray-200 bg-white p-6 shadow-xl transition-all hover:scale-105 hover:shadow-2xl">
+                <div className="group relative rounded-2xl border border-gray-200 bg-white p-6 shadow-xl transition-all hover:scale-105 hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900">
                   <div className="flex items-start space-x-4">
                     <div className="rounded-xl bg-gradient-to-br from-orange-500 to-red-600 p-3 shadow-lg">
                       <Shield className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">Privacy First</h3>
-                      <p className="mt-2 text-sm text-gray-600">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Privacy First</h3>
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                         All data stays on your computer. No cloud uploads, no subscriptions,
                         $0/month
                       </p>
@@ -223,19 +275,19 @@ export default function HomePage() {
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <div className="text-center">
               <p className="text-4xl font-bold text-blue-600">85-95%</p>
-              <p className="mt-2 text-sm font-medium text-gray-600">AI Accuracy</p>
+              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-300">AI Accuracy</p>
             </div>
             <div className="text-center">
               <p className="text-4xl font-bold text-blue-600">&lt;2s</p>
-              <p className="mt-2 text-sm font-medium text-gray-600">Quick Analysis</p>
+              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-300">Quick Analysis</p>
             </div>
             <div className="text-center">
               <p className="text-4xl font-bold text-blue-600">100%</p>
-              <p className="mt-2 text-sm font-medium text-gray-600">Private</p>
+              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-300">Private</p>
             </div>
             <div className="text-center">
               <p className="text-4xl font-bold text-blue-600">$0</p>
-              <p className="mt-2 text-sm font-medium text-gray-600">Per Month</p>
+              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-300">Per Month</p>
             </div>
           </div>
         </div>

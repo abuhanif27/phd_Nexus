@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Menu, Bell, User, Heart, LogOut, Settings as SettingsIcon, Moon, Sun } from 'lucide-react';
+import { Menu, Bell, User, Heart, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuthStore } from '@/features/auth/store';
 import { useLogout } from '@/features/auth/hooks';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface AppHeaderProps {
   onToggleSidebar: () => void;
@@ -22,27 +23,11 @@ interface AppHeaderProps {
 export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
   const { user } = useAuthStore();
   const { mutate: logout } = useLogout();
-  const [isDark, setIsDark] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true);
-    // Check initial theme
-    const darkMode = document.documentElement.classList.contains('dark');
-    setIsDark(darkMode);
   }, []);
-
-  const toggleDarkMode = () => {
-    const newDark = !isDark;
-    setIsDark(newDark);
-    if (newDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  };
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
@@ -65,23 +50,8 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
         </Link>
       </div>
 
-      <div className="flex items-center gap-2">
-        {/* Dark Mode Toggle */}
-        {mounted && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleDarkMode}
-            className="hover:bg-blue-50 dark:hover:bg-gray-800"
-            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {isDark ? (
-              <Sun className="h-5 w-5 text-yellow-500" />
-            ) : (
-              <Moon className="h-5 w-5 text-gray-600" />
-            )}
-          </Button>
-        )}
+      <div className="flex items-center gap-1 sm:gap-2">
+        <ThemeToggle className="hover:bg-blue-50 dark:hover:bg-gray-800" />
 
         {/* Notifications */}
         <Link href="/notifications">

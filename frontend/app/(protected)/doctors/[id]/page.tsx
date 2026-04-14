@@ -38,7 +38,7 @@ export default function DoctorProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-950">
+      <div className="min-h-screen bg-gray-50 p-4 dark:bg-gray-950 sm:p-6">
         <div className="mx-auto max-w-6xl">
           <Card className="animate-pulse">
             <CardHeader>
@@ -55,7 +55,7 @@ export default function DoctorProfilePage() {
 
   if (error || !doctor) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-950">
+      <div className="min-h-screen bg-gray-50 p-4 dark:bg-gray-950 sm:p-6">
         <div className="mx-auto max-w-6xl">
           <Card>
             <CardContent className="pt-6">
@@ -69,15 +69,15 @@ export default function DoctorProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="mx-auto max-w-6xl space-y-6 p-6">
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         {/* Header Section */}
         <Card className="border-t-4 border-t-blue-600">
-          <CardContent className="p-8">
+          <CardContent className="p-5 sm:p-8">
             <div className="flex flex-col gap-8 lg:flex-row">
               {/* Doctor Avatar & Basic Info */}
               <div className="flex flex-col items-center gap-4 lg:items-start">
                 <div className="relative">
-                  <Avatar className="h-40 w-40 border-4 border-gray-200 dark:border-gray-700">
+                  <Avatar className="h-28 w-28 border-4 border-gray-200 dark:border-gray-700 sm:h-40 sm:w-40">
                     <AvatarImage
                       src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${doctor.name}`}
                       className="object-cover"
@@ -104,7 +104,7 @@ export default function DoctorProfilePage() {
               {/* Doctor Details */}
               <div className="flex-1 space-y-4">
                 <div>
-                  <h1 className="mb-2 text-3xl font-bold text-gray-900 dark:text-white">
+                  <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">
                     Dr. {doctor.name}
                   </h1>
                   <p className="text-lg font-medium text-gray-600 dark:text-gray-400">
@@ -128,14 +128,14 @@ export default function DoctorProfilePage() {
 
                 <div className="my-4 h-px bg-gray-200 dark:bg-gray-800" />
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <Link href={`/appointments?doctor=${doctor.id}`}>
-                    <Button size="lg" className="bg-blue-600 text-white hover:bg-blue-700">
+                    <Button size="lg" className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto">
                       <Calendar className="mr-2 h-5 w-5" />
                       Book Appointment
                     </Button>
                   </Link>
-                  <Button size="lg" variant="outline" onClick={() => router.back()}>
+                  <Button size="lg" variant="outline" onClick={() => router.back()} className="w-full sm:w-auto">
                     Back to Directory
                   </Button>
                 </div>

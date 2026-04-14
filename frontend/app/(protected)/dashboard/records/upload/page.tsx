@@ -54,8 +54,8 @@ export default function UploadRecordsPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-4">
+    <div className="space-y-6 p-4 sm:p-6">
+      <div className="flex items-start gap-3 sm:items-center sm:gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/dashboard/records">
             <ArrowLeft className="h-4 w-4" />
@@ -108,8 +108,8 @@ export default function UploadRecordsPage() {
                 </p>
               )}
             </div>
-            <div className="flex gap-3">
-              <Button type="submit" disabled={!file || uploadMutation.isPending} className="flex-1">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
+              <Button type="submit" disabled={!file || uploadMutation.isPending} className="w-full sm:flex-1">
                 {uploadMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -122,7 +122,7 @@ export default function UploadRecordsPage() {
                   </>
                 )}
               </Button>
-              <Button type="button" variant="outline" asChild>
+              <Button type="button" variant="outline" asChild className="w-full sm:w-auto">
                 <Link href="/dashboard/records">Cancel</Link>
               </Button>
             </div>

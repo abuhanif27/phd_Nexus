@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, CheckCircle2, Clock, Trash2, X, CheckCheck, RefreshCw } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CheckCircle2, Clock, X, CheckCheck, RefreshCw } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -99,7 +99,7 @@ export function NotificationsPage(): React.ReactElement {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 p-6">
+      <div className="space-y-4 p-4 sm:p-6">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-32 w-full" />
@@ -108,22 +108,24 @@ export function NotificationsPage(): React.ReactElement {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Notifications</h1>
         <p className="text-muted-foreground">Manage your access requests and notifications</p>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           variant={selectedCategory === 'all' ? 'default' : 'outline'}
           onClick={() => setSelectedCategory('all')}
+          className="w-full sm:w-auto"
         >
           All Notifications ({notifications.length})
         </Button>
         <Button
           variant={selectedCategory === 'access_request' ? 'default' : 'outline'}
           onClick={() => setSelectedCategory('access_request')}
+          className="w-full sm:w-auto"
         >
           Access Requests ({accessRequestCount})
         </Button>
@@ -132,7 +134,7 @@ export function NotificationsPage(): React.ReactElement {
           size="sm"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="ml-auto gap-2"
+          className="w-full gap-2 sm:ml-auto sm:w-auto"
         >
           <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
           {isFetching ? 'Refreshing...' : 'Refresh'}

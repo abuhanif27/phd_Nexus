@@ -27,15 +27,15 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
-      <div className="rounded-2xl bg-white p-8 shadow-2xl">
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6 sm:mt-8">
+      <div className="rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-900 sm:p-8">
         {/* Error Message */}
         {error && (
-          <div className="mb-6 flex items-start space-x-3 rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="mb-6 flex items-start space-x-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/70 dark:bg-red-950/50">
             <AlertCircle className="mt-0.5 h-5 w-5 text-red-600" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-800">Login failed</p>
-              <p className="mt-1 text-sm text-red-700">
+              <p className="text-sm font-medium text-red-800 dark:text-red-300">Login failed</p>
+              <p className="mt-1 text-sm text-red-700 dark:text-red-400">
                 {error instanceof Error ? error.message : 'Invalid email or password'}
               </p>
             </div>
@@ -45,7 +45,7 @@ export function LoginForm() {
         <div className="space-y-5">
           {/* Email Field */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
               Email Address <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-1">
@@ -57,7 +57,7 @@ export function LoginForm() {
                 type="email"
                 disabled={isPending}
                 {...register('email')}
-                className="block w-full rounded-lg border border-gray-300 py-3 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-400 dark:disabled:bg-slate-800/70"
                 placeholder="your.email@example.com"
               />
             </div>
@@ -72,7 +72,10 @@ export function LoginForm() {
           {/* Password Field */}
           <div>
             <div className="flex items-center justify-between">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+              >
                 Password <span className="text-red-500">*</span>
               </label>
               <a
@@ -91,7 +94,7 @@ export function LoginForm() {
                 type="password"
                 disabled={isPending}
                 {...register('password')}
-                className="block w-full rounded-lg border border-gray-300 py-3 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-400 dark:disabled:bg-slate-800/70"
                 placeholder="••••••••••••"
               />
             </div>
@@ -111,7 +114,7 @@ export function LoginForm() {
               type="checkbox"
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
               Remember me for 30 days
             </label>
           </div>
@@ -141,15 +144,17 @@ export function LoginForm() {
         {/* Divider */}
         <div className="relative mt-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
+            <div className="w-full border-t border-gray-300 dark:border-slate-700"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-white px-4 text-gray-500">Quick access for demo</span>
+            <span className="bg-white px-4 text-gray-500 dark:bg-slate-900 dark:text-gray-400">
+              Quick access for demo
+            </span>
           </div>
         </div>
 
         {/* Demo Credentials */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             type="button"
             onClick={() => {
