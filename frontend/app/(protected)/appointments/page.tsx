@@ -16,6 +16,8 @@ export default function AppointmentsPage() {
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const shouldOpenBookingModal =
+    searchParams?.get('book') === '1' || searchParams?.get('open') === 'book';
 
   // Handle client-side mounting to avoid hydration issues
   useEffect(() => {
@@ -26,11 +28,11 @@ export default function AppointmentsPage() {
   useEffect(() => {
     if (mounted && searchParams) {
       const doctorId = searchParams.get('doctor');
-      if (doctorId) {
+      if (doctorId || shouldOpenBookingModal) {
         setShowBookingModal(true);
       }
     }
-  }, [mounted, searchParams]);
+  }, [mounted, searchParams, shouldOpenBookingModal]);
 
   // Fetch appointments
   const { data, isLoading } = useQuery({
