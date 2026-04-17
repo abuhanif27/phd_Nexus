@@ -133,14 +133,12 @@ export function AppSidebar({ isOpen, onNavigate }: AppSidebarProps) {
                       isActive ? 'scale-110' : 'group-hover:scale-110'
                     )}
                   />
-                  {isOpen && (
-                    <div className="min-w-0 flex-1">
-                      <span className="block font-semibold">{item.name}</span>
-                      {!isActive && (
-                        <span className="line-clamp-1 text-xs opacity-70">{item.description}</span>
-                      )}
-                    </div>
-                  )}
+                  <div className={cn('min-w-0 flex-1', isOpen ? 'block' : 'hidden lg:block')}>
+                    <span className="block font-semibold">{item.name}</span>
+                    {!isActive && (
+                      <span className="line-clamp-1 text-xs opacity-70">{item.description}</span>
+                    )}
+                  </div>
                 </Link>
               );
             })

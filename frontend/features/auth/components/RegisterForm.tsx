@@ -48,6 +48,12 @@ export function RegisterForm() {
     if (formData.password !== formData.password_confirm) return 'Passwords do not match';
     if (!formData.name) return 'Full name is required';
     if (formData.name.length < 2) return 'Name must be at least 2 characters';
+    
+    // Check role-specific requirements
+    if (role === 'doctor' && !formData.specialty) {
+      return 'Specialty is required for doctors';
+    }
+    
     return null;
   };
 
@@ -74,26 +80,34 @@ export function RegisterForm() {
         password: formData.password,
         password_confirm: formData.password_confirm,
         role: role,
-        phone: formData.phone || null,
       };
 
+      // Only add phone if provided
+      if (formData.phone) {
+        payload.phone = formData.phone;
+      }
+
       if (role === 'patient') {
-        payload.patient_profile = {
+        const patientProfile: any = {
           name: formData.name,
-          dob: formData.dob || null,
-          gender: formData.gender || null,
-          blood_group: formData.blood_group || null,
-          address: formData.address || null,
-          emergency_contact: formData.emergency_contact || null,
         };
+        // Only add optional fields if they have values
+        if (formData.dob) patientProfile.dob = formData.dob;
+        if (formData.gender) patientProfile.gender = formData.gender;
+        if (formData.blood_group) patientProfile.blood_group = formData.blood_group;
+        if (formData.address) patientProfile.address = formData.address;
+        if (formData.emergency_contact) patientProfile.emergency_contact = formData.emergency_contact;
+        payload.patient_profile = patientProfile;
       } else if (role === 'doctor') {
-        payload.doctor_profile = {
+        const doctorProfile: any = {
           name: formData.name,
-          specialty: formData.specialty || null,
-          qualifications: formData.qualifications || null,
-          bio: formData.bio || null,
-          location: formData.location || null,
+          specialty: formData.specialty,
         };
+        // Only add optional fields if they have values
+        if (formData.qualifications) doctorProfile.qualifications = formData.qualifications;
+        if (formData.bio) doctorProfile.bio = formData.bio;
+        if (formData.location) doctorProfile.location = formData.location;
+        payload.doctor_profile = doctorProfile;
       }
 
       console.log('📤 Submitting registration:', payload);
@@ -119,6 +133,13 @@ export function RegisterForm() {
       console.error('❌ Registration error:', err);
       let message = 'Registration failed. Please try again.';
 
+      // Helper function to extract text from HTML
+      const extractTextFromHTML = (html: string): string => {
+        if (!html) return '';
+        // Remove HTML tags
+        return html.replace(/<[^>]*>/g, '').trim();
+      };
+
       if (err?.response?.data) {
         const resp = err.response.data;
         if (typeof resp === 'object') {
@@ -127,15 +148,17 @@ export function RegisterForm() {
             if (Array.isArray(v)) {
               msgs.push(...v.map((item) => String(item)).filter((x) => !!x));
             } else if (typeof v === 'string') {
-              msgs.push(v);
+              msgs.push(extractTextFromHTML(v));
             }
           }
           if (msgs.length > 0) message = msgs.join(', ');
         } else if (typeof resp === 'string') {
-          message = resp;
+          message = extractTextFromHTML(resp);
         }
+      } else if (err?.response?.status === 500 || err?.response?.status === 503) {
+        message = 'Server error. Please try again later or contact support.';
       } else if (err?.message) {
-        message = err.message;
+        message = extractTextFromHTML(err.message);
       }
 
       setError(message);
@@ -148,15 +171,20 @@ export function RegisterForm() {
     <form onSubmit={handleSubmit} className="mt-6 space-y-6 sm:mt-8">
       <div className="rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-900 sm:p-8">
         {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/50 dark:text-red-300">
-            <p className="font-medium">❌ Error:</p>
-            <p>{error}</p>
+          <div className="mb-6 rounded-lg border-2 border-red-500 bg-red-50 p-4 text-sm text-red-900 dark:border-red-500 dark:bg-red-950 dark:text-red-200">
+            <p className="font-bold flex items-center gap-2">
+              <span>⚠️</span> Error
+            </p>
+            <p className="mt-2 whitespace-pre-wrap break-words">{error}</p>
           </div>
         )}
 
         {success && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-300">
-            <p className="font-medium">✅ {success}</p>
+          <div className="mb-6 rounded-lg border-2 border-green-500 bg-green-50 p-4 text-sm text-green-900 dark:border-green-500 dark:bg-green-950 dark:text-green-200">
+            <p className="font-bold flex items-center gap-2">
+              <span>✅</span> Success
+            </p>
+            <p className="mt-2">{success}</p>
           </div>
         )}
 
@@ -196,7 +224,7 @@ export function RegisterForm() {
 
           {/* Full Name - MANDATORY */}
           <div>
-            <label htmlFor="name" className="block text-sm font-semibold text-gray-900">
+            <label htmlFor="name" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
               Full Name <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-2">
@@ -216,7 +244,7 @@ export function RegisterForm() {
 
           {/* Email - MANDATORY */}
           <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-900">
+            <label htmlFor="email" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
               Email Address <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-2">
@@ -236,7 +264,7 @@ export function RegisterForm() {
 
           {/* Phone - OPTIONAL */}
           <div>
-            <label htmlFor="phone" className="block text-sm font-semibold text-gray-900">
+            <label htmlFor="phone" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
               Phone Number
             </label>
             <div className="relative mt-2">
@@ -256,7 +284,7 @@ export function RegisterForm() {
 
           {/* Password - MANDATORY */}
           <div>
-            <label htmlFor="password" className="block text-sm font-semibold text-gray-900">
+            <label htmlFor="password" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
               Password <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-2">
@@ -276,7 +304,7 @@ export function RegisterForm() {
 
           {/* Confirm Password - MANDATORY */}
           <div>
-            <label htmlFor="password_confirm" className="block text-sm font-semibold text-gray-900">
+            <label htmlFor="password_confirm" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
               Confirm Password <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-2">
@@ -300,7 +328,7 @@ export function RegisterForm() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Date of Birth - OPTIONAL */}
                 <div>
-                  <label htmlFor="dob" className="block text-sm font-semibold text-gray-900">
+                  <label htmlFor="dob" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
                     Date of Birth
                   </label>
                   <input
@@ -308,20 +336,20 @@ export function RegisterForm() {
                     type="date"
                     value={formData.dob}
                     onChange={handleInputChange}
-                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                   />
                 </div>
 
                 {/* Gender - OPTIONAL */}
                 <div>
-                  <label htmlFor="gender" className="block text-sm font-semibold text-gray-900">
+                  <label htmlFor="gender" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
                     Gender
                   </label>
                   <select
                     id="gender"
                     value={formData.gender}
                     onChange={handleInputChange}
-                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                   >
                     <option value="">Select...</option>
                     <option value="M">Male</option>
@@ -334,14 +362,14 @@ export function RegisterForm() {
 
               {/* Blood Group - OPTIONAL */}
               <div>
-                <label htmlFor="blood_group" className="block text-sm font-semibold text-gray-900">
+                <label htmlFor="blood_group" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
                   Blood Group
                 </label>
                 <select
                   id="blood_group"
                   value={formData.blood_group}
                   onChange={handleInputChange}
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                 >
                   <option value="">Select...</option>
                   <option value="A+">A+</option>
@@ -359,7 +387,7 @@ export function RegisterForm() {
               <div>
                 <label
                   htmlFor="emergency_contact"
-                  className="block text-sm font-semibold text-gray-900"
+                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
                 >
                   Emergency Contact
                 </label>
@@ -372,7 +400,7 @@ export function RegisterForm() {
                     type="tel"
                     value={formData.emergency_contact}
                     onChange={handleInputChange}
-                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                     placeholder="+1 234 567 8900"
                   />
                 </div>
@@ -380,7 +408,7 @@ export function RegisterForm() {
 
               {/* Address - OPTIONAL */}
               <div>
-                <label htmlFor="address" className="block text-sm font-semibold text-gray-900">
+                <label htmlFor="address" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
                   Address
                 </label>
                 <textarea
@@ -388,7 +416,7 @@ export function RegisterForm() {
                   value={formData.address}
                   onChange={handleInputChange}
                   rows={2}
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                   placeholder="Street address, city, state, zip code"
                 />
               </div>
@@ -398,10 +426,10 @@ export function RegisterForm() {
           {/* Doctor-specific fields */}
           {role === 'doctor' && (
             <>
-              {/* Specialty - OPTIONAL */}
+              {/* Specialty - MANDATORY */}
               <div>
-                <label htmlFor="specialty" className="block text-sm font-semibold text-gray-900">
-                  Specialty
+                <label htmlFor="specialty" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+                  Specialty <span className="text-red-500">*</span>
                 </label>
                 <div className="relative mt-2">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -411,7 +439,7 @@ export function RegisterForm() {
                     id="specialty"
                     value={formData.specialty}
                     onChange={handleInputChange}
-                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                   >
                     <option value="">Select Specialty...</option>
                     <option value="Cardiology">Cardiology</option>
@@ -436,7 +464,7 @@ export function RegisterForm() {
 
               {/* Qualifications - OPTIONAL */}
               <div>
-                <label htmlFor="qualifications" className="block text-sm font-semibold text-gray-900">
+                <label htmlFor="qualifications" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
                   Qualifications
                 </label>
                 <textarea
@@ -444,14 +472,14 @@ export function RegisterForm() {
                   value={formData.qualifications}
                   onChange={handleInputChange}
                   rows={2}
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                   placeholder="MD, MBBS, etc."
                 />
               </div>
 
               {/* Location - OPTIONAL */}
               <div>
-                <label htmlFor="location" className="block text-sm font-semibold text-gray-900">
+                <label htmlFor="location" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
                   Location
                 </label>
                 <div className="relative mt-2">
@@ -463,7 +491,7 @@ export function RegisterForm() {
                     type="text"
                     value={formData.location}
                     onChange={handleInputChange}
-                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                     placeholder="City, State"
                   />
                 </div>
@@ -471,7 +499,7 @@ export function RegisterForm() {
 
               {/* Bio - OPTIONAL */}
               <div>
-                <label htmlFor="bio" className="block text-sm font-semibold text-gray-900">
+                <label htmlFor="bio" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
                   Bio
                 </label>
                 <textarea
@@ -479,7 +507,7 @@ export function RegisterForm() {
                   value={formData.bio}
                   onChange={handleInputChange}
                   rows={3}
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                   placeholder="Tell us about yourself..."
                 />
               </div>

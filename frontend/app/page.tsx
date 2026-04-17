@@ -20,7 +20,7 @@ export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
+    <div className="min-h-screen scroll-smooth bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
       {/* Premium Navbar */}
       <nav className="fixed top-0 z-50 w-full border-b border-white/20 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/85">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -127,7 +127,7 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative px-4 pb-20 pt-32 sm:px-6 lg:px-8">
+      <section id="dashboard" className="relative scroll-mt-24 px-4 pb-20 pt-32 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             {/* Left Content */}
@@ -200,10 +200,13 @@ export default function HomePage() {
             </div>
 
             {/* Right Content - Feature Cards */}
-            <div className="relative">
+            <div id="features" className="relative scroll-mt-24">
               <div className="grid gap-6">
                 {/* AI Analysis Card */}
-                <div className="group relative rounded-2xl border border-gray-200 bg-white p-6 shadow-xl transition-all hover:scale-105 hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+                <div
+                  id="ai-analysis"
+                  className="group relative scroll-mt-24 rounded-2xl border border-gray-200 bg-white p-6 shadow-xl transition-all hover:scale-105 hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+                >
                   <div className="flex items-start space-x-4">
                     <div className="rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-3 shadow-lg">
                       <Brain className="h-6 w-6 text-white" />
@@ -288,6 +291,23 @@ export default function HomePage() {
             <div className="text-center">
               <p className="text-4xl font-bold text-blue-600">$0</p>
               <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-300">Per Month</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="about" className="px-4 pb-24 pt-4 sm:px-6 lg:px-8 scroll-mt-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-xl backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="max-w-3xl space-y-4">
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                About NexusCare
+              </h2>
+              <p className="text-base leading-7 text-slate-600 dark:text-slate-300">
+                NexusCare combines patient records, scheduling, and AI-assisted symptom analysis
+                in one local-first healthcare workspace. The landing page links now point to real
+                sections on the page, while the app routes take users into the secured dashboard.
+              </p>
             </div>
           </div>
         </div>

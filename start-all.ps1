@@ -43,6 +43,7 @@ function Start-Backend {
         -WorkingDirectory $BackendDir `
         -RedirectStandardOutput $BackendLogOut `
         -RedirectStandardError $BackendLogErr `
+        -NoNewWindow `
         -PassThru
 
     Start-Sleep -Seconds 3
@@ -83,6 +84,7 @@ function Start-Frontend {
         -WorkingDirectory $FrontendDir `
         -RedirectStandardOutput $FrontendLogOut `
         -RedirectStandardError $FrontendLogErr `
+        -NoNewWindow `
         -PassThru
 
     Start-Sleep -Seconds 5

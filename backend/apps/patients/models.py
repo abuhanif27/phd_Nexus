@@ -57,7 +57,7 @@ class Patient(models.Model):
     def save(self, *args, **kwargs):
         if not self.patient_code:
             self.patient_code = self._generate_patient_code()
-        return super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
     
     def __str__(self):
         return self.name

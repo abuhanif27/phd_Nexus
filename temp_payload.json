@@ -1,0 +1,9 @@
+{
+    "email":  "simplepatient@test.com",
+    "patient_profile":  {
+                            "name":  "Simple Test"
+                        },
+    "password_confirm":  "SimplePass123",
+    "password":  "SimplePass123",
+    "role":  "patient"
+}
