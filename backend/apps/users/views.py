@@ -43,15 +43,29 @@ class LoginView(views.APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        user = authenticate(
-            email=serializer.validated_data['email'],
-            password=serializer.validated_data['password']
-        )
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['password']
+        
+        # For custom User model with email as USERNAME_FIELD,
+        # we need to fetch the user and check password manually
+        try:
+            user = User.objects.get(email=email)
+            if not user.check_password(password):
+                user = None
+        except User.DoesNotExist:
+            user = None
         
         if not user:
             return Response(
                 {'error': 'Invalid credentials'},
                 status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # Check if user is active
+        if not user.is_active:
+            return Response(
+                {'error': 'Account is inactive'},
+                status=status.HTTP_403_FORBIDDEN
             )
         
         # Check if 2FA is enabled
