@@ -83,8 +83,14 @@ class FileUploadView(views.APIView):
         mime = (uploaded_file.content_type or '').lower()
         name = (uploaded_file.name or '').lower()
         is_image = mime.startswith('image/') or any(name.endswith(ext) for ext in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'))
+        print(f"[FileUpload] File: {uploaded_file.name}, mime: {mime}, is_image: {is_image}, kind: {kind}")
         if is_image or kind in ['lab', 'prescription']:
-            process_file_task(file_obj.id)
+            print(f"[FileUpload] Triggering OCR for file {file_obj.id}")
+            try:
+                process_file_task(file_obj.id)
+                print(f"[FileUpload] OCR task triggered successfully")
+            except Exception as e:
+                print(f"[FileUpload] Error triggering OCR: {e}")
         
         return Response(
             FileSerializer(file_obj).data,

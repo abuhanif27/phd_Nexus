@@ -30,6 +30,14 @@ export function isAxiosError(error: unknown): error is AxiosError {
 export function getErrorMessage(error: unknown): string {
   // Axios error
   if (isAxiosError(error)) {
+    // Network error (backend not responding)
+    if (!error.response) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        return 'Backend server is not responding. Make sure the backend is running on http://localhost:8000. Try again in a few moments.';
+      }
+      return error.message || 'Network connection failed. Please check your internet connection and try again.';
+    }
+
     const data = error.response?.data as DRFErrorResponse | undefined;
 
     // DRF error responses
@@ -53,7 +61,7 @@ export function getErrorMessage(error: unknown): string {
 
     // Generic error messages
     if (error.response?.status === 401) {
-      return 'Authentication failed. Please login again.';
+      return 'Authentication failed. Invalid email or password.';
     }
     if (error.response?.status === 403) {
       return 'You do not have permission to perform this action.';

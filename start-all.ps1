@@ -46,13 +46,23 @@ function Start-Backend {
         -NoNewWindow `
         -PassThru
 
-    Start-Sleep -Seconds 3
-    if (Test-PortListening -Port 8000) {
-        Write-Host "[OK] Backend started. PID: $($backendProcess.Id)" -ForegroundColor Green
+    # Wait up to 30 seconds for backend to start
+    $maxWaitTime = 30
+    $elapsed = 0
+    $checkInterval = 2
+    
+    while ($elapsed -lt $maxWaitTime) {
+        Start-Sleep -Seconds $checkInterval
+        $elapsed += $checkInterval
+        
+        if (Test-PortListening -Port 8000) {
+            Write-Host "[OK] Backend started. PID: $($backendProcess.Id)" -ForegroundColor Green
+            return
+        }
     }
-    else {
-        Write-Host "[WARN] Backend process started but port 8000 is not listening yet." -ForegroundColor Yellow
-    }
+    
+    Write-Host "[WARN] Backend process started but port 8000 is not listening yet (waited $maxWaitTime seconds)." -ForegroundColor Yellow
+    Write-Host "[HINT] Check logs: $BackendLogErr" -ForegroundColor Gray
 }
 
 function Start-Frontend {
@@ -87,13 +97,23 @@ function Start-Frontend {
         -NoNewWindow `
         -PassThru
 
-    Start-Sleep -Seconds 5
-    if (Test-PortListening -Port 3000) {
-        Write-Host "[OK] Frontend started. PID: $($frontendProcess.Id)" -ForegroundColor Green
+    # Wait up to 45 seconds for frontend to start (npm needs more time)
+    $maxWaitTime = 45
+    $elapsed = 0
+    $checkInterval = 2
+    
+    while ($elapsed -lt $maxWaitTime) {
+        Start-Sleep -Seconds $checkInterval
+        $elapsed += $checkInterval
+        
+        if (Test-PortListening -Port 3000) {
+            Write-Host "[OK] Frontend started. PID: $($frontendProcess.Id)" -ForegroundColor Green
+            return
+        }
     }
-    else {
-        Write-Host "[WARN] Frontend process started but port 3000 is not listening yet." -ForegroundColor Yellow
-    }
+    
+    Write-Host "[WARN] Frontend process started but port 3000 is not listening yet (waited $maxWaitTime seconds)." -ForegroundColor Yellow
+    Write-Host "[HINT] Check logs: $FrontendLogErr" -ForegroundColor Gray
 }
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition

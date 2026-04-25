@@ -12,6 +12,11 @@ except ImportError:
     pytesseract = None
     Image = None
 
+try:
+    import easyocr
+except ImportError:
+    easyocr = None
+
 # spaCy can raise runtime/config errors on unsupported Python versions.
 # Keep backend startup resilient by treating it as optional.
 try:
@@ -41,30 +46,52 @@ def process_file_ocr(file_id: int) -> Dict:
     For image files (including kind=other), extracts text and stores in File.extracted_text
     so the health summary can analyze document content.
     """
+    print(f"[OCR] Starting OCR for file_id={file_id}")
     try:
         file_obj = File.objects.get(id=file_id)
+        print(f"[OCR] File found: {file_obj.filename}")
         if not _is_image_file(file_obj):
+            print(f"[OCR] Not an image file, skipping")
             return {'status': 'skipped', 'reason': 'not an image file'}
         if not os.path.exists(file_obj.storage_path):
+            print(f"[OCR] File not found at path: {file_obj.storage_path}")
             return {'status': 'error', 'error': 'File not found on disk'}
         
-        # Try OCR with pytesseract first
+        print(f"[OCR] Processing image: {file_obj.storage_path}")
         raw_text = ""
-        if Image and pytesseract:
+        
+        # Try EasyOCR first (Python-only, no external dependencies)
+        if easyocr:
             try:
+                print(f"[OCR] Attempting EasyOCR...")
+                reader = easyocr.Reader(['en'], gpu=False)
+                result = reader.readtext(file_obj.storage_path)
+                raw_text = '\n'.join([text[1] for text in result]).strip()
+                print(f"[OCR] EasyOCR success: extracted {len(raw_text)} chars")
+            except Exception as easyocr_error:
+                print(f"[OCR] EasyOCR error: {easyocr_error}")
+                raw_text = ""
+        
+        # If EasyOCR failed or unavailable, try Tesseract
+        if not raw_text and Image and pytesseract:
+            try:
+                print(f"[OCR] Attempting Tesseract...")
                 image = Image.open(file_obj.storage_path)
                 raw_text = (pytesseract.image_to_string(image) or '').strip()
+                print(f"[OCR] Tesseract success: extracted {len(raw_text)} chars")
             except Exception as ocr_error:
-                # pytesseract failed, but don't fail completely - use fallback
-                print(f"OCR error for file {file_id}: {ocr_error}")
-                raw_text = _fallback_ocr(file_obj)
-        else:
-            # PIL or pytesseract not available, use fallback
+                print(f"[OCR] Tesseract error: {ocr_error}")
+                raw_text = ""
+        
+        # If all OCR failed, use fallback placeholder
+        if not raw_text:
+            print(f"[OCR] All OCR methods failed, using fallback...")
             raw_text = _fallback_ocr(file_obj)
         
         # Persist OCR text so health summary can use it (for all image files)
         file_obj.extracted_text = raw_text[:10000]
         file_obj.save(update_fields=['extracted_text'])
+        print(f"[OCR] Saved {len(raw_text)} chars to database")
 
         if file_obj.kind == 'lab':
             return _extract_lab_data(file_obj, raw_text)
@@ -72,51 +99,13 @@ def process_file_ocr(file_id: int) -> Dict:
             return _extract_prescription_data(file_obj, raw_text)
         return {'status': 'success', 'text': raw_text[:500]}
     except Exception as e:
+        print(f"[OCR] Error: {str(e)}")
         return {'status': 'error', 'error': str(e)}
 
 
 def _fallback_ocr(file_obj: File) -> str:
-    """Fallback OCR when Tesseract is not available."""
-    # For testing purposes, generate sample text based on document kind
-    filename = file_obj.filename.lower()
-    kind = file_obj.kind.lower()
-    
-    if 'prescription' in kind or 'rx' in filename or 'med' in filename:
-        return f"""Prescription Document
-File: {file_obj.filename}
-Date: {file_obj.created_at.strftime('%Y-%m-%d')}
-
-PATIENT PRESCRIPTION
-
-Medication List:
-- Refer to uploaded prescription image for medication details
-- Please enable Tesseract OCR for automatic medication extraction
-- Visit: https://github.com/UB-mannheim/tesseract/wiki/Downloads
-- Install Tesseract-OCR and set TESSERACT_CMD environment variable
-"""
-    elif 'lab' in kind or 'result' in filename:
-        return f"""Lab Results Document  
-File: {file_obj.filename}
-Date: {file_obj.created_at.strftime('%Y-%m-%d')}
-
-LABORATORY TEST RESULTS
-
-Test Results:
-- Refer to uploaded lab image for detailed results
-- Enable Tesseract OCR for automatic lab value extraction
-- Install Tesseract-OCR for full OCR capabilities
-"""
-    else:
-        return f"""Medical Document
-File: {file_obj.filename}
-Date: {file_obj.created_at.strftime('%Y-%m-%d')}
-Category: {file_obj.get_kind_display()}
-
-Document content:
-Tesseract OCR is not installed. 
-To enable full text extraction, install Tesseract-OCR:
-https://github.com/UB-mannheim/tesseract/wiki/Downloads
-"""
+    """Fallback OCR when Tesseract is not available. Returns empty string to indicate no text extracted."""
+    return ''
 
 
 def _extract_lab_data(file_obj: File, text: str) -> Dict:
@@ -196,17 +185,39 @@ def get_or_extract_file_text(file_obj: File) -> str:
         return (file_obj.extracted_text or '').strip()
     if not os.path.exists(file_obj.storage_path):
         return ''
-    try:
-        if not Image or not pytesseract:
-            return ''
-        image = Image.open(file_obj.storage_path)
-        raw_text = (pytesseract.image_to_string(image) or '').strip()
-        if raw_text:
-            file_obj.extracted_text = raw_text[:10000]
-            file_obj.save(update_fields=['extracted_text'])
-        return raw_text
-    except Exception:
-        return ''
+    
+    raw_text = ""
+    
+    # Try EasyOCR first
+    if easyocr:
+        try:
+            print(f"[get_or_extract_file_text] Using EasyOCR for {file_obj.filename}")
+            reader = easyocr.Reader(['en'], gpu=False)
+            result = reader.readtext(file_obj.storage_path)
+            raw_text = '\n'.join([text[1] for text in result]).strip()
+            print(f"[get_or_extract_file_text] EasyOCR extracted {len(raw_text)} chars")
+        except Exception as e:
+            print(f"[get_or_extract_file_text] EasyOCR failed: {e}")
+    
+    # If EasyOCR failed, try Tesseract
+    if not raw_text and Image and pytesseract:
+        try:
+            print(f"[get_or_extract_file_text] Using Tesseract for {file_obj.filename}")
+            image = Image.open(file_obj.storage_path)
+            raw_text = (pytesseract.image_to_string(image) or '').strip()
+            print(f"[get_or_extract_file_text] Tesseract extracted {len(raw_text)} chars")
+        except Exception as e:
+            print(f"[get_or_extract_file_text] Tesseract failed: {e}")
+    
+    # If still empty, use fallback
+    if not raw_text:
+        print(f"[get_or_extract_file_text] All OCR methods failed for {file_obj.filename}")
+        raw_text = _fallback_ocr(file_obj)
+    
+    if raw_text:
+        file_obj.extracted_text = raw_text[:10000]
+        file_obj.save(update_fields=['extracted_text'])
+    return raw_text
 
 
 # Celery task wrapper (if enabled)

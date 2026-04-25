@@ -5,10 +5,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLogin } from '../hooks';
 import { LoginInput, loginSchema } from '../schemas';
-import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle, RotateCcw } from 'lucide-react';
 
 export function LoginForm() {
   const { mutate: login, isPending, error } = useLogin();
+  const [isNetworkError, setIsNetworkError] = React.useState(false);
 
   const {
     register,
@@ -22,6 +23,18 @@ export function LoginForm() {
     },
   });
 
+  React.useEffect(() => {
+    // Check if error is a network error
+    if (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      setIsNetworkError(
+        errorMsg.includes('Backend server') ||
+        errorMsg.includes('Network connection') ||
+        errorMsg.includes('not responding')
+      );
+    }
+  }, [error]);
+
   const onSubmit = (data: LoginInput) => {
     login(data);
   };
@@ -34,10 +47,28 @@ export function LoginForm() {
           <div className="mb-6 flex items-start space-x-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/70 dark:bg-red-950/50">
             <AlertCircle className="mt-0.5 h-5 w-5 text-red-600" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-800 dark:text-red-300">Login failed</p>
+              <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                {isNetworkError ? 'Connection failed' : 'Login failed'}
+              </p>
               <p className="mt-1 text-sm text-red-700 dark:text-red-400">
                 {error instanceof Error ? error.message : 'Invalid email or password'}
               </p>
+              {isNetworkError && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const form = document.querySelector('form');
+                    if (form) {
+                      form.dispatchEvent(new Event('submit', { bubbles: true }));
+                    }
+                  }}
+                  disabled={isPending}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Try again
+                </button>
+              )}
             </div>
           </div>
         )}

@@ -673,13 +673,11 @@ class AIService:
             items.append((enc.ts, 'encounter', text))
 
         for f in patient.files.filter(created_at__gte=cutoff).order_by('-created_at')[:max_items]:
-            kind_label = f.get_kind_display() if hasattr(f, 'get_kind_display') else f.kind
             extracted = get_or_extract_file_text(f)
-            if extracted:
-                text = f"Document: {f.filename} (category: {kind_label}). Content from image: {extracted}"
-            else:
-                text = f"Document: {f.filename} (category: {kind_label})."
-            items.append((f.created_at, 'file', text))
+            # Only include files with actual extracted text; skip files without content
+            if extracted and extracted.strip():
+                text = f"Medical Document ({f.get_kind_display()}): {extracted[:1000]}"
+                items.append((f.created_at, 'file', text))
 
         # Sort by date descending (most recent first), then take up to max_items
         items.sort(key=lambda x: x[0], reverse=True)
