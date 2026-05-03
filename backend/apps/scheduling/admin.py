@@ -5,28 +5,24 @@ from .models import DoctorAvailability, Appointment
 
 @admin.register(DoctorAvailability)
 class DoctorAvailabilityAdmin(admin.ModelAdmin):
-    list_display = ['id', 'doctor', 'day_display', 'time_range', 'has_breaks']
-    list_filter = ['day_of_week']
+    list_display = ['id', 'doctor', 'date', 'time_range', 'has_breaks']
+    list_filter = ['date']
     search_fields = ['doctor__name']
-    
+    date_hierarchy = 'date'
+
     fieldsets = [
         ('👨‍⚕️ Doctor', {
             'fields': ['doctor']
         }),
         ('📅 Schedule', {
-            'fields': ['day_of_week', 'start_time', 'end_time', 'breaks']
+            'fields': ['date', 'start_time', 'end_time', 'breaks']
         }),
     ]
-    
-    @admin.display(description='📅 Day')
-    def day_display(self, obj):
-        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        return days[obj.day_of_week] if 0 <= obj.day_of_week < 7 else 'Unknown'
-    
+
     @admin.display(description='⏰ Time Range')
     def time_range(self, obj):
         return f"{obj.start_time.strftime('%H:%M')} - {obj.end_time.strftime('%H:%M')}"
-    
+
     @admin.display(description='☕ Breaks', boolean=True)
     def has_breaks(self, obj):
         return bool(obj.breaks)

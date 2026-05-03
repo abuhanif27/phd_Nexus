@@ -23,8 +23,8 @@ pandas
 numpy
 
 # Machine Learning and AI
-scikit-learn==1.4.0
-faiss-cpu==1.8.0
+scikit-learn
+faiss-cpu
 joblib
 
 # Async Task Queue

@@ -9,20 +9,21 @@ from apps.patients.models import Patient
 
 class DoctorAvailability(models.Model):
     """
-    Weekly availability schedule for doctors.
+    Date-specific availability slots set by doctors.
+    Each row represents one working block on a specific calendar date.
     """
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='availability')
-    day_of_week = models.IntegerField()  # 0=Monday, 6=Sunday
+    date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
     breaks = models.JSONField(default=list)  # [{start, end}]
-    
+
     class Meta:
         db_table = 'doctor_availability'
-        unique_together = ['doctor', 'day_of_week', 'start_time']
-    
+        unique_together = ['doctor', 'date', 'start_time']
+
     def __str__(self):
-        return f"Dr. {self.doctor.name} - Day {self.day_of_week}: {self.start_time}-{self.end_time}"
+        return f"Dr. {self.doctor.name} - {self.date}: {self.start_time}-{self.end_time}"
 
 
 class Appointment(models.Model):

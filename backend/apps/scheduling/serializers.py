@@ -8,7 +8,8 @@ from .models import DoctorAvailability, Appointment
 class DoctorAvailabilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = DoctorAvailability
-        fields = ['id', 'doctor', 'day_of_week', 'start_time', 'end_time', 'breaks']
+        fields = ['id', 'doctor', 'date', 'start_time', 'end_time', 'breaks']
+        read_only_fields = ['id', 'doctor']
 
 
 class AppointmentSerializer(serializers.ModelSerializer):

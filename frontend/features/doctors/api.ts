@@ -53,13 +53,21 @@ export async function createOrUpdateProfile(profile: DoctorCreateRequest): Promi
 /**
  * Get doctor availability
  */
-export async function getMyAvailability(): Promise<DoctorAvailability[]> {
-  const { data } = await apiClient.get<DoctorAvailability[]>(`${BASE}/availability/`);
-  return data;
+export async function getMyAvailability(params?: {
+  month?: number;
+  year?: number;
+}): Promise<DoctorAvailability[]> {
+  const { data } = await apiClient.get<DoctorAvailability[] | { results: DoctorAvailability[] }>(
+    `${BASE}/availability/`,
+    { params }
+  );
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object' && 'results' in data) return data.results;
+  return [];
 }
 
 /**
- * Set doctor availability
+ * Create a date-specific availability slot
  */
 export async function setAvailability(
   availability: Omit<DoctorAvailability, 'id' | 'doctor'>
@@ -69,11 +77,11 @@ export async function setAvailability(
 }
 
 /**
- * Update availability
+ * Update an availability slot
  */
 export async function updateAvailability(
   id: number,
-  availability: Partial<DoctorAvailability>
+  availability: Partial<Omit<DoctorAvailability, 'id' | 'doctor'>>
 ): Promise<DoctorAvailability> {
   const { data } = await apiClient.patch<DoctorAvailability>(
     `${BASE}/availability/${id}/`,

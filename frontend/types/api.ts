@@ -148,7 +148,7 @@ export interface AppointmentCreateRequest {
 export interface DoctorAvailability {
   id: number;
   doctor: number;
-  day_of_week: number; // 0=Monday, 6=Sunday
+  date: string; // YYYY-MM-DD
   start_time: string;
   end_time: string;
   breaks: Array<{ start: string; end: string }>;
