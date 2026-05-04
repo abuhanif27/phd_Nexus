@@ -34,7 +34,6 @@ import {
   Coffee,
   AlertCircle,
   CalendarDays,
-  Info,
   Users,
 } from 'lucide-react';
 import {
@@ -211,13 +210,6 @@ export function AvailabilityManager() {
         </p>
       </div>
 
-      <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <p className="text-sm">
-          <strong>Blue dot</strong> = available slots &nbsp;|&nbsp; <strong className="text-red-600">Red dot</strong> = fully booked.
-          Patients see 10–30 min windows based on your time-per-patient setting.
-        </p>
-      </div>
 
       {error && (
         <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
