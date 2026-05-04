@@ -17,6 +17,9 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'specialty', 'location']
+    # Restrict detail URL to integers only so that sibling paths like
+    # "availability/" are NOT swallowed by the ^(?P<pk>[^/.]+)/$ pattern.
+    lookup_value_regex = r'\d+'
     
     def get_queryset(self):
         queryset = super().get_queryset()

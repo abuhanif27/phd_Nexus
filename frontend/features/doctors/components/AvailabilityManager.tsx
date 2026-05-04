@@ -86,6 +86,17 @@ function fmtDuration(minutes: number): string {
   return m ? `${h}h ${m}m` : `${h} hr${h > 1 ? 's' : ''}`;
 }
 
+/** Convert "HH:MM" or "HH:MM:SS" → "h:MM AM/PM" */
+function fmtTime(timeStr: string): string {
+  if (!timeStr) return '';
+  const [hStr, mStr] = timeStr.split(':');
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 function computeEndTime(startTime: string, durationMinutes: number): string {
   const [h, m] = startTime.split(':').map(Number);
   const total = h * 60 + m + durationMinutes;
@@ -376,7 +387,7 @@ function SessionCard({ slot, onEdit, onDelete }: { slot: DoctorAvailability; onE
           <div className="flex items-center gap-2 flex-wrap">
             <span className="flex items-center gap-1.5 font-semibold">
               <Clock className="h-4 w-4 text-primary" />
-              {slot.start_time.slice(0, 5)} – {slot.end_time}
+              {fmtTime(slot.start_time)} – {fmtTime(slot.end_time)}
             </span>
             {full ? (
               <Badge variant="destructive" className="text-xs">FULLY BOOKED</Badge>
@@ -418,7 +429,7 @@ function SessionCard({ slot, onEdit, onDelete }: { slot: DoctorAvailability; onE
         <div className="border-t pt-2 space-y-1">
           {slot.breaks.map((b, i) => (
             <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Coffee className="h-3 w-3" /> Break: {b.start} – {b.end}
+              <Coffee className="h-3 w-3" /> Break: {fmtTime(b.start)} – {fmtTime(b.end)}
             </div>
           ))}
         </div>
@@ -577,7 +588,7 @@ function SessionDialog({
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">Session Preview</p>
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Clock className="h-4 w-4 text-primary" />
-                {form.start_time} → {endTime}
+                {fmtTime(form.start_time)} → {fmtTime(endTime)}
                 <span className="font-normal text-muted-foreground">({fmtDuration(form.session_duration_minutes)})</span>
               </div>
               <div className="flex items-center gap-2 text-sm">

@@ -12,22 +12,20 @@ from apps.scheduling.views import (
     DoctorPatientsView,
 )
 
-# Public doctor list/detail (for patients to browse)
-doctor_router = DefaultRouter()
-doctor_router.register('', DoctorViewSet, basename='doctor')
-
-# Doctor-owned availability CRUD
-availability_router = DefaultRouter()
-availability_router.register('availability', DoctorAvailabilityViewSet, basename='doctor-availability')
+# Single router — avoids two DefaultRouters competing at the same '' prefix.
+# Two DefaultRouters both at '' cause the availability router's API-root view
+# to intercept GET /api/doctors/ before the DoctorViewSet list can respond.
+router = DefaultRouter()
+router.register('', DoctorViewSet, basename='doctor')
+router.register('availability', DoctorAvailabilityViewSet, basename='doctor-availability')
 
 urlpatterns = [
-    # Doctor-specific endpoints (must come before the catch-all router)
+    # Doctor-specific endpoints (must come before the router to avoid
+    # being swallowed by the '' registration's detail pattern)
     path('me/', DoctorProfileView.as_view(), name='doctor-me'),
     path('dashboard/stats/', DoctorDashboardStatsView.as_view(), name='doctor-stats'),
     path('appointments/', DoctorAppointmentsView.as_view(), name='doctor-appointments'),
     path('patients/', DoctorPatientsView.as_view(), name='doctor-patients'),
-    # Availability CRUD: /api/doctors/availability/ and /api/doctors/availability/{id}/
-    path('', include(availability_router.urls)),
-    # Public doctor browse: /api/doctors/ and /api/doctors/{id}/
-    path('', include(doctor_router.urls)),
+    # All remaining CRUD routes (doctors list/detail + availability CRUD)
+    path('', include(router.urls)),
 ]
