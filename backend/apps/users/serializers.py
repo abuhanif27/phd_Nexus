@@ -40,6 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
             
             return {
                 'id': p.id,
+                'patient_code': p.patient_code,
                 'name': p.name,
                 'phone': p.phone,
                 'dob': dob_value,

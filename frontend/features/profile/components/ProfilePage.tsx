@@ -26,6 +26,7 @@ import {
   GraduationCap,
   Star,
   Users,
+  Copy,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ import { useAuthStore } from '@/features/auth/store';
 import { useCurrentUser } from '@/features/auth/hooks';
 import { cn } from '@/lib/utils/cn';
 import { format } from 'date-fns';
+import { toast } from '@/components/ui/use-toast';
 
 export function ProfilePage() {
   // Prefer fresh data from /api/auth/me/ (includes doctor_profile / patient_profile)
@@ -185,6 +187,33 @@ export function ProfilePage() {
                       </p>
                     </div>
                   </div>
+                  {isPatient && user?.patient_profile?.patient_code && (
+                    <div className="flex items-center justify-between sm:col-span-2 lg:col-span-3 rounded-lg bg-blue-50 border border-blue-200 p-3 dark:bg-blue-950/40 dark:border-blue-800">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="default" className="text-sm shadow-sm">Patient Code</Badge>
+                        <p className="font-mono font-bold tracking-wider text-blue-900 dark:text-blue-100">
+                          {user.patient_profile.patient_code}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 hover:bg-blue-200 dark:hover:bg-blue-800"
+                        onClick={() => {
+                          if (user?.patient_profile?.patient_code) {
+                            navigator.clipboard.writeText(user.patient_profile.patient_code);
+                            toast({
+                              title: 'Copied!',
+                              description: 'Patient code copied. Share this code with your doctor.',
+                            });
+                          }
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Code
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Menu, Bell, User, Heart, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Menu, Bell, User, Heart, LogOut, Settings as SettingsIcon, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import {
 import { useAuthStore } from '@/features/auth/store';
 import { useLogout } from '@/features/auth/hooks';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { toast } from '@/components/ui/use-toast';
 
 interface AppHeaderProps {
   onToggleSidebar: () => void;
@@ -104,6 +105,22 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
                 <p className="text-xs capitalize text-gray-500 dark:text-gray-400">
                   {user?.role} Portal
                 </p>
+                {user?.role === 'patient' && user?.patient_profile?.patient_code && (
+                  <p 
+                    className="mt-1 flex items-center justify-between text-xs font-mono text-blue-600 dark:text-blue-400 cursor-pointer rounded-md p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigator.clipboard.writeText(user.patient_profile!.patient_code!);
+                      toast({
+                        title: 'Copied!',
+                        description: 'Patient code copied to clipboard.',
+                      });
+                    }}
+                  >
+                    <span>{user.patient_profile.patient_code}</span>
+                    <Copy className="h-3 w-3" />
+                  </p>
+                )}
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="dark:bg-gray-700" />
