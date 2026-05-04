@@ -63,4 +63,10 @@ export interface HealthSummary {
   professional_summary?: string;
   /** Short key findings (conditions, vaccination, etc.) for display. */
   professional_findings?: string[];
+  extracted_vitals?: {
+    blood_pressure: string;
+    heart_rate: string;
+    temperature: string;
+    weight: string;
+  };
 }

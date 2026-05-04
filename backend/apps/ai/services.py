@@ -752,6 +752,31 @@ class AIService:
                 elif label in ('DRUG', 'MEDICATION', 'CHEMICAL'):
                     medications.extend(vals[:15])
 
+        # Extract vitals (Blood pressure, heart rate, temperature, weight)
+        import re
+        vitals = {
+            'blood_pressure': 'N/A',
+            'heart_rate': 'N/A',
+            'temperature': 'N/A',
+            'weight': 'N/A',
+        }
+        
+        bp_match = re.search(r'(?:blood\s*pressure|BP)[\s:]*([\d]{2,3}\s*/\s*[\d]{2,3})', corpus, re.IGNORECASE)
+        if bp_match:
+            vitals['blood_pressure'] = bp_match.group(1).replace(' ', '')
+            
+        hr_match = re.search(r'(?:heart\s*rate|HR|pulse)[\s:]*([\d]{2,3})(?:\s*bpm)?', corpus, re.IGNORECASE)
+        if hr_match:
+            vitals['heart_rate'] = hr_match.group(1)
+            
+        temp_match = re.search(r'(?:temperature|temp|T)[\s:]*([\d]{2,3}(?:\.[\d])?)(?:\s*[FC])?', corpus, re.IGNORECASE)
+        if temp_match:
+            vitals['temperature'] = temp_match.group(1)
+            
+        weight_match = re.search(r'(?:weight|wt)[\s:]*([\d]{2,3}(?:\.[\d])?)(?:\s*(?:lbs|kg|pounds|kilograms))?', corpus, re.IGNORECASE)
+        if weight_match:
+            vitals['weight'] = weight_match.group(1)
+
         # Fallback: keyword-based extraction from corpus (broadened so analyze part is full of content)
         condition_keywords = (
             'diagnosis', 'diagnosed', 'condition', 'disease', 'disorder', 'syndrome',
@@ -831,6 +856,7 @@ class AIService:
             'source_counts': meta['source_counts'],
             'date_range': meta['date_range'],
             'record_count': meta['record_count'],
+            'extracted_vitals': vitals,
         }
 
 

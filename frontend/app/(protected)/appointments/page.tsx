@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,6 +17,7 @@ import {
   PauseCircle,
   ChevronLeft,
   ChevronRight,
+  Search,
 } from 'lucide-react';
 import { BookingModal } from '@/features/scheduling/components/BookingModal';
 import { apiClient } from '@/lib/api/axios';
@@ -29,6 +31,7 @@ export default function AppointmentsPage() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [pastPage, setPastPage] = useState(1);
   const [canceledPage, setCanceledPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const ITEMS_PER_PAGE = 5;
   const qc = useQueryClient();
 
@@ -78,7 +81,20 @@ export default function AppointmentsPage() {
 
   const rawAppointments: Appointment[] = Array.isArray(data) ? data : data?.results || [];
 
-  const appointments = rawAppointments.map((a) => {
+  const searchLower = searchQuery.toLowerCase().trim();
+  const filteredRawAppointments = rawAppointments.filter((a) => {
+    if (!searchLower) return true;
+    if (isDoctor) {
+      return (
+        a.patient_name?.toLowerCase().includes(searchLower) ||
+        a.patient_code?.toLowerCase().includes(searchLower)
+      );
+    } else {
+      return a.doctor_name?.toLowerCase().includes(searchLower);
+    }
+  });
+
+  const appointments = filteredRawAppointments.map((a) => {
     if (a.status === 'scheduled') {
       const endDateTime = new Date(`${a.date}T${a.end_time}`);
       const now = new Date();
@@ -127,13 +143,25 @@ export default function AppointmentsPage() {
             {isDoctor ? 'Patients booked with you' : 'Manage your medical appointments'}
           </p>
         </div>
-        {/* Doctors do NOT book appointments — patients do */}
-        {!isDoctor && (
-          <Button onClick={() => setShowBookingModal(true)} size="lg" className="w-full sm:w-auto">
-            <Plus className="mr-2 h-5 w-5" />
-            Book Appointment
-          </Button>
-        )}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder={isDoctor ? "Search by patient name or ID..." : "Search by doctor name..."}
+              className="w-full pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          {/* Doctors do NOT book appointments — patients do */}
+          {!isDoctor && (
+            <Button onClick={() => setShowBookingModal(true)} size="lg" className="w-full sm:w-auto">
+              <Plus className="mr-2 h-5 w-5" />
+              Book Appointment
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Scheduled */}

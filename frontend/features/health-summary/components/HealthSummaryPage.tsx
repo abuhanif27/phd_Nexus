@@ -26,14 +26,12 @@ import {
   Mail,
   MessageCircle,
   Clock,
-  Target,
   Zap,
   Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
@@ -204,7 +202,6 @@ export function HealthSummaryPage({
     )
     .slice(0, 5);
 
-  const healthScore = actualData?.health_score ?? 85;
   const sourceCounts = actualData?.source_counts ?? {};
   const recordCount = actualData?.record_count ?? 0;
   const dateRange = actualData?.date_range;
@@ -221,50 +218,51 @@ export function HealthSummaryPage({
         : bullets;
   const aiInsights = actualData?.ai_insights ?? [];
 
+  const lastUpdatedText = dateRange?.newest ? format(new Date(dateRange.newest), 'MMM d, yyyy') : 'N/A';
   const vitalSigns = [
     {
       label: 'Blood Pressure',
-      value: '120/80',
-      unit: 'mmHg',
+      value: actualData?.extracted_vitals?.blood_pressure || 'N/A',
+      unit: actualData?.extracted_vitals?.blood_pressure && actualData?.extracted_vitals?.blood_pressure !== 'N/A' ? 'mmHg' : '',
       status: 'normal',
       trend: 'stable',
       icon: Heart,
       color: 'text-red-600',
       bgColor: 'bg-red-50 dark:bg-red-950/20',
-      lastUpdated: '2 hours ago',
+      lastUpdated: lastUpdatedText,
     },
     {
       label: 'Heart Rate',
-      value: '72',
-      unit: 'bpm',
+      value: actualData?.extracted_vitals?.heart_rate || 'N/A',
+      unit: actualData?.extracted_vitals?.heart_rate && actualData?.extracted_vitals?.heart_rate !== 'N/A' ? 'bpm' : '',
       status: 'normal',
-      trend: 'down',
+      trend: 'stable',
       icon: Activity,
       color: 'text-pink-600',
       bgColor: 'bg-pink-50 dark:bg-pink-950/20',
-      lastUpdated: '2 hours ago',
+      lastUpdated: lastUpdatedText,
     },
     {
       label: 'Temperature',
-      value: '98.6',
-      unit: '°F',
+      value: actualData?.extracted_vitals?.temperature || 'N/A',
+      unit: actualData?.extracted_vitals?.temperature && actualData?.extracted_vitals?.temperature !== 'N/A' ? '°F' : '',
       status: 'normal',
       trend: 'stable',
       icon: Thermometer,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50 dark:bg-orange-950/20',
-      lastUpdated: '3 hours ago',
+      lastUpdated: lastUpdatedText,
     },
     {
       label: 'Weight',
-      value: '165',
-      unit: 'lbs',
+      value: actualData?.extracted_vitals?.weight || 'N/A',
+      unit: actualData?.extracted_vitals?.weight && actualData?.extracted_vitals?.weight !== 'N/A' ? 'lbs' : '',
       status: 'normal',
-      trend: 'up',
+      trend: 'stable',
       icon: Weight,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50 dark:bg-blue-950/20',
-      lastUpdated: '1 day ago',
+      lastUpdated: lastUpdatedText,
     },
   ];
 
@@ -552,48 +550,7 @@ export function HealthSummaryPage({
         </Card>
       )}
 
-      {/* Health Score Card */}
-      <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
-        <CardContent className="p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-blue-600 p-3">
-                  <Sparkles className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Overall Health Score
-                  </h3>
-                  <p className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                    {recordCount > 0
-                      ? `Based on ${recordCount} medical record(s) (labs, prescriptions, encounters, documents)`
-                      : 'Based on your vitals, activity, and health records'}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-6">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-blue-600 sm:text-6xl">
-                    {healthScore}
-                  </span>
-                  <span className="text-2xl text-gray-500 sm:text-3xl">/100</span>
-                </div>
-                <Progress value={healthScore} className="mt-4 h-4" />
-                <p className="mt-3 text-base font-medium text-green-600">
-                  Excellent! Keep up the great work 🎉
-                </p>
-              </div>
-            </div>
-            <div className="flex h-28 w-28 flex-shrink-0 items-center justify-center rounded-full border-8 border-blue-600 bg-white dark:bg-gray-900 sm:h-36 sm:w-36">
-              <div className="text-center">
-                <Target className="mx-auto h-8 w-8 text-blue-600 sm:h-10 sm:w-10" />
-                <p className="mt-2 text-sm font-medium text-gray-600">On Track</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Removed Health Score Card */}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column - Vitals & Conditions */}

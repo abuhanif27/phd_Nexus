@@ -125,6 +125,7 @@ export interface Appointment {
   patient_details?: Patient;
   patient_name?: string;
   patient_phone?: string;
+  patient_code?: string;
   date: string;
   start_time: string;
   end_time: string;

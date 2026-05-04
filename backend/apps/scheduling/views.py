@@ -160,21 +160,52 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         # Check for conflicts
         doctor = serializer.validated_data['doctor']
+        patient = serializer.validated_data['patient']
         date = serializer.validated_data['date']
         start_time = serializer.validated_data['start_time']
         end_time = serializer.validated_data['end_time']
         grant_consent = serializer.validated_data.pop('grant_consent', False)
         
-        conflict = Appointment.objects.filter(
+        # 1. Doctor already has an overlapping appointment
+        doctor_conflict = Appointment.objects.filter(
             doctor=doctor,
             date=date,
-            start_time=start_time,
+            status='scheduled',
+            start_time__lt=end_time,
+            end_time__gt=start_time
+        ).exists()
+        
+        if doctor_conflict:
+            return Response(
+                {'error': 'This slot is already booked'},
+                status=status.HTTP_409_CONFLICT
+            )
+            
+        # 2. Patient already has an overlapping appointment (with any doctor)
+        patient_time_conflict = Appointment.objects.filter(
+            patient=patient,
+            date=date,
+            status='scheduled',
+            start_time__lt=end_time,
+            end_time__gt=start_time
+        ).exists()
+        
+        if patient_time_conflict:
+            return Response(
+                {'error': 'You already have an appointment scheduled at this time'},
+                status=status.HTTP_409_CONFLICT
+            )
+            
+        # 3. Patient already has a scheduled appointment with this exact doctor (prevent double booking)
+        patient_doctor_conflict = Appointment.objects.filter(
+            patient=patient,
+            doctor=doctor,
             status='scheduled'
         ).exists()
         
-        if conflict:
+        if patient_doctor_conflict:
             return Response(
-                {'error': 'This slot is already booked'},
+                {'error': 'You already have an upcoming appointment scheduled with this doctor'},
                 status=status.HTTP_409_CONFLICT
             )
         
