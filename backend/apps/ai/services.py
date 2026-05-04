@@ -477,12 +477,14 @@ class AIService:
         content_parts = []
         for block in re.split(r'\[\d{4}-\d{2}-\d{2}\]\s*\[\w+\]\s*Document:[^\n]*\.?\s*', corpus):
             block = block.replace('Content from image:', '').strip()
-            if len(block) > 40 and not block.startswith('['):
+            if len(block) > 30 and not block.startswith('['):
                 content_parts.append(block)
+        
+        # If no clean blocks found, just use the corpus but strip metadata
         raw_text = ' '.join(content_parts) if content_parts else corpus
         raw_text = re.sub(r'\[\d{4}-\d{2}-\d{2}\]\s*\[\w+\]\s*Document:[^\n]+', ' ', raw_text)
         raw_text = re.sub(r'Content from image:\s*', ' ', raw_text)
-        # Remove long phone/email/URL runs so they don't become "findings"
+        # Remove long phone/email/URL runs
         raw_text = re.sub(r'\(\d{3}\)\s*\d{3}[-\s]?\d{4}', ' ', raw_text)
         raw_text = re.sub(r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}', ' ', raw_text)
         raw_text = re.sub(r'[\w.-]+@[\w.-]+\.\w+', ' ', raw_text)
@@ -515,8 +517,14 @@ class AIService:
         for pat, phrase in phrase_checks:
             if re.search(pat, raw_text, re.IGNORECASE):
                 add_finding(phrase)
+        
+        # Look for medications (common in prescriptions)
+        med_matches = re.findall(r'(?:Tab|Cap|Syr|Inj)[:\s]+([A-Z][a-z]+(?:\s+[0-9]+m?g)?)', raw_text)
+        for med in med_matches:
+            add_finding(f"Medication noted: {med}")
+
         # One free-form line after "List any Medical Problems" if short enough
-        m = re.search(r'list any medical problems[^:]*:\s*([^.]{20,120})', raw_text, re.IGNORECASE)
+        m = re.search(r'(?:list any medical problems|diagnosis|history)[^:]*:\s*([^.]{10,120})', raw_text, re.IGNORECASE)
         if m:
             g = re.sub(r'\s+', ' ', m.group(1)).strip()
             if not re.search(r'\d{5}|street|avenue', g, re.IGNORECASE):
@@ -533,14 +541,19 @@ class AIService:
                 imm.append('Hepatitis B vaccination: no')
             for i in imm:
                 add_finding(i)
-        if re.search(r'hepatitis\s*B', raw_text, re.IGNORECASE) and not any('Hepatitis' in f for f in findings):
-            add_finding('Hepatitis B vaccination status noted in record')
+        
+        # Generic health status indicators
+        if re.search(r'stable|improving|normal|unremarkable', raw_text, re.IGNORECASE):
+            m = re.search(r'([^.]{10,60}(?:stable|improving|normal|unremarkable)[^.]{0,40})', raw_text, re.IGNORECASE)
+            if m:
+                add_finding(m.group(1))
 
         # Short phrases that look like conditions (no long addresses)
-        for part in re.split(r'[.;]', raw_text):
+        for part in re.split(r'[.;\n]', raw_text):
             part = part.strip()
-            if 15 < len(part) < 120 and not re.search(r'\d{5}|street|avenue|suite|lane|drive', part, re.IGNORECASE):
-                if any(k in part.lower() for k in ('asthma', 'migraine', 'hypertension', 'medication', 'controlled', 'managed', 'stress', 'problem', 'condition', 'vaccination', 'immune')):
+            if 10 < len(part) < 120 and not re.search(r'\d{5}|street|avenue|suite|lane|drive', part, re.IGNORECASE):
+                # Look for keywords that might indicate a condition or finding
+                if any(k in part.lower() for k in ('asthma', 'migraine', 'hypertension', 'medication', 'controlled', 'managed', 'stress', 'problem', 'condition', 'vaccination', 'immune', 'test', 'result', 'finding', 'noted', 'history')):
                     add_finding(part, 90)
 
         # Dedupe and limit
@@ -553,6 +566,7 @@ class AIService:
         n = len(re.findall(r'\[\d{4}-\d{2}-\d{2}\]', corpus)) if corpus else 0
         n = max(n, 1) if content_parts or corpus.strip() else 0
         record_word = 'record' if n == 1 else 'records'
+        
         if clean_findings:
             narrative = f"Based on {n} medical {record_word}. Key findings: {clean_findings[0]}"
             if len(clean_findings) > 1:
@@ -562,7 +576,13 @@ class AIService:
             else:
                 narrative += "."
         else:
-            narrative = f"Based on {n} medical {record_word}. No structured conditions or vaccination summary could be extracted; review your uploaded documents for details."
+            # Fallback to TextRank-like summary if no specific findings
+            bullets = self._extractive_summary(raw_text, sentence_count=2)
+            if bullets:
+                narrative = f"Based on {n} medical {record_word}. Summary: {' '.join(bullets)}"
+            else:
+                narrative = f"Based on {n} medical {record_word}. No structured conditions could be extracted; review your documents for details."
+        
         return narrative, clean_findings
     
     def summarize_text(self, text: str) -> Dict:
@@ -674,10 +694,13 @@ class AIService:
 
         for f in patient.files.filter(created_at__gte=cutoff).order_by('-created_at')[:max_items]:
             extracted = get_or_extract_file_text(f)
-            # Only include files with actual extracted text; skip files without content
-            if extracted and extracted.strip():
-                text = f"Medical Document ({f.get_kind_display()}): {extracted[:1000]}"
-                items.append((f.created_at, 'file', text))
+            # Include files even if text extraction fails (e.g. OCR not working)
+            # to ensure they are counted in the records corpus
+            if not extracted or not extracted.strip():
+                extracted = "[Image document uploaded; text extraction (OCR) not available or failed for this file content.]"
+            
+            text = f"Medical Document ({f.get_kind_display()}): {extracted[:1000]}"
+            items.append((f.created_at, 'file', text))
 
         # Sort by date descending (most recent first), then take up to max_items
         items.sort(key=lambda x: x[0], reverse=True)

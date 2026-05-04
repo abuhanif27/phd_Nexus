@@ -104,8 +104,8 @@ def process_file_ocr(file_id: int) -> Dict:
 
 
 def _fallback_ocr(file_obj: File) -> str:
-    """Fallback OCR when Tesseract is not available. Returns empty string to indicate no text extracted."""
-    return ''
+    """Fallback OCR when Tesseract is not available. Returns placeholder to ensure document is acknowledged."""
+    return f"[Document: {file_obj.filename}. Type: {file_obj.get_kind_display()}. Text content could not be automatically extracted from this image file.]"
 
 
 def _extract_lab_data(file_obj: File, text: str) -> Dict:
