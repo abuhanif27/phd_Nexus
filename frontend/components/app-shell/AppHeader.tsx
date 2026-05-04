@@ -106,8 +106,8 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
                   {user?.role} Portal
                 </p>
                 {user?.role === 'patient' && user?.patient_profile?.patient_code && (
-                  <p 
-                    className="mt-1 flex items-center justify-between text-xs font-mono text-blue-600 dark:text-blue-400 cursor-pointer rounded-md p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                  <p
+                    className="mt-1 flex cursor-pointer items-center justify-between rounded-md p-1 font-mono text-xs text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30"
                     onClick={(e) => {
                       e.preventDefault();
                       navigator.clipboard.writeText(user.patient_profile!.patient_code!);

@@ -57,7 +57,11 @@ export function PatientWorkspace() {
       const currentDayKey = `${now.toISOString().slice(0, 10)} ${currentTime}`;
 
       workspace.reminders.forEach((reminder) => {
-        if (!reminder.enabled || reminder.time !== currentTime || reminder.lastTriggeredAt === currentDayKey) {
+        if (
+          !reminder.enabled ||
+          reminder.time !== currentTime ||
+          reminder.lastTriggeredAt === currentDayKey
+        ) {
           return;
         }
 
@@ -217,7 +221,10 @@ export function PatientWorkspace() {
                       <p className="mt-3 text-sm text-muted-foreground">{medicine.instructions}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {medicine.times.map((time) => (
-                          <Badge key={time} className="bg-slate-100 text-slate-700 hover:bg-slate-100">
+                          <Badge
+                            key={time}
+                            className="bg-slate-100 text-slate-700 hover:bg-slate-100"
+                          >
                             <Clock3 className="mr-1 h-3 w-3" /> {time}
                           </Badge>
                         ))}
@@ -300,7 +307,9 @@ export function PatientWorkspace() {
               {workspace.latestVisitCode ? (
                 <div className="rounded-2xl bg-slate-950 p-4 text-white">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Active code</p>
-                  <p className="mt-2 text-3xl font-bold tracking-[0.25em]">{workspace.latestVisitCode.code}</p>
+                  <p className="mt-2 text-3xl font-bold tracking-[0.25em]">
+                    {workspace.latestVisitCode.code}
+                  </p>
                   <p className="mt-2 text-sm text-slate-300">
                     Expires {format(new Date(workspace.latestVisitCode.expiresAt), 'PPP p')}
                   </p>
@@ -347,7 +356,9 @@ export function PatientWorkspace() {
                   type="button"
                   onClick={() => setSelectedPanel(record.id)}
                   className={`w-full rounded-2xl border p-4 text-left transition ${
-                    selectedPanel === record.id ? 'border-emerald-500 bg-emerald-50' : 'hover:bg-slate-50'
+                    selectedPanel === record.id
+                      ? 'border-emerald-500 bg-emerald-50'
+                      : 'hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -359,7 +370,9 @@ export function PatientWorkspace() {
                         <p className="font-semibold">{record.title}</p>
                         <Badge variant="outline">{record.kind}</Badge>
                       </div>
-                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{record.summary}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                        {record.summary}
+                      </p>
                       <p className="mt-2 text-xs text-muted-foreground">{record.date}</p>
                     </div>
                   </div>

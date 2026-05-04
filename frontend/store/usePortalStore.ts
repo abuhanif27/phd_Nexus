@@ -43,13 +43,32 @@ interface PortalState {
   clearActiveProfile: () => void;
   createPatientVisitCode: (patientProfileId: string) => VisitCode;
   sendPatientChatMessage: (patientProfileId: string, text: string) => void;
-  updateReminder: (patientProfileId: string, reminderId: string, updates: { enabled?: boolean; time?: string }) => void;
+  updateReminder: (
+    patientProfileId: string,
+    reminderId: string,
+    updates: { enabled?: boolean; time?: string }
+  ) => void;
   markReminderTriggered: (patientProfileId: string, reminderId: string, isoStamp: string) => void;
-  resolveVisitCodeForDoctor: (doctorProfileId: string, code: string) => { success: boolean; patientProfileId?: string };
-  addDraftTemplate: (doctorProfileId: string, category: PrescriptionCategory, template: PrescriptionTemplate) => void;
-  removeDraftTemplate: (doctorProfileId: string, category: PrescriptionCategory, templateId: string) => void;
+  resolveVisitCodeForDoctor: (
+    doctorProfileId: string,
+    code: string
+  ) => { success: boolean; patientProfileId?: string };
+  addDraftTemplate: (
+    doctorProfileId: string,
+    category: PrescriptionCategory,
+    template: PrescriptionTemplate
+  ) => void;
+  removeDraftTemplate: (
+    doctorProfileId: string,
+    category: PrescriptionCategory,
+    templateId: string
+  ) => void;
   clearDoctorDraft: (doctorProfileId: string) => void;
-  updateHospitalRow: (hospitalProfileId: string, rowId: string, patch: Partial<HospitalDepartmentRow>) => void;
+  updateHospitalRow: (
+    hospitalProfileId: string,
+    rowId: string,
+    patch: Partial<HospitalDepartmentRow>
+  ) => void;
   addHospitalRow: (hospitalProfileId: string) => void;
 }
 
@@ -104,7 +123,10 @@ export const usePortalStore = create<PortalState>()(
       createPatientVisitCode: (patientProfileId) => {
         const visitCode = createVisitCode(patientProfileId);
         set((state) => ({
-          visitCodes: [visitCode, ...state.visitCodes.filter((item) => item.patientProfileId !== patientProfileId)],
+          visitCodes: [
+            visitCode,
+            ...state.visitCodes.filter((item) => item.patientProfileId !== patientProfileId),
+          ],
           patientWorkspaces: {
             ...state.patientWorkspaces,
             [patientProfileId]: {
@@ -181,8 +203,7 @@ export const usePortalStore = create<PortalState>()(
         const cleanCode = code.trim().toUpperCase();
         const matchedCode = get().visitCodes.find(
           (item) =>
-            item.code.toUpperCase() === cleanCode &&
-            new Date(item.expiresAt).getTime() > Date.now()
+            item.code.toUpperCase() === cleanCode && new Date(item.expiresAt).getTime() > Date.now()
         );
 
         if (!matchedCode) {
@@ -327,7 +348,10 @@ export function getStoredActivePortalId(): string | null {
   }
 }
 
-export function getDoctorSummaryFromState(patientProfile: EntryProfile | undefined, workspace: PatientWorkspace | undefined): string[] {
+export function getDoctorSummaryFromState(
+  patientProfile: EntryProfile | undefined,
+  workspace: PatientWorkspace | undefined
+): string[] {
   if (!patientProfile || !workspace) {
     return [];
   }

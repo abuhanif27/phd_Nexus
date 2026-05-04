@@ -42,12 +42,12 @@ class DoctorSlotsView(views.APIView):
             )
         
         # Get doctor availability for this specific date
-        availability = DoctorAvailability.objects.filter(
+        availabilities = DoctorAvailability.objects.filter(
             doctor=doctor,
             date=date
-        ).first()
+        ).order_by('start_time')
         
-        if not availability:
+        if not availabilities.exists():
             return Response({
                 'date': date_str,
                 'doctor_id': doctor_id,
@@ -57,53 +57,58 @@ class DoctorSlotsView(views.APIView):
                 'is_fully_booked': False,
             })
 
-        slot_mins = availability.minutes_per_patient
-        max_patients = availability.max_patients
-        session_start = datetime.combine(date, availability.start_time)
-        session_end = session_start + timedelta(minutes=availability.session_duration_minutes)
-
         # For today, skip slots whose start time has already passed
         is_today = (date == date_type.today())
         now_time = datetime.now().time() if is_today else None
 
         slots = []
-        current = session_start
-        patient_count = 0
+        
+        for availability in availabilities:
+            slot_mins = availability.minutes_per_patient
+            max_patients = availability.max_patients
+            session_start = datetime.combine(date, availability.start_time)
+            session_end = session_start + timedelta(minutes=availability.session_duration_minutes)
+            
+            current = session_start
+            patient_count = 0
 
-        while current < session_end and patient_count < max_patients:
-            slot_start = current.time()
-            slot_end = (current + timedelta(minutes=slot_mins)).time()
+            while current < session_end and patient_count < max_patients:
+                slot_start = current.time()
+                slot_end = (current + timedelta(minutes=slot_mins)).time()
 
-            # Skip past slots when booking for today
-            if is_today and slot_start <= now_time:
+                # Skip past slots when booking for today
+                if is_today and slot_start <= now_time:
+                    current += timedelta(minutes=slot_mins)
+                    continue
+
+                # Skip break windows
+                in_break = False
+                for brk in availability.breaks:
+                    brk_start = datetime.strptime(brk['start'], '%H:%M').time()
+                    brk_end = datetime.strptime(brk['end'], '%H:%M').time()
+                    if brk_start <= slot_start < brk_end:
+                        in_break = True
+                        break
+
+                if not in_break:
+                    booked = Appointment.objects.filter(
+                        doctor=doctor,
+                        date=date,
+                        start_time=slot_start,
+                        status='scheduled',
+                    ).exists()
+                    slots.append({
+                        'start_time': slot_start.strftime('%H:%M'),
+                        'end_time': slot_end.strftime('%H:%M'),
+                        'available': not booked,
+                    })
+                    patient_count += 1
+
                 current += timedelta(minutes=slot_mins)
-                continue
 
-            # Skip break windows
-            in_break = False
-            for brk in availability.breaks:
-                brk_start = datetime.strptime(brk['start'], '%H:%M').time()
-                brk_end = datetime.strptime(brk['end'], '%H:%M').time()
-                if brk_start <= slot_start < brk_end:
-                    in_break = True
-                    break
-
-            if not in_break:
-                booked = Appointment.objects.filter(
-                    doctor=doctor,
-                    date=date,
-                    start_time=slot_start,
-                    status='scheduled',
-                ).exists()
-                slots.append({
-                    'start_time': slot_start.strftime('%H:%M'),
-                    'end_time': slot_end.strftime('%H:%M'),
-                    'available': not booked,
-                })
-                patient_count += 1
-
-            current += timedelta(minutes=slot_mins)
-
+        # Sort slots if not strictly ordered
+        slots = sorted(slots, key=lambda x: x['start_time'])
+        
         available_count = sum(1 for s in slots if s['available'])
 
         return Response({

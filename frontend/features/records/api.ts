@@ -73,7 +73,9 @@ export async function uploadMedicalFile(data: FormData): Promise<MedicalFile> {
 }
 
 // Get signed download link for a file
-export async function getMedicalFileLink(fileId: number): Promise<{ url: string; expires_in: number }> {
+export async function getMedicalFileLink(
+  fileId: number
+): Promise<{ url: string; expires_in: number }> {
   const response = await apiClient.get(`/api/records/files/${fileId}/link/`);
   return response.data;
 }

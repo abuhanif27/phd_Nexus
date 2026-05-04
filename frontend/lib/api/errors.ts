@@ -35,7 +35,10 @@ export function getErrorMessage(error: unknown): string {
       if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
         return 'Backend server is not responding. Make sure the backend is running on http://localhost:8000. Try again in a few moments.';
       }
-      return error.message || 'Network connection failed. Please check your internet connection and try again.';
+      return (
+        error.message ||
+        'Network connection failed. Please check your internet connection and try again.'
+      );
     }
 
     const data = error.response?.data as DRFErrorResponse | undefined;

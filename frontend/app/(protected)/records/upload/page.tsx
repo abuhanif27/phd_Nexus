@@ -44,7 +44,11 @@ export default function UploadRecordsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
-      toast({ variant: 'destructive', title: 'Select a file', description: 'Choose a file to upload.' });
+      toast({
+        variant: 'destructive',
+        title: 'Select a file',
+        description: 'Choose a file to upload.',
+      });
       return;
     }
     const formData = new FormData();
@@ -75,7 +79,9 @@ export default function UploadRecordsPage() {
             </div>
             Add document
           </CardTitle>
-          <CardDescription>Upload a PDF, image, or document. Lab and prescription files may be processed for data.</CardDescription>
+          <CardDescription>
+            Upload a PDF, image, or document. Lab and prescription files may be processed for data.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -88,7 +94,9 @@ export default function UploadRecordsPage() {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {KINDS.map((k) => (
-                  <option key={k.value} value={k.value}>{k.label}</option>
+                  <option key={k.value} value={k.value}>
+                    {k.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -102,14 +110,18 @@ export default function UploadRecordsPage() {
                 className="cursor-pointer"
               />
               {file && (
-                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <FileText className="h-4 w-4" />
                   {file.name} ({(file.size / 1024).toFixed(1)} KB)
                 </p>
               )}
             </div>
             <div className="flex flex-col-reverse gap-3 sm:flex-row">
-              <Button type="submit" disabled={!file || uploadMutation.isPending} className="w-full sm:flex-1">
+              <Button
+                type="submit"
+                disabled={!file || uploadMutation.isPending}
+                className="w-full sm:flex-1"
+              >
                 {uploadMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

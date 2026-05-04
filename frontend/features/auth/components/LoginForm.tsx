@@ -29,8 +29,8 @@ export function LoginForm() {
       const errorMsg = error instanceof Error ? error.message : String(error);
       setIsNetworkError(
         errorMsg.includes('Backend server') ||
-        errorMsg.includes('Network connection') ||
-        errorMsg.includes('not responding')
+          errorMsg.includes('Network connection') ||
+          errorMsg.includes('not responding')
       );
     }
   }, [error]);
@@ -76,7 +76,10 @@ export function LoginForm() {
         <div className="space-y-5">
           {/* Email Field */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+            >
               Email Address <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-1">
@@ -145,7 +148,10 @@ export function LoginForm() {
               type="checkbox"
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+            <label
+              htmlFor="remember-me"
+              className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+            >
               Remember me for 30 days
             </label>
           </div>

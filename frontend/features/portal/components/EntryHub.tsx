@@ -210,12 +210,15 @@ export function EntryHub() {
                 </div>
               )}
               {error ? <p className="text-sm text-rose-300 md:col-span-2">{error}</p> : null}
-              <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-                <Button onClick={handleCreate} className="bg-cyan-500 text-slate-950 hover:bg-cyan-400">
+              <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+                <Button
+                  onClick={handleCreate}
+                  className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+                >
                   Create and enter <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <p className="text-sm text-slate-300">
-                  Current mode: <span className="font-medium text-white capitalize">{role}</span>
+                  Current mode: <span className="font-medium capitalize text-white">{role}</span>
                 </p>
               </div>
             </CardContent>
@@ -263,7 +266,7 @@ export function EntryHub() {
                               : 'Patient workspace'}
                         </p>
                       </div>
-                      <Badge className="bg-white/10 text-white capitalize">{profile.role}</Badge>
+                      <Badge className="bg-white/10 capitalize text-white">{profile.role}</Badge>
                     </div>
                   </button>
                 ))

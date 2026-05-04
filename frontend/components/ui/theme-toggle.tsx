@@ -36,13 +36,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
 
   if (!mounted) {
     return (
-      <Button
-        variant="ghost"
-        size="icon"
-        className={className}
-        aria-label="Toggle theme"
-        disabled
-      >
+      <Button variant="ghost" size="icon" className={className} aria-label="Toggle theme" disabled>
         <Sun className="h-5 w-5" />
       </Button>
     );

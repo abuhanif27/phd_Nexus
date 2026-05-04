@@ -77,7 +77,11 @@ export function AppointmentBooking() {
       toast({
         variant: 'destructive',
         title: 'Booking Failed',
-        description: error.response?.data?.message || error.response?.data?.error || error.response?.data?.non_field_errors?.[0] || 'Failed to book appointment',
+        description:
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.response?.data?.non_field_errors?.[0] ||
+          'Failed to book appointment',
       });
     },
   });
@@ -159,7 +163,7 @@ export function AppointmentBooking() {
               </div>
             ) : (
               <div className="space-y-3">
-                {doctorsData?.results.map((doctor) => (
+                {(Array.isArray(doctorsData) ? doctorsData : (doctorsData?.results || [])).map((doctor) => (
                   <DoctorCard
                     key={doctor.id}
                     doctor={doctor}
@@ -227,16 +231,27 @@ export function AppointmentBooking() {
               <>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                   {availableSlots.slots.map((slot) => {
-                    const slotLabel = `${slot.start_time} - ${slot.end_time}`;
+                    const slotValue = `${slot.start_time} - ${slot.end_time}`;
+                    
+                    const formatTime12h = (time24: string) => {
+                      const [hoursStr, minutes] = time24.split(':');
+                      const hours = parseInt(hoursStr, 10);
+                      const ampm = hours >= 12 ? 'PM' : 'AM';
+                      const hours12 = hours % 12 || 12;
+                      return `${hours12}:${minutes} ${ampm}`;
+                    };
+                    
+                    const displayLabel = `${formatTime12h(slot.start_time)} - ${formatTime12h(slot.end_time)}`;
+
                     return (
                       <Button
-                        key={slotLabel}
-                        variant={selectedSlot === slotLabel ? 'default' : 'outline'}
-                        onClick={() => handleSlotSelect(slotLabel)}
+                        key={slotValue}
+                        variant={selectedSlot === slotValue ? 'default' : 'outline'}
+                        onClick={() => handleSlotSelect(slotValue)}
                         disabled={!slot.available}
                       >
                         <Clock className="mr-2 h-4 w-4" />
-                        {slotLabel}
+                        {displayLabel}
                       </Button>
                     );
                   })}

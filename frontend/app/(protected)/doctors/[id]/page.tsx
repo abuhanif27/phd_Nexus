@@ -130,12 +130,20 @@ export default function DoctorProfilePage() {
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <Link href={`/appointments?doctor=${doctor.id}`}>
-                    <Button size="lg" className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto">
+                    <Button
+                      size="lg"
+                      className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
+                    >
                       <Calendar className="mr-2 h-5 w-5" />
                       Book Appointment
                     </Button>
                   </Link>
-                  <Button size="lg" variant="outline" onClick={() => router.back()} className="w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={() => router.back()}
+                    className="w-full sm:w-auto"
+                  >
                     Back to Directory
                   </Button>
                 </div>

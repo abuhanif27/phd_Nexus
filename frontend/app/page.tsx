@@ -155,7 +155,9 @@ export default function HomePage() {
                   <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-600" />
                   <div>
                     <p className="font-semibold text-gray-900 dark:text-gray-100">Quick Analysis</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">Results in 1-2 seconds</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      Results in 1-2 seconds
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
@@ -175,7 +177,9 @@ export default function HomePage() {
                 <div className="flex items-start space-x-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-600" />
                   <div>
-                    <p className="font-semibold text-gray-900 dark:text-gray-100">No Subscription</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">
+                      No Subscription
+                    </p>
                     <p className="text-sm text-gray-600 dark:text-gray-300">Free forever</p>
                   </div>
                 </div>
@@ -212,7 +216,9 @@ export default function HomePage() {
                       <Brain className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">AI Symptom Analysis</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        AI Symptom Analysis
+                      </h3>
                       <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                         Advanced NLP extracts medical entities and provides intelligent specialist
                         recommendations
@@ -228,7 +234,9 @@ export default function HomePage() {
                       <Zap className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Quick Answer Mode</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        Quick Answer Mode
+                      </h3>
                       <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                         Fast sklearn analysis in 1-2 seconds for simple symptoms and urgent needs
                       </p>
@@ -243,7 +251,9 @@ export default function HomePage() {
                       <Activity className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Deep Analysis Mode</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        Deep Analysis Mode
+                      </h3>
                       <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                         Comprehensive PyTorch + medical history review with 85-95% accuracy
                       </p>
@@ -258,7 +268,9 @@ export default function HomePage() {
                       <Shield className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Privacy First</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        Privacy First
+                      </h3>
                       <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                         All data stays on your computer. No cloud uploads, no subscriptions,
                         $0/month
@@ -278,11 +290,15 @@ export default function HomePage() {
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <div className="text-center">
               <p className="text-4xl font-bold text-blue-600">85-95%</p>
-              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-300">AI Accuracy</p>
+              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+                AI Accuracy
+              </p>
             </div>
             <div className="text-center">
               <p className="text-4xl font-bold text-blue-600">&lt;2s</p>
-              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-300">Quick Analysis</p>
+              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+                Quick Analysis
+              </p>
             </div>
             <div className="text-center">
               <p className="text-4xl font-bold text-blue-600">100%</p>
@@ -296,7 +312,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="about" className="px-4 pb-24 pt-4 sm:px-6 lg:px-8 scroll-mt-24">
+      <section id="about" className="scroll-mt-24 px-4 pb-24 pt-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-xl backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
             <div className="max-w-3xl space-y-4">
@@ -304,8 +320,8 @@ export default function HomePage() {
                 About NexusCare
               </h2>
               <p className="text-base leading-7 text-slate-600 dark:text-slate-300">
-                NexusCare combines patient records, scheduling, and AI-assisted symptom analysis
-                in one local-first healthcare workspace. The landing page links now point to real
+                NexusCare combines patient records, scheduling, and AI-assisted symptom analysis in
+                one local-first healthcare workspace. The landing page links now point to real
                 sections on the page, while the app routes take users into the secured dashboard.
               </p>
             </div>

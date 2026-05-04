@@ -37,9 +37,12 @@ export async function bookAppointment(appointment: AppointmentCreateRequest): Pr
  * List current user's appointments (patient sees their own, doctor sees theirs)
  */
 export async function getMyAppointments(): Promise<Appointment[]> {
-  const { data } = await apiClient.get<Appointment[] | { results: Appointment[] }>(`${BASE}/appointments/`);
+  const { data } = await apiClient.get<Appointment[] | { results: Appointment[] }>(
+    `${BASE}/appointments/`
+  );
   if (Array.isArray(data)) return data;
-  if (data && typeof data === 'object' && 'results' in data) return (data as { results: Appointment[] }).results;
+  if (data && typeof data === 'object' && 'results' in data)
+    return (data as { results: Appointment[] }).results;
   return [];
 }
 

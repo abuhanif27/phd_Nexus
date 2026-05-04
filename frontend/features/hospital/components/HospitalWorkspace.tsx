@@ -42,10 +42,22 @@ export function HospitalWorkspace() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={Building2} label="Total patients" value={metrics.totalPatients.toString()} />
-        <MetricCard icon={TrendingUp} label="Net revenue" value={`৳ ${metrics.netRevenue.toLocaleString()}`} />
+        <MetricCard
+          icon={Building2}
+          label="Total patients"
+          value={metrics.totalPatients.toString()}
+        />
+        <MetricCard
+          icon={TrendingUp}
+          label="Net revenue"
+          value={`৳ ${metrics.netRevenue.toLocaleString()}`}
+        />
         <MetricCard icon={BarChart3} label="Occupancy rate" value={`${metrics.occupancyRate}%`} />
-        <MetricCard icon={Calculator} label="Avg wait" value={`${metrics.averageWaitMinutes} min`} />
+        <MetricCard
+          icon={Calculator}
+          label="Avg wait"
+          value={`${metrics.averageWaitMinutes} min`}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
@@ -122,12 +134,23 @@ export function HospitalWorkspace() {
           <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-white">
             <CardHeader>
               <CardTitle>Auto-calculated results</CardTitle>
-              <CardDescription>Professional dashboard summary from the sheet inputs.</CardDescription>
+              <CardDescription>
+                Professional dashboard summary from the sheet inputs.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <ResultLine label="Gross revenue" value={`৳ ${metrics.totalRevenue.toLocaleString()}`} />
-              <ResultLine label="Operating expense" value={`৳ ${metrics.totalExpenses.toLocaleString()}`} />
-              <ResultLine label="Revenue per doctor" value={`৳ ${metrics.revenuePerDoctor.toLocaleString()}`} />
+              <ResultLine
+                label="Gross revenue"
+                value={`৳ ${metrics.totalRevenue.toLocaleString()}`}
+              />
+              <ResultLine
+                label="Operating expense"
+                value={`৳ ${metrics.totalExpenses.toLocaleString()}`}
+              />
+              <ResultLine
+                label="Revenue per doctor"
+                value={`৳ ${metrics.revenuePerDoctor.toLocaleString()}`}
+              />
               <ResultLine label="Tests per patient" value={metrics.testsPerPatient.toString()} />
             </CardContent>
           </Card>
@@ -135,19 +158,27 @@ export function HospitalWorkspace() {
           <Card>
             <CardHeader>
               <CardTitle>Department performance</CardTitle>
-              <CardDescription>Visual comparison similar to a professional analytics board.</CardDescription>
+              <CardDescription>
+                Visual comparison similar to a professional analytics board.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {workspace.rows.map((row) => {
-                const width = metrics.totalRevenue > 0 ? (row.revenue / metrics.totalRevenue) * 100 : 0;
+                const width =
+                  metrics.totalRevenue > 0 ? (row.revenue / metrics.totalRevenue) * 100 : 0;
                 return (
                   <div key={row.id} className="space-y-2">
                     <div className="flex items-center justify-between gap-3 text-sm">
                       <span>{row.department}</span>
-                      <span className="text-muted-foreground">৳ {row.revenue.toLocaleString()}</span>
+                      <span className="text-muted-foreground">
+                        ৳ {row.revenue.toLocaleString()}
+                      </span>
                     </div>
                     <div className="h-3 rounded-full bg-slate-100">
-                      <div className="h-3 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500" style={{ width: `${width}%` }} />
+                      <div
+                        className="h-3 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500"
+                        style={{ width: `${width}%` }}
+                      />
                     </div>
                   </div>
                 );

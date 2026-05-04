@@ -102,7 +102,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
     queryFn: () => getDoctors({}),
   });
 
-  const doctors = doctorsData?.results || [];
+  const doctors = Array.isArray(doctorsData) ? doctorsData : (doctorsData?.results || []);
 
   // Filter doctors based on search and specialty
   const filteredDoctors = useMemo(() => {
@@ -331,7 +331,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white shadow-sm">
                                 {doctor.name
                                   .split(' ')
-                                  .map((n) => n[0])
+                                    .map((n: string) => n[0])
                                   .join('')
                                   .slice(0, 2)}
                               </div>
@@ -414,7 +414,7 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
                       {selectedDoctor.name
                         .split(' ')
-                        .map((n) => n[0])
+                          .map((n: string) => n[0])
                         .join('')
                         .slice(0, 2)}
                     </div>

@@ -8,7 +8,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_APP_NAME: z
     .string()
     .optional()
-    .transform((v) => v && v.trim() ? v : 'NexusCare'),
+    .transform((v) => (v && v.trim() ? v : 'NexusCare')),
   NEXT_PUBLIC_ENV: z.enum(['development', 'staging', 'production']).default('development'),
   NEXT_PUBLIC_ENABLE_MSW: z
     .string()

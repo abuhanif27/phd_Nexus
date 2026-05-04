@@ -117,15 +117,31 @@ const consentsResponse = {
 
 const healthSummaryResponse = {
   vital_signs: [
-    { type: 'blood_pressure', value: '120/80', unit: 'mmHg', timestamp: '2026-04-10T08:30:00Z', status: 'normal' },
-    { type: 'heart_rate', value: '72', unit: 'bpm', timestamp: '2026-04-10T08:30:00Z', status: 'normal' },
+    {
+      type: 'blood_pressure',
+      value: '120/80',
+      unit: 'mmHg',
+      timestamp: '2026-04-10T08:30:00Z',
+      status: 'normal',
+    },
+    {
+      type: 'heart_rate',
+      value: '72',
+      unit: 'bpm',
+      timestamp: '2026-04-10T08:30:00Z',
+      status: 'normal',
+    },
   ],
   conditions: [
-    { id: 1, name: 'Hypertension', severity: 'mild', diagnosed_date: '2024-02-10', status: 'managed' },
+    {
+      id: 1,
+      name: 'Hypertension',
+      severity: 'mild',
+      diagnosed_date: '2024-02-10',
+      status: 'managed',
+    },
   ],
-  allergies: [
-    { id: 1, allergen: 'Penicillin', reaction: 'Rash', severity: 'moderate' },
-  ],
+  allergies: [{ id: 1, allergen: 'Penicillin', reaction: 'Rash', severity: 'moderate' }],
   medications: [
     {
       id: 1,
@@ -146,8 +162,12 @@ const healthSummaryResponse = {
   record_count: 10,
   date_range: { oldest: '2024-01-15', newest: '2026-04-10' },
   record_highlights: ['No acute concerns noted in the latest visits.'],
-  professional_summary: 'The patient demonstrates stable chronic disease management and good follow-up adherence.',
-  professional_findings: ['Hypertension is well controlled.', 'No urgent interventions are indicated.'],
+  professional_summary:
+    'The patient demonstrates stable chronic disease management and good follow-up adherence.',
+  professional_findings: [
+    'Hypertension is well controlled.',
+    'No urgent interventions are indicated.',
+  ],
 };
 
 const viewports: Size[] = [
@@ -169,15 +189,18 @@ const routes = [
 ];
 
 async function prepareAuthenticatedDoctorPage(page: Page) {
-  await page.addInitScript((state) => {
-    localStorage.setItem('access_token', state.accessToken);
-    localStorage.setItem('refresh_token', state.refreshToken);
-    localStorage.setItem('auth-storage', JSON.stringify(state.authStorage));
-  }, {
-    accessToken: authenticatedState.state.accessToken,
-    refreshToken: authenticatedState.state.refreshToken,
-    authStorage: authenticatedState,
-  });
+  await page.addInitScript(
+    (state) => {
+      localStorage.setItem('access_token', state.accessToken);
+      localStorage.setItem('refresh_token', state.refreshToken);
+      localStorage.setItem('auth-storage', JSON.stringify(state.authStorage));
+    },
+    {
+      accessToken: authenticatedState.state.accessToken,
+      refreshToken: authenticatedState.state.refreshToken,
+      authStorage: authenticatedState,
+    }
+  );
 
   await page.route('**/api/auth/me/', async (route) => {
     await route.fulfill({
@@ -218,7 +241,15 @@ test.describe('Visual snapshots', () => {
       test(`${route} - ${vp.name}`, async ({ page }) => {
         await page.setViewportSize({ width: vp.width, height: vp.height });
 
-        if (route === '/patients' || route === '/health-summary' || route === '/dashboard' || route === '/appointments' || route === '/settings' || route === '/records' || route === '/notifications') {
+        if (
+          route === '/patients' ||
+          route === '/health-summary' ||
+          route === '/dashboard' ||
+          route === '/appointments' ||
+          route === '/settings' ||
+          route === '/records' ||
+          route === '/notifications'
+        ) {
           await prepareAuthenticatedDoctorPage(page);
         }
 

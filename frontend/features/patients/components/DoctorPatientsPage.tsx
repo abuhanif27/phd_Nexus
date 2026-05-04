@@ -17,7 +17,16 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { User, ShieldCheck, ShieldX, Calendar, Phone, CheckCircle2, Search, FileText } from 'lucide-react';
+import {
+  User,
+  ShieldCheck,
+  ShieldX,
+  Calendar,
+  Phone,
+  CheckCircle2,
+  Search,
+  FileText,
+} from 'lucide-react';
 import Link from 'next/link';
 import type { Appointment, Consent, Patient, PaginatedResponse, MedicalFile } from '@/types/api';
 import { format } from 'date-fns';
@@ -37,7 +46,8 @@ export function DoctorPatientsPage() {
     };
     results: MedicalFile[];
   } | null>(null);
-  const [patientCodeSummary, setPatientCodeSummary] = useState<DoctorPatientDocumentsSummaryResponse | null>(null);
+  const [patientCodeSummary, setPatientCodeSummary] =
+    useState<DoctorPatientDocumentsSummaryResponse | null>(null);
   const [sentRequestPatientIds, setSentRequestPatientIds] = useState<Set<number>>(new Set());
 
   const { data: appointmentsData, isLoading: appointmentsLoading } = useQuery<Appointment[]>({
@@ -84,7 +94,9 @@ export function DoctorPatientsPage() {
       setPatientCodeResult(null);
       setPatientCodeSummary(null);
       const errorMsg =
-        error?.response?.data?.error || error?.message || 'Failed to search documents by patient code';
+        error?.response?.data?.error ||
+        error?.message ||
+        'Failed to search documents by patient code';
       toast.error(errorMsg);
     },
   });
@@ -279,7 +291,8 @@ export function DoctorPatientsPage() {
             Search Documents by Patient Code
           </CardTitle>
           <CardDescription>
-            Doctor-only. Enter the unique patient code to open uploaded documents and summarize them.
+            Doctor-only. Enter the unique patient code to open uploaded documents and summarize
+            them.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -309,7 +322,9 @@ export function DoctorPatientsPage() {
                     Code: {patientCodeResult.patient.patient_code}
                   </p>
                 </div>
-                <Badge variant="secondary">{patientCodeResult.results.length} uploaded documents</Badge>
+                <Badge variant="secondary">
+                  {patientCodeResult.results.length} uploaded documents
+                </Badge>
               </div>
 
               <div className="space-y-2">
@@ -340,7 +355,9 @@ export function DoctorPatientsPage() {
               {patientCodeSummary && (
                 <div className="space-y-3 rounded-md border bg-muted/20 p-4">
                   <p className="text-sm font-semibold">AI Summary</p>
-                  <p className="text-sm text-muted-foreground">{patientCodeSummary.summary || 'No summary available.'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {patientCodeSummary.summary || 'No summary available.'}
+                  </p>
                   {patientCodeSummary.key_points.length > 0 && (
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-muted-foreground">Key points</p>
@@ -525,9 +542,7 @@ function PatientCard({
         </Badge>
         {status === 'registered' && (
           <Button asChild size="sm">
-            <Link href={`/patients/${appointment.patient}`}>
-              View Records
-            </Link>
+            <Link href={`/patients/${appointment.patient}`}>View Records</Link>
           </Button>
         )}
       </div>

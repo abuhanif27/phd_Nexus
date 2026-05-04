@@ -40,7 +40,7 @@ export function AppShell({ children }: AppShellProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <AppHeader onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
         <main
-          className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30 p-4 sm:p-5 lg:p-6 dark:from-gray-950 dark:via-gray-900 dark:to-gray-900"
+          className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30 p-4 dark:from-gray-950 dark:via-gray-900 dark:to-gray-900 sm:p-5 lg:p-6"
           suppressHydrationWarning
         >
           <div className="mx-auto max-w-7xl">{children}</div>

@@ -574,7 +574,9 @@ export function HealthSummaryPage({
               </div>
               <div className="mt-6">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-blue-600 sm:text-6xl">{healthScore}</span>
+                  <span className="text-4xl font-bold text-blue-600 sm:text-6xl">
+                    {healthScore}
+                  </span>
                   <span className="text-2xl text-gray-500 sm:text-3xl">/100</span>
                 </div>
                 <Progress value={healthScore} className="mt-4 h-4" />

@@ -29,7 +29,12 @@ export function generateVisitCode(now = new Date()): string {
 export function suggestSpecialistFromText(text: string): AssistantSuggestion {
   const normalized = text.toLowerCase();
 
-  const rules: Array<{ keywords: string[]; specialist: string; reason: string; urgency: AssistantSuggestion['urgency'] }> = [
+  const rules: Array<{
+    keywords: string[];
+    specialist: string;
+    reason: string;
+    urgency: AssistantSuggestion['urgency'];
+  }> = [
     {
       keywords: ['chest', 'heart', 'pressure', 'palpitation'],
       specialist: 'Cardiologist',
@@ -115,9 +120,14 @@ export function calculateHospitalMetrics(rows: HospitalDepartmentRow[]): Hospita
     totalRevenue: totals.totalRevenue,
     totalExpenses: totals.totalExpenses,
     netRevenue: totals.totalRevenue - totals.totalExpenses,
-    occupancyRate: totals.totalBeds > 0 ? Number(((totals.occupiedBeds / totals.totalBeds) * 100).toFixed(1)) : 0,
+    occupancyRate:
+      totals.totalBeds > 0
+        ? Number(((totals.occupiedBeds / totals.totalBeds) * 100).toFixed(1))
+        : 0,
     averageWaitMinutes:
-      totals.totalPatients > 0 ? Number((totals.weightedWait / totals.totalPatients).toFixed(1)) : 0,
+      totals.totalPatients > 0
+        ? Number((totals.weightedWait / totals.totalPatients).toFixed(1))
+        : 0,
     revenuePerDoctor:
       totals.totalDoctors > 0 ? Number((totals.totalRevenue / totals.totalDoctors).toFixed(1)) : 0,
     testsPerPatient:
@@ -128,7 +138,9 @@ export function calculateHospitalMetrics(rows: HospitalDepartmentRow[]): Hospita
 export function buildDoctorAiSummary(profile: EntryProfile, workspace: PatientWorkspace): string[] {
   const latestRecord = workspace.records[0];
   const activeMedicineNames = workspace.activeMedicationPlan.map((item) => item.name).join(', ');
-  const recentDepartments = Array.from(new Set(workspace.records.slice(0, 3).map((record) => record.department)));
+  const recentDepartments = Array.from(
+    new Set(workspace.records.slice(0, 3).map((record) => record.department))
+  );
 
   return [
     `${profile.name} has ${workspace.records.length} linked records available for quick review.`,
@@ -279,24 +291,79 @@ function emptyDraft(): PrescriptionDraft {
 function createDoctorTemplates(): Record<PrescriptionCategory, PrescriptionTemplate[]> {
   return {
     condition: [
-      { id: createId('tpl'), label: 'Upper respiratory infection', detail: 'Acute cough with throat irritation', category: 'condition' },
-      { id: createId('tpl'), label: 'Seasonal allergy', detail: 'Sneezing, nasal irritation, itchy throat', category: 'condition' },
-      { id: createId('tpl'), label: 'Gastric irritation', detail: 'Acidity and post-meal discomfort', category: 'condition' },
+      {
+        id: createId('tpl'),
+        label: 'Upper respiratory infection',
+        detail: 'Acute cough with throat irritation',
+        category: 'condition',
+      },
+      {
+        id: createId('tpl'),
+        label: 'Seasonal allergy',
+        detail: 'Sneezing, nasal irritation, itchy throat',
+        category: 'condition',
+      },
+      {
+        id: createId('tpl'),
+        label: 'Gastric irritation',
+        detail: 'Acidity and post-meal discomfort',
+        category: 'condition',
+      },
     ],
     advice: [
-      { id: createId('tpl'), label: 'Hydration advice', detail: 'Increase water intake and warm fluids', category: 'advice' },
-      { id: createId('tpl'), label: 'Sleep hygiene', detail: 'Maintain consistent sleep and avoid late-night meals', category: 'advice' },
-      { id: createId('tpl'), label: 'Emergency return', detail: 'Return immediately if breathing difficulty or high fever starts', category: 'advice' },
+      {
+        id: createId('tpl'),
+        label: 'Hydration advice',
+        detail: 'Increase water intake and warm fluids',
+        category: 'advice',
+      },
+      {
+        id: createId('tpl'),
+        label: 'Sleep hygiene',
+        detail: 'Maintain consistent sleep and avoid late-night meals',
+        category: 'advice',
+      },
+      {
+        id: createId('tpl'),
+        label: 'Emergency return',
+        detail: 'Return immediately if breathing difficulty or high fever starts',
+        category: 'advice',
+      },
     ],
     test: [
       { id: createId('tpl'), label: 'CBC', detail: 'Complete blood count', category: 'test' },
-      { id: createId('tpl'), label: 'CRP', detail: 'Inflammation marker follow-up', category: 'test' },
-      { id: createId('tpl'), label: 'Chest X-Ray', detail: 'PA view for respiratory screening', category: 'test' },
+      {
+        id: createId('tpl'),
+        label: 'CRP',
+        detail: 'Inflammation marker follow-up',
+        category: 'test',
+      },
+      {
+        id: createId('tpl'),
+        label: 'Chest X-Ray',
+        detail: 'PA view for respiratory screening',
+        category: 'test',
+      },
     ],
     medicine: [
-      { id: createId('tpl'), label: 'Azithromycin 500 mg', detail: '1+0+0 for 5 days after breakfast', category: 'medicine' },
-      { id: createId('tpl'), label: 'Montelukast 10 mg', detail: '0+0+1 for 10 nights', category: 'medicine' },
-      { id: createId('tpl'), label: 'Cetirizine 10 mg', detail: '0+0+1 for allergy control', category: 'medicine' },
+      {
+        id: createId('tpl'),
+        label: 'Azithromycin 500 mg',
+        detail: '1+0+0 for 5 days after breakfast',
+        category: 'medicine',
+      },
+      {
+        id: createId('tpl'),
+        label: 'Montelukast 10 mg',
+        detail: '0+0+1 for 10 nights',
+        category: 'medicine',
+      },
+      {
+        id: createId('tpl'),
+        label: 'Cetirizine 10 mg',
+        detail: '0+0+1 for allergy control',
+        category: 'medicine',
+      },
     ],
   };
 }

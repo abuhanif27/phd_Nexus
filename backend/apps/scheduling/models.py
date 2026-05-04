@@ -49,6 +49,7 @@ class Appointment(models.Model):
         ('scheduled', 'Scheduled'),
         ('canceled', 'Canceled'),
         ('done', 'Completed'),
+        ('hold', 'Hold'),
     ]
     
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='appointments')

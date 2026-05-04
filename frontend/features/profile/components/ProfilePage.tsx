@@ -188,9 +188,11 @@ export function ProfilePage() {
                     </div>
                   </div>
                   {isPatient && user?.patient_profile?.patient_code && (
-                    <div className="flex items-center justify-between sm:col-span-2 lg:col-span-3 rounded-lg bg-blue-50 border border-blue-200 p-3 dark:bg-blue-950/40 dark:border-blue-800">
+                    <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/40 sm:col-span-2 lg:col-span-3">
                       <div className="flex items-center gap-3">
-                        <Badge variant="default" className="text-sm shadow-sm">Patient Code</Badge>
+                        <Badge variant="default" className="text-sm shadow-sm">
+                          Patient Code
+                        </Badge>
                         <p className="font-mono font-bold tracking-wider text-blue-900 dark:text-blue-100">
                           {user.patient_profile.patient_code}
                         </p>
@@ -209,7 +211,7 @@ export function ProfilePage() {
                           }
                         }}
                       >
-                        <Copy className="h-4 w-4 mr-2" />
+                        <Copy className="mr-2 h-4 w-4" />
                         Copy Code
                       </Button>
                     </div>

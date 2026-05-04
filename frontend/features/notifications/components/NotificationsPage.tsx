@@ -229,7 +229,9 @@ export function NotificationsPage() {
                 )}
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">Notifications</h1>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
+                  Notifications
+                </h1>
                 <p className="mt-2 text-gray-600 dark:text-gray-400">
                   {unreadCount > 0
                     ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`

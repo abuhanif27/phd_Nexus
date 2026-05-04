@@ -113,7 +113,7 @@ export interface DoctorCreateRequest {
 // APPOINTMENTS
 // ========================================
 
-export type AppointmentStatus = 'scheduled' | 'canceled' | 'done';
+export type AppointmentStatus = 'scheduled' | 'canceled' | 'done' | 'hold' | 'expired';
 
 export interface Appointment {
   id: number;

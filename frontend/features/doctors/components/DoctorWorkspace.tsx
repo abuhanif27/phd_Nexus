@@ -38,7 +38,7 @@ export function DoctorWorkspace() {
   );
   const workspace = profile ? doctorWorkspaces[profile.id] : undefined;
   const linkedPatient = workspace?.linkedPatientProfileId
-    ? profiles.find((item) => item.id === workspace.linkedPatientProfileId) ?? null
+    ? (profiles.find((item) => item.id === workspace.linkedPatientProfileId) ?? null)
     : null;
   const linkedPatientWorkspace = linkedPatient ? patientWorkspaces[linkedPatient.id] : undefined;
   const aiSummary = getDoctorSummaryFromState(linkedPatient ?? undefined, linkedPatientWorkspace);
@@ -122,7 +122,10 @@ export function DoctorWorkspace() {
                   </div>
                   <div className="space-y-3">
                     {aiSummary.map((line) => (
-                      <div key={line} className="rounded-2xl border bg-white/80 p-4 text-sm text-slate-700">
+                      <div
+                        key={line}
+                        className="rounded-2xl border bg-white/80 p-4 text-sm text-slate-700"
+                      >
                         {line}
                       </div>
                     ))}
@@ -147,7 +150,8 @@ export function DoctorWorkspace() {
                 </>
               ) : (
                 <div className="rounded-2xl border border-dashed bg-white/70 p-6 text-sm text-muted-foreground">
-                  Prescription is visible by default. Load a patient code to attach history and an AI summary.
+                  Prescription is visible by default. Load a patient code to attach history and an
+                  AI summary.
                 </div>
               )}
             </CardContent>
@@ -158,7 +162,8 @@ export function DoctorWorkspace() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <ClipboardList className="h-5 w-5 text-emerald-600" /> Drag-drop prescription builder
+                <ClipboardList className="h-5 w-5 text-emerald-600" /> Drag-drop prescription
+                builder
               </CardTitle>
               <CardDescription>
                 Prepared by doctor or assistant. Add items with click or drag into any section.
@@ -186,7 +191,8 @@ export function DoctorWorkspace() {
                         onClick={() => addDraftTemplate(profile.id, category, template)}
                         className="inline-flex items-center gap-2 rounded-full border bg-slate-50 px-3 py-2 text-xs transition hover:border-emerald-300 hover:bg-emerald-50"
                       >
-                        <Grip className="h-3.5 w-3.5" /> {template.label} <Plus className="h-3.5 w-3.5" />
+                        <Grip className="h-3.5 w-3.5" /> {template.label}{' '}
+                        <Plus className="h-3.5 w-3.5" />
                       </button>
                     ))}
                   </div>
@@ -212,7 +218,11 @@ export function DoctorWorkspace() {
                   onRemove={(templateId) => removeDraftTemplate(profile.id, category, templateId)}
                 />
               ))}
-              <Button variant="outline" className="w-full" onClick={() => clearDoctorDraft(profile.id)}>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => clearDoctorDraft(profile.id)}
+              >
                 <Trash2 className="mr-2 h-4 w-4" /> Clear draft
               </Button>
             </CardContent>
@@ -249,14 +259,19 @@ function DropZone({
     >
       <div className="flex items-center justify-between gap-3">
         <p className="font-semibold capitalize">{category}</p>
-        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{items.length}</Badge>
+        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+          {items.length}
+        </Badge>
       </div>
       {items.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">Drop a prepared item here.</p>
       ) : (
         <div className="mt-3 space-y-2">
           {items.map((item) => (
-            <div key={item.id} className="flex items-start justify-between gap-3 rounded-2xl border bg-slate-50 p-3">
+            <div
+              key={item.id}
+              className="flex items-start justify-between gap-3 rounded-2xl border bg-slate-50 p-3"
+            >
               <div>
                 <p className="font-medium">{item.label}</p>
                 <p className="text-sm text-muted-foreground">{item.detail}</p>

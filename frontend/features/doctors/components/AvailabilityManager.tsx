@@ -108,7 +108,11 @@ function breakMinutes(breaks: { start: string; end: string }[]): number {
   }, 0);
 }
 
-function calcAutoMax(sessionMin: number, minsPerPatient: number, breaks: { start: string; end: string }[]): number {
+function calcAutoMax(
+  sessionMin: number,
+  minsPerPatient: number,
+  breaks: { start: string; end: string }[]
+): number {
   const net = sessionMin - breakMinutes(breaks);
   return Math.max(1, Math.floor(net / minsPerPatient));
 }
@@ -147,18 +151,28 @@ export function AvailabilityManager() {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<number | null>(null);
 
-  const { data: slots = [], isLoading, error } = useQuery({
+  const {
+    data: slots = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['doctor', 'availability', year, month],
     queryFn: () => getMyAvailability({ month, year }),
   });
 
   const createMutation = useMutation({
     mutationFn: setAvailability,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['doctor', 'availability', year, month] }); setDialogOpen(false); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['doctor', 'availability', year, month] });
+      setDialogOpen(false);
+    },
   });
   const deleteMutation = useMutation({
     mutationFn: deleteAvailability,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['doctor', 'availability', year, month] }); setDeleteTarget(null); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['doctor', 'availability', year, month] });
+      setDeleteTarget(null);
+    },
   });
 
   // Build calendar grid (Mon-start)
@@ -170,7 +184,9 @@ export function AvailabilityManager() {
   // Index slots by date string
   const slotsByDate = React.useMemo(() => {
     const map: Record<string, DoctorAvailability[]> = {};
-    for (const s of slots) { (map[s.date] ??= []).push(s); }
+    for (const s of slots) {
+      (map[s.date] ??= []).push(s);
+    }
     return map;
   }, [slots]);
 
@@ -196,10 +212,10 @@ export function AvailabilityManager() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Manage Availability</h1>
         <p className="mt-1 text-muted-foreground">
-          Click a date to set sessions. Configure session length, time per patient, and max patients — slots are auto-calculated.
+          Click a date to set sessions. Configure session length, time per patient, and max patients
+          — slots are auto-calculated.
         </p>
       </div>
-
 
       {error && (
         <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -214,11 +230,30 @@ export function AvailabilityManager() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl">{format(viewDate, 'MMMM yyyy')}</CardTitle>
               <div className="flex gap-1">
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setViewDate((d) => subMonths(d, 1))} aria-label="Prev">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setViewDate((d) => subMonths(d, 1))}
+                  aria-label="Prev"
+                >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={() => setViewDate(new Date())}>Today</Button>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setViewDate((d) => addMonths(d, 1))} aria-label="Next">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => setViewDate(new Date())}
+                >
+                  Today
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setViewDate((d) => addMonths(d, 1))}
+                  aria-label="Next"
+                >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -228,7 +263,9 @@ export function AvailabilityManager() {
             {/* Day headers */}
             <div className="mb-1 grid grid-cols-7">
               {DAY_HEADERS.map((d) => (
-                <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
+                <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground">
+                  {d}
+                </div>
               ))}
             </div>
 
@@ -254,11 +291,15 @@ export function AvailabilityManager() {
                       selected ? 'bg-primary text-primary-foreground hover:bg-primary/90' : '',
                       !selected && today ? 'border border-primary font-semibold text-primary' : '',
                       !selected && past && inMonth ? 'text-muted-foreground' : '',
-                    ].filter(Boolean).join(' ')}
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                   >
                     {format(day, 'd')}
                     {hasSlots && (
-                      <span className={`absolute bottom-1 h-1.5 w-1.5 rounded-full ${selected ? 'bg-primary-foreground' : fullBooked ? 'bg-red-500' : 'bg-primary'}`} />
+                      <span
+                        className={`absolute bottom-1 h-1.5 w-1.5 rounded-full ${selected ? 'bg-primary-foreground' : fullBooked ? 'bg-red-500' : 'bg-primary'}`}
+                      />
                     )}
                   </button>
                 );
@@ -267,10 +308,22 @@ export function AvailabilityManager() {
 
             {/* Legend */}
             <div className="mt-4 flex flex-wrap gap-4 border-t pt-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary inline-block" />Available</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500 inline-block" />Fully booked</span>
-              <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded border border-primary inline-block" />Today</span>
-              <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded bg-primary inline-block" />Selected</span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+                Available
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+                Fully booked
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-3.5 w-3.5 rounded border border-primary" />
+                Today
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-3.5 w-3.5 rounded bg-primary" />
+                Selected
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -293,15 +346,24 @@ export function AvailabilityManager() {
             {!selectedDate ? (
               <div className="py-10 text-center text-muted-foreground">
                 <CalendarDays className="mx-auto mb-3 h-12 w-12 opacity-30" />
-                <p className="text-sm">Click a date on the calendar<br />to manage its sessions.</p>
+                <p className="text-sm">
+                  Click a date on the calendar
+                  <br />
+                  to manage its sessions.
+                </p>
               </div>
             ) : isLoading ? (
-              <div className="space-y-3"><Skeleton className="h-28 w-full" /><Skeleton className="h-28 w-full" /></div>
+              <div className="space-y-3">
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-28 w-full" />
+              </div>
             ) : selectedSlots.length === 0 ? (
               <div className="py-10 text-center text-muted-foreground">
                 <Clock className="mx-auto mb-3 h-12 w-12 opacity-30" />
                 <p className="text-sm">No sessions on this date.</p>
-                <p className="mt-1 text-xs">Click &quot;Add Session&quot; to open it for bookings.</p>
+                <p className="mt-1 text-xs">
+                  Click &quot;Add Session&quot; to open it for bookings.
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -334,12 +396,19 @@ export function AvailabilityManager() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Remove Session</DialogTitle>
-            <DialogDescription>Patients won&apos;t be able to book during this session.</DialogDescription>
+            <DialogDescription>
+              Patients won&apos;t be able to book during this session.
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="destructive" disabled={deleteMutation.isPending}
-              onClick={() => deleteTarget !== null && deleteMutation.mutate(deleteTarget)}>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteTarget !== null && deleteMutation.mutate(deleteTarget)}
+            >
               {deleteMutation.isPending ? 'Removing…' : 'Remove'}
             </Button>
           </DialogFooter>
@@ -361,35 +430,52 @@ function SessionCard({ slot, onDelete }: { slot: DoctorAvailability; onDelete: (
   const open = cap - booked;
 
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm space-y-3">
+    <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
       {/* Time + actions */}
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1.5 font-semibold">
               <Clock className="h-4 w-4 text-primary" />
               {fmtTime(slot.start_time)} – {fmtTime(slot.end_time)}
             </span>
             {full ? (
-              <Badge variant="destructive" className="text-xs">FULLY BOOKED</Badge>
+              <Badge variant="destructive" className="text-xs">
+                FULLY BOOKED
+              </Badge>
             ) : (
-              <Badge variant="outline" className="text-xs text-green-700 border-green-300">{open} slot{open !== 1 ? 's' : ''} open</Badge>
+              <Badge variant="outline" className="border-green-300 text-xs text-green-700">
+                {open} slot{open !== 1 ? 's' : ''} open
+              </Badge>
             )}
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {fmtDuration(slot.session_duration_minutes)} session · {slot.minutes_per_patient} min/patient
+            {fmtDuration(slot.session_duration_minutes)} session · {slot.minutes_per_patient}{' '}
+            min/patient
           </p>
         </div>
         <div className="flex shrink-0 gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={onDelete}><Trash2 className="h-3.5 w-3.5" /></Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </div>
 
       {/* Capacity bar */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-1 text-muted-foreground"><Users className="h-3 w-3" />Patients booked</span>
-          <span className={`font-semibold ${full ? 'text-red-600' : booked > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+          <span className="flex items-center gap-1 text-muted-foreground">
+            <Users className="h-3 w-3" />
+            Patients booked
+          </span>
+          <span
+            className={`font-semibold ${full ? 'text-red-600' : booked > 0 ? 'text-amber-600' : 'text-green-600'}`}
+          >
             {booked} / {cap}
           </span>
         </div>
@@ -406,7 +492,7 @@ function SessionCard({ slot, onDelete }: { slot: DoctorAvailability; onDelete: (
 
       {/* Breaks */}
       {slot.breaks.length > 0 && (
-        <div className="border-t pt-2 space-y-1">
+        <div className="space-y-1 border-t pt-2">
           {slot.breaks.map((b, i) => (
             <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Coffee className="h-3 w-3" /> Break: {fmtTime(b.start)} – {fmtTime(b.end)}
@@ -423,7 +509,13 @@ function SessionCard({ slot, onDelete }: { slot: DoctorAvailability; onDelete: (
 // ══════════════════════════════════════════════════════════════════
 
 function SessionDialog({
-  open, selectedDate, existingSlots, saving, serverError, onClose, onSave,
+  open,
+  selectedDate,
+  existingSlots,
+  saving,
+  serverError,
+  onClose,
+  onSave,
 }: {
   open: boolean;
   selectedDate: string | null;
@@ -471,7 +563,9 @@ function SessionDialog({
     if (!manualMax) setForm((f) => ({ ...f, max_patients: autoMax }));
   }, [autoMax, manualMax]);
 
-  const endTime = form.start_time ? computeEndTime(form.start_time, form.session_duration_minutes) : '';
+  const endTime = form.start_time
+    ? computeEndTime(form.start_time, form.session_duration_minutes)
+    : '';
   const totalPatientTime = form.max_patients * form.minutes_per_patient;
   const exceedsSession = totalPatientTime > form.session_duration_minutes;
 
@@ -499,7 +593,10 @@ function SessionDialog({
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
       };
 
-      return { ...f, breaks: [...f.breaks, { start: fmt(breakStartMins), end: fmt(breakEndMins) }] };
+      return {
+        ...f,
+        breaks: [...f.breaks, { start: fmt(breakStartMins), end: fmt(breakEndMins) }],
+      };
     });
   };
   const removeBreak = (i: number) => {
@@ -507,21 +604,31 @@ function SessionDialog({
     setForm((f) => ({ ...f, breaks: f.breaks.filter((_, idx) => idx !== i) }));
   };
   const updateBreak = (i: number, field: 'start' | 'end', v: string) =>
-    setForm((f) => { const b = [...f.breaks]; b[i] = { ...b[i], [field]: v }; return { ...f, breaks: b }; });
+    setForm((f) => {
+      const b = [...f.breaks];
+      b[i] = { ...b[i], [field]: v };
+      return { ...f, breaks: b };
+    });
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFormError('');
     for (const b of form.breaks) {
-      if (b.start >= b.end) { setFormError('Each break end time must be after its start.'); return; }
+      if (b.start >= b.end) {
+        setFormError('Each break end time must be after its start.');
+        return;
+      }
     }
-    if (form.max_patients < 1) { setFormError('Max patients must be at least 1.'); return; }
+    if (form.max_patients < 1) {
+      setFormError('Max patients must be at least 1.');
+      return;
+    }
     onSave(form);
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Session</DialogTitle>
           <DialogDescription>
@@ -548,12 +655,18 @@ function SessionDialog({
               <Label>Session Duration</Label>
               <Select
                 value={String(form.session_duration_minutes)}
-                onValueChange={(v) => setForm((f) => ({ ...f, session_duration_minutes: Number(v) }))}
+                onValueChange={(v) =>
+                  setForm((f) => ({ ...f, session_duration_minutes: Number(v) }))
+                }
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {SESSION_DURATIONS.map((d) => (
-                    <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
+                    <SelectItem key={d.value} value={String(d.value)}>
+                      {d.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -567,10 +680,14 @@ function SessionDialog({
                   setForm((f) => ({ ...f, minutes_per_patient: Number(v) }));
                 }}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {MINS_PER_PATIENT_OPTIONS.map((m) => (
-                    <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
+                    <SelectItem key={m.value} value={String(m.value)}>
+                      {m.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -582,8 +699,11 @@ function SessionDialog({
             <div className="flex items-center justify-between">
               <Label htmlFor="s-max">Max Patients</Label>
               {manualMax && (
-                <button type="button" onClick={() => setManualMax(false)}
-                  className="text-xs text-primary hover:underline">
+                <button
+                  type="button"
+                  onClick={() => setManualMax(false)}
+                  className="text-xs text-primary hover:underline"
+                >
                   Auto-calculate ({autoMax})
                 </button>
               )}
@@ -594,10 +714,17 @@ function SessionDialog({
               min={1}
               max={200}
               value={form.max_patients}
-              onChange={(e) => { setManualMax(true); setForm((f) => ({ ...f, max_patients: Math.max(1, parseInt(e.target.value, 10) || 1) })); }}
+              onChange={(e) => {
+                setManualMax(true);
+                setForm((f) => ({
+                  ...f,
+                  max_patients: Math.max(1, parseInt(e.target.value, 10) || 1),
+                }));
+              }}
             />
             <p className="text-xs text-muted-foreground">
-              Auto-suggested: <strong>{autoMax}</strong> patients based on your session length and breaks.
+              Auto-suggested: <strong>{autoMax}</strong> patients based on your session length and
+              breaks.
             </p>
           </div>
 
@@ -612,7 +739,7 @@ function SessionDialog({
               {' · '}
               {form.minutes_per_patient} min each
               {exceedsSession && (
-                <span className="ml-2 text-amber-600 text-xs">⚠ exceeds session</span>
+                <span className="ml-2 text-xs text-amber-600">⚠ exceeds session</span>
               )}
             </div>
           )}
@@ -620,20 +747,42 @@ function SessionDialog({
           {/* Breaks */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="flex items-center gap-1.5"><Coffee className="h-3.5 w-3.5" />Breaks (optional)</Label>
+              <Label className="flex items-center gap-1.5">
+                <Coffee className="h-3.5 w-3.5" />
+                Breaks (optional)
+              </Label>
               <Button type="button" variant="outline" size="sm" onClick={addBreak}>
-                <Plus className="mr-1 h-3 w-3" />Add Break
+                <Plus className="mr-1 h-3 w-3" />
+                Add Break
               </Button>
             </div>
             {form.breaks.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No breaks — patients can book throughout the session.</p>
+              <p className="text-xs text-muted-foreground">
+                No breaks — patients can book throughout the session.
+              </p>
             ) : (
               form.breaks.map((brk, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <Input type="time" value={brk.start} onChange={(e) => updateBreak(i, 'start', e.target.value)} className="h-8 text-sm" aria-label={`Break ${i + 1} start`} />
-                  <span className="text-xs text-muted-foreground shrink-0">to</span>
-                  <Input type="time" value={brk.end} onChange={(e) => updateBreak(i, 'end', e.target.value)} className="h-8 text-sm" aria-label={`Break ${i + 1} end`} />
-                  <button type="button" onClick={() => removeBreak(i)} className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive">
+                  <Input
+                    type="time"
+                    value={brk.start}
+                    onChange={(e) => updateBreak(i, 'start', e.target.value)}
+                    className="h-8 text-sm"
+                    aria-label={`Break ${i + 1} start`}
+                  />
+                  <span className="shrink-0 text-xs text-muted-foreground">to</span>
+                  <Input
+                    type="time"
+                    value={brk.end}
+                    onChange={(e) => updateBreak(i, 'end', e.target.value)}
+                    className="h-8 text-sm"
+                    aria-label={`Break ${i + 1} end`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeBreak(i)}
+                    className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -646,7 +795,9 @@ function SessionDialog({
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={saving}>
               {saving ? 'Saving…' : 'Add Session'}
             </Button>

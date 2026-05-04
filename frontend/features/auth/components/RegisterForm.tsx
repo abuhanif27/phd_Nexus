@@ -48,12 +48,12 @@ export function RegisterForm() {
     if (formData.password !== formData.password_confirm) return 'Passwords do not match';
     if (!formData.name) return 'Full name is required';
     if (formData.name.length < 2) return 'Name must be at least 2 characters';
-    
+
     // Check role-specific requirements
     if (role === 'doctor' && !formData.specialty) {
       return 'Specialty is required for doctors';
     }
-    
+
     return null;
   };
 
@@ -96,7 +96,8 @@ export function RegisterForm() {
         if (formData.gender) patientProfile.gender = formData.gender;
         if (formData.blood_group) patientProfile.blood_group = formData.blood_group;
         if (formData.address) patientProfile.address = formData.address;
-        if (formData.emergency_contact) patientProfile.emergency_contact = formData.emergency_contact;
+        if (formData.emergency_contact)
+          patientProfile.emergency_contact = formData.emergency_contact;
         payload.patient_profile = patientProfile;
       } else if (role === 'doctor') {
         const doctorProfile: any = {
@@ -172,7 +173,7 @@ export function RegisterForm() {
       <div className="rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-900 sm:p-8">
         {error && (
           <div className="mb-6 rounded-lg border-2 border-red-500 bg-red-50 p-4 text-sm text-red-900 dark:border-red-500 dark:bg-red-950 dark:text-red-200">
-            <p className="font-bold flex items-center gap-2">
+            <p className="flex items-center gap-2 font-bold">
               <span>⚠️</span> Error
             </p>
             <p className="mt-2 whitespace-pre-wrap break-words">{error}</p>
@@ -181,7 +182,7 @@ export function RegisterForm() {
 
         {success && (
           <div className="mb-6 rounded-lg border-2 border-green-500 bg-green-50 p-4 text-sm text-green-900 dark:border-green-500 dark:bg-green-950 dark:text-green-200">
-            <p className="font-bold flex items-center gap-2">
+            <p className="flex items-center gap-2 font-bold">
               <span>✅</span> Success
             </p>
             <p className="mt-2">{success}</p>
@@ -224,7 +225,10 @@ export function RegisterForm() {
 
           {/* Full Name - MANDATORY */}
           <div>
-            <label htmlFor="name" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+            <label
+              htmlFor="name"
+              className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+            >
               Full Name <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-2">
@@ -244,7 +248,10 @@ export function RegisterForm() {
 
           {/* Email - MANDATORY */}
           <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+            <label
+              htmlFor="email"
+              className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+            >
               Email Address <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-2">
@@ -264,7 +271,10 @@ export function RegisterForm() {
 
           {/* Phone - OPTIONAL */}
           <div>
-            <label htmlFor="phone" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+            <label
+              htmlFor="phone"
+              className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+            >
               Phone Number
             </label>
             <div className="relative mt-2">
@@ -284,7 +294,10 @@ export function RegisterForm() {
 
           {/* Password - MANDATORY */}
           <div>
-            <label htmlFor="password" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+            <label
+              htmlFor="password"
+              className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+            >
               Password <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-2">
@@ -304,7 +317,10 @@ export function RegisterForm() {
 
           {/* Confirm Password - MANDATORY */}
           <div>
-            <label htmlFor="password_confirm" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+            <label
+              htmlFor="password_confirm"
+              className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+            >
               Confirm Password <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-2">
@@ -328,7 +344,10 @@ export function RegisterForm() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Date of Birth - OPTIONAL */}
                 <div>
-                  <label htmlFor="dob" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+                  <label
+                    htmlFor="dob"
+                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                  >
                     Date of Birth
                   </label>
                   <input
@@ -342,7 +361,10 @@ export function RegisterForm() {
 
                 {/* Gender - OPTIONAL */}
                 <div>
-                  <label htmlFor="gender" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+                  <label
+                    htmlFor="gender"
+                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                  >
                     Gender
                   </label>
                   <select
@@ -362,7 +384,10 @@ export function RegisterForm() {
 
               {/* Blood Group - OPTIONAL */}
               <div>
-                <label htmlFor="blood_group" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+                <label
+                  htmlFor="blood_group"
+                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                >
                   Blood Group
                 </label>
                 <select
@@ -408,7 +433,10 @@ export function RegisterForm() {
 
               {/* Address - OPTIONAL */}
               <div>
-                <label htmlFor="address" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+                <label
+                  htmlFor="address"
+                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                >
                   Address
                 </label>
                 <textarea
@@ -428,7 +456,10 @@ export function RegisterForm() {
             <>
               {/* Specialty - MANDATORY */}
               <div>
-                <label htmlFor="specialty" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+                <label
+                  htmlFor="specialty"
+                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                >
                   Specialty <span className="text-red-500">*</span>
                 </label>
                 <div className="relative mt-2">
@@ -464,7 +495,10 @@ export function RegisterForm() {
 
               {/* Qualifications - OPTIONAL */}
               <div>
-                <label htmlFor="qualifications" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+                <label
+                  htmlFor="qualifications"
+                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                >
                   Qualifications
                 </label>
                 <textarea
@@ -479,7 +513,10 @@ export function RegisterForm() {
 
               {/* Location - OPTIONAL */}
               <div>
-                <label htmlFor="location" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+                <label
+                  htmlFor="location"
+                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                >
                   Location
                 </label>
                 <div className="relative mt-2">
@@ -499,7 +536,10 @@ export function RegisterForm() {
 
               {/* Bio - OPTIONAL */}
               <div>
-                <label htmlFor="bio" className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+                <label
+                  htmlFor="bio"
+                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                >
                   Bio
                 </label>
                 <textarea

@@ -3,10 +3,6 @@ export const metadata = {
   description: 'Upload lab results or documents',
 };
 
-export default function UploadRecordsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function UploadRecordsLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

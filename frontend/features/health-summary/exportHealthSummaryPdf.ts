@@ -127,7 +127,9 @@ export function exportHealthSummaryPdf(data: HealthSummaryPdfData): void {
 
   // Conditions
   if (data.conditions.length > 0) {
-    const conditionLines = data.conditions.map((c) => (typeof c === 'string' ? c : c.name ?? '')).filter(Boolean);
+    const conditionLines = data.conditions
+      .map((c) => (typeof c === 'string' ? c : (c.name ?? '')))
+      .filter(Boolean);
     if (conditionLines.length) {
       y = addSection(doc, y, 'Conditions noted', conditionLines, maxWidth);
     }
@@ -135,7 +137,9 @@ export function exportHealthSummaryPdf(data: HealthSummaryPdfData): void {
 
   // Medications
   if (data.medications.length > 0) {
-    const medLines = data.medications.map((m) => (typeof m === 'string' ? m : m.name ?? '')).filter(Boolean);
+    const medLines = data.medications
+      .map((m) => (typeof m === 'string' ? m : (m.name ?? '')))
+      .filter(Boolean);
     if (medLines.length) {
       y = addSection(doc, y, 'Medications noted', medLines, maxWidth);
     }
@@ -147,12 +151,12 @@ export function exportHealthSummaryPdf(data: HealthSummaryPdfData): void {
     doc.setPage(p);
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
+    doc.text(`NexusCare Health Summary — Page ${p} of ${pageCount}`, MARGIN, 290);
     doc.text(
-      `NexusCare Health Summary — Page ${p} of ${pageCount}`,
+      'This summary is for personal use. Consult your healthcare provider for medical decisions.',
       MARGIN,
-      290
+      294
     );
-    doc.text('This summary is for personal use. Consult your healthcare provider for medical decisions.', MARGIN, 294);
   }
 
   doc.save(`NexusCare-Health-Summary-${new Date().toISOString().slice(0, 10)}.pdf`);
