@@ -49,48 +49,60 @@ class DoctorSlotsView(views.APIView):
         if not availability:
             return Response({
                 'date': date_str,
-                'slots': []
+                'doctor_id': doctor_id,
+                'slots': [],
+                'available_count': 0,
+                'total_capacity': 0,
+                'is_fully_booked': False,
             })
-        
-        # Generate time slots (30-minute intervals)
+
+        slot_mins = availability.minutes_per_patient
+        max_patients = availability.max_patients
+        session_start = datetime.combine(date, availability.start_time)
+        session_end = session_start + timedelta(minutes=availability.session_duration_minutes)
+
         slots = []
-        current_time = datetime.combine(date, availability.start_time)
-        end_time = datetime.combine(date, availability.end_time)
-        
-        while current_time < end_time:
-            slot_start = current_time.time()
-            slot_end = (current_time + timedelta(minutes=30)).time()
-            
-            # Check if slot is during break
+        current = session_start
+        patient_count = 0
+
+        while current < session_end and patient_count < max_patients:
+            slot_start = current.time()
+            slot_end = (current + timedelta(minutes=slot_mins)).time()
+
+            # Skip break windows
             in_break = False
             for brk in availability.breaks:
-                break_start = datetime.strptime(brk['start'], '%H:%M').time()
-                break_end = datetime.strptime(brk['end'], '%H:%M').time()
-                if break_start <= slot_start < break_end:
+                brk_start = datetime.strptime(brk['start'], '%H:%M').time()
+                brk_end = datetime.strptime(brk['end'], '%H:%M').time()
+                if brk_start <= slot_start < brk_end:
                     in_break = True
                     break
-            
-            # Check if slot is already booked
-            booked = Appointment.objects.filter(
-                doctor=doctor,
-                date=date,
-                start_time=slot_start,
-                status='scheduled'
-            ).exists()
-            
-            if not in_break and not booked:
+
+            if not in_break:
+                booked = Appointment.objects.filter(
+                    doctor=doctor,
+                    date=date,
+                    start_time=slot_start,
+                    status='scheduled',
+                ).exists()
                 slots.append({
                     'start_time': slot_start.strftime('%H:%M'),
                     'end_time': slot_end.strftime('%H:%M'),
-                    'available': True
+                    'available': not booked,
                 })
-            
-            current_time += timedelta(minutes=30)
-        
+                patient_count += 1
+
+            current += timedelta(minutes=slot_mins)
+
+        available_count = sum(1 for s in slots if s['available'])
+
         return Response({
             'date': date_str,
             'doctor_id': doctor_id,
-            'slots': slots
+            'slots': slots,
+            'available_count': available_count,
+            'total_capacity': len(slots),
+            'is_fully_booked': len(slots) > 0 and available_count == 0,
         })
 
 
@@ -177,25 +189,32 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 # ──────────────────────────────────────────────────────────────────────────────
 
 class DoctorAvailabilityViewSet(viewsets.ModelViewSet):
-    """CRUD for the logged-in doctor's date-specific availability slots."""
+    """CRUD for the logged-in doctor's date-specific availability sessions."""
     serializer_class = DoctorAvailabilitySerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
+    def _get_doctor(self):
         try:
-            doctor = self.request.user.doctor_profile
-            qs = DoctorAvailability.objects.filter(doctor=doctor).order_by('date', 'start_time')
-            # Optional month/year filtering for calendar navigation
-            month = self.request.query_params.get('month')
-            year = self.request.query_params.get('year')
-            if month and year:
-                qs = qs.filter(date__month=int(month), date__year=int(year))
-            return qs
+            return self.request.user.doctor_profile
         except Exception:
+            return None
+
+    def get_queryset(self):
+        doctor = self._get_doctor()
+        if not doctor:
             return DoctorAvailability.objects.none()
+        qs = DoctorAvailability.objects.filter(doctor=doctor).order_by('date', 'start_time')
+        month = self.request.query_params.get('month')
+        year = self.request.query_params.get('year')
+        if month and year:
+            qs = qs.filter(date__month=int(month), date__year=int(year))
+        return qs
 
     def perform_create(self, serializer):
-        doctor = self.request.user.doctor_profile
+        doctor = self._get_doctor()
+        if not doctor:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only doctors can set availability.')
         serializer.save(doctor=doctor)
 
 

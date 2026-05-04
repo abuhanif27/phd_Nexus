@@ -149,9 +149,14 @@ export interface DoctorAvailability {
   id: number;
   doctor: number;
   date: string; // YYYY-MM-DD
-  start_time: string;
-  end_time: string;
+  start_time: string; // HH:MM:SS
+  session_duration_minutes: number;
+  max_patients: number;
+  minutes_per_patient: number;
   breaks: Array<{ start: string; end: string }>;
+  // read-only computed fields from backend
+  end_time: string; // HH:MM
+  booked_count: number;
 }
 
 // ========================================

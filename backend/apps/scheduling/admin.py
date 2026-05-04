@@ -5,23 +5,25 @@ from .models import DoctorAvailability, Appointment
 
 @admin.register(DoctorAvailability)
 class DoctorAvailabilityAdmin(admin.ModelAdmin):
-    list_display = ['id', 'doctor', 'date', 'time_range', 'has_breaks']
+    list_display = ['id', 'doctor', 'date', 'session_info', 'booked_display', 'has_breaks']
     list_filter = ['date']
     search_fields = ['doctor__name']
     date_hierarchy = 'date'
 
     fieldsets = [
-        ('👨‍⚕️ Doctor', {
-            'fields': ['doctor']
-        }),
-        ('📅 Schedule', {
-            'fields': ['date', 'start_time', 'end_time', 'breaks']
-        }),
+        ('👨‍⚕️ Doctor', {'fields': ['doctor']}),
+        ('📅 Session', {'fields': ['date', 'start_time', 'session_duration_minutes']}),
+        ('👥 Capacity', {'fields': ['max_patients', 'minutes_per_patient']}),
+        ('☕ Breaks', {'fields': ['breaks']}),
     ]
 
-    @admin.display(description='⏰ Time Range')
-    def time_range(self, obj):
-        return f"{obj.start_time.strftime('%H:%M')} - {obj.end_time.strftime('%H:%M')}"
+    @admin.display(description='⏰ Session')
+    def session_info(self, obj):
+        return f"{obj.start_time.strftime('%H:%M')} – {obj.end_time.strftime('%H:%M')} ({obj.session_duration_minutes} min)"
+
+    @admin.display(description='👥 Capacity')
+    def booked_display(self, obj):
+        return f"{obj.max_patients} pts @ {obj.minutes_per_patient} min each"
 
     @admin.display(description='☕ Breaks', boolean=True)
     def has_breaks(self, obj):

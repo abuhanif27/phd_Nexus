@@ -66,27 +66,24 @@ export async function getMyAvailability(params?: {
   return [];
 }
 
+export type AvailabilityPayload = Omit<DoctorAvailability, 'id' | 'doctor' | 'end_time' | 'booked_count'>;
+
 /**
- * Create a date-specific availability slot
+ * Create a date-specific availability session
  */
-export async function setAvailability(
-  availability: Omit<DoctorAvailability, 'id' | 'doctor'>
-): Promise<DoctorAvailability> {
+export async function setAvailability(availability: AvailabilityPayload): Promise<DoctorAvailability> {
   const { data } = await apiClient.post<DoctorAvailability>(`${BASE}/availability/`, availability);
   return data;
 }
 
 /**
- * Update an availability slot
+ * Update an availability session
  */
 export async function updateAvailability(
   id: number,
-  availability: Partial<Omit<DoctorAvailability, 'id' | 'doctor'>>
+  availability: Partial<AvailabilityPayload>
 ): Promise<DoctorAvailability> {
-  const { data } = await apiClient.patch<DoctorAvailability>(
-    `${BASE}/availability/${id}/`,
-    availability
-  );
+  const { data } = await apiClient.patch<DoctorAvailability>(`${BASE}/availability/${id}/`, availability);
   return data;
 }
 
