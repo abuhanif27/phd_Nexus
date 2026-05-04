@@ -30,7 +30,6 @@ import {
   Clock,
   Plus,
   Trash2,
-  Pencil,
   Coffee,
   AlertCircle,
   CalendarDays,
@@ -50,8 +49,7 @@ import {
   isPast,
   parseISO,
 } from 'date-fns';
-import { getMyAvailability, setAvailability, updateAvailability, deleteAvailability } from '../api';
-import type { AvailabilityPayload } from '../api';
+import { getMyAvailability, setAvailability, deleteAvailability } from '../api';
 import type { DoctorAvailability } from '@/types/api';
 
 // ── Constants ────────────────────────────────────────────────────
@@ -146,7 +144,7 @@ export function AvailabilityManager() {
   const year = viewDate.getFullYear();
 
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
-  const [dialog, setDialog] = React.useState<{ open: boolean; existing?: DoctorAvailability }>({ open: false });
+  const [dialogOpen, setDialogOpen] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<number | null>(null);
 
   const { data: slots = [], isLoading, error } = useQuery({
@@ -156,11 +154,7 @@ export function AvailabilityManager() {
 
   const createMutation = useMutation({
     mutationFn: setAvailability,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['doctor', 'availability', year, month] }); setDialog({ open: false }); },
-  });
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<AvailabilityPayload> }) => updateAvailability(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['doctor', 'availability', year, month] }); setDialog({ open: false }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['doctor', 'availability', year, month] }); setDialogOpen(false); },
   });
   const deleteMutation = useMutation({
     mutationFn: deleteAvailability,
@@ -193,11 +187,7 @@ export function AvailabilityManager() {
 
   const handleSave = (form: SlotForm) => {
     if (!selectedDate) return;
-    if (dialog.existing) {
-      updateMutation.mutate({ id: dialog.existing.id, data: form });
-    } else {
-      createMutation.mutate({ date: selectedDate, ...form });
-    }
+    createMutation.mutate({ date: selectedDate, ...form });
   };
 
   return (
@@ -293,7 +283,7 @@ export function AvailabilityManager() {
                 {selectedDate ? format(parseISO(selectedDate), 'EEE, MMM d yyyy') : 'Select a Date'}
               </CardTitle>
               {selectedDate && (
-                <Button size="sm" onClick={() => setDialog({ open: true })} className="h-7 px-2 text-xs">
+                <Button size="sm" onClick={() => setDialogOpen(true)} className="h-7 px-2 text-xs">
                   <Plus className="mr-1 h-3 w-3" /> Add Session
                 </Button>
               )}
@@ -319,7 +309,6 @@ export function AvailabilityManager() {
                   <SessionCard
                     key={slot.id}
                     slot={slot}
-                    onEdit={() => setDialog({ open: true, existing: slot })}
                     onDelete={() => setDeleteTarget(slot.id)}
                   />
                 ))}
@@ -329,14 +318,14 @@ export function AvailabilityManager() {
         </Card>
       </div>
 
-      {/* Add / Edit dialog */}
+      {/* Add session dialog */}
       <SessionDialog
-        open={dialog.open}
+        open={dialogOpen}
         selectedDate={selectedDate}
-        existing={dialog.existing}
-        saving={createMutation.isPending || updateMutation.isPending}
-        serverError={(createMutation.error as Error)?.message || (updateMutation.error as Error)?.message}
-        onClose={() => setDialog({ open: false })}
+        existingSlots={selectedSlots}
+        saving={createMutation.isPending}
+        serverError={(createMutation.error as Error)?.message}
+        onClose={() => setDialogOpen(false)}
         onSave={handleSave}
       />
 
@@ -364,7 +353,7 @@ export function AvailabilityManager() {
 // SessionCard — displays one session in the side panel
 // ══════════════════════════════════════════════════════════════════
 
-function SessionCard({ slot, onEdit, onDelete }: { slot: DoctorAvailability; onEdit: () => void; onDelete: () => void }) {
+function SessionCard({ slot, onDelete }: { slot: DoctorAvailability; onDelete: () => void }) {
   const booked = slot.booked_count ?? 0;
   const cap = slot.max_patients;
   const pct = cap > 0 ? Math.round((booked / cap) * 100) : 0;
@@ -392,7 +381,6 @@ function SessionCard({ slot, onEdit, onDelete }: { slot: DoctorAvailability; onE
           </p>
         </div>
         <div className="flex shrink-0 gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Pencil className="h-3.5 w-3.5" /></Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={onDelete}><Trash2 className="h-3.5 w-3.5" /></Button>
         </div>
       </div>
@@ -431,15 +419,15 @@ function SessionCard({ slot, onEdit, onDelete }: { slot: DoctorAvailability; onE
 }
 
 // ══════════════════════════════════════════════════════════════════
-// SessionDialog — add or edit a session
+// SessionDialog — add a new session
 // ══════════════════════════════════════════════════════════════════
 
 function SessionDialog({
-  open, selectedDate, existing, saving, serverError, onClose, onSave,
+  open, selectedDate, existingSlots, saving, serverError, onClose, onSave,
 }: {
   open: boolean;
   selectedDate: string | null;
-  existing?: DoctorAvailability;
+  existingSlots: DoctorAvailability[];
   saving: boolean;
   serverError?: string;
   onClose: () => void;
@@ -452,20 +440,30 @@ function SessionDialog({
   React.useEffect(() => {
     if (!open) return;
     setFormError('');
-    if (existing) {
-      setForm({
-        start_time: existing.start_time.slice(0, 5),
-        session_duration_minutes: existing.session_duration_minutes,
-        max_patients: existing.max_patients,
-        minutes_per_patient: existing.minutes_per_patient,
-        breaks: existing.breaks.map((b) => ({ ...b })),
-      });
-      setManualMax(true);
-    } else {
-      setForm(DEFAULT_FORM);
-      setManualMax(false);
+
+    const isToday = selectedDate === new Date().toISOString().slice(0, 10);
+
+    // Start from current time (rounded up to next 30-min mark) for today,
+    // or 09:00 for future dates.
+    let baseMins = isToday
+      ? Math.ceil((new Date().getHours() * 60 + new Date().getMinutes()) / 30) * 30
+      : 9 * 60;
+
+    // Also advance past the end of any existing session on this date,
+    // so we never suggest a time that's inside a running session.
+    for (const slot of existingSlots) {
+      const [h, m] = slot.end_time.split(':').map(Number);
+      const endMins = h * 60 + m;
+      if (endMins > baseMins) baseMins = endMins;
     }
-  }, [existing, open]);
+
+    const h = Math.floor(baseMins / 60) % 24;
+    const m = baseMins % 60;
+    const defaultStart = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+    setForm({ ...DEFAULT_FORM, start_time: defaultStart });
+    setManualMax(false);
+  }, [open, selectedDate, existingSlots]);
 
   // Auto-calculate max patients when dependencies change
   const autoMax = calcAutoMax(form.session_duration_minutes, form.minutes_per_patient, form.breaks);
@@ -477,12 +475,41 @@ function SessionDialog({
   const totalPatientTime = form.max_patients * form.minutes_per_patient;
   const exceedsSession = totalPatientTime > form.session_duration_minutes;
 
-  const addBreak = () => setForm((f) => ({ ...f, breaks: [...f.breaks, { start: '12:00', end: '13:00' }] }));
-  const removeBreak = (i: number) => setForm((f) => ({ ...f, breaks: f.breaks.filter((_, idx) => idx !== i) }));
+  const addBreak = () => {
+    setManualMax(false); // let auto-calc update max_patients to account for new break
+    setForm((f) => {
+      // Base the default break start on the session start + 30 min (or current time if today and later)
+      const [sh, sm] = f.start_time.split(':').map(Number);
+      let breakStartMins = sh * 60 + sm + 30; // 30 min into the session
+
+      const isToday = selectedDate === new Date().toISOString().slice(0, 10);
+      if (isToday) {
+        const now = new Date();
+        const nowMins = now.getHours() * 60 + now.getMinutes();
+        // If "30 min into session" is already in the past, use next 30-min mark after now
+        if (breakStartMins <= nowMins) {
+          breakStartMins = Math.ceil(nowMins / 30) * 30;
+        }
+      }
+
+      const breakEndMins = breakStartMins + 30; // 30-min break
+      const fmt = (mins: number) => {
+        const h = Math.floor(mins / 60) % 24;
+        const m = mins % 60;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      };
+
+      return { ...f, breaks: [...f.breaks, { start: fmt(breakStartMins), end: fmt(breakEndMins) }] };
+    });
+  };
+  const removeBreak = (i: number) => {
+    setManualMax(false); // re-enable auto-calc after removing a break
+    setForm((f) => ({ ...f, breaks: f.breaks.filter((_, idx) => idx !== i) }));
+  };
   const updateBreak = (i: number, field: 'start' | 'end', v: string) =>
     setForm((f) => { const b = [...f.breaks]; b[i] = { ...b[i], [field]: v }; return { ...f, breaks: b }; });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFormError('');
     for (const b of form.breaks) {
@@ -496,7 +523,7 @@ function SessionDialog({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{existing ? 'Edit' : 'Add'} Session</DialogTitle>
+          <DialogTitle>Add Session</DialogTitle>
           <DialogDescription>
             {selectedDate ? format(parseISO(selectedDate), 'EEEE, MMMM d yyyy') : ''}
           </DialogDescription>
@@ -574,29 +601,19 @@ function SessionDialog({
             </p>
           </div>
 
-          {/* Live preview */}
+          {/* Minimal preview */}
           {form.start_time && endTime && (
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary">Session Preview</p>
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Clock className="h-4 w-4 text-primary" />
-                {fmtTime(form.start_time)} → {fmtTime(endTime)}
-                <span className="font-normal text-muted-foreground">({fmtDuration(form.session_duration_minutes)})</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span><strong>{form.max_patients}</strong> patients × <strong>{form.minutes_per_patient} min</strong> each</span>
-              </div>
-              <div className="text-xs text-muted-foreground space-y-0.5">
-                <p>Total patient time: <strong>{fmtDuration(totalPatientTime)}</strong>
-                  {exceedsSession && (
-                    <span className="ml-2 text-amber-600 font-medium">⚠ exceeds session length</span>
-                  )}
-                </p>
-                {form.breaks.length > 0 && (
-                  <p>Break time: <strong>{fmtDuration(breakMinutes(form.breaks))}</strong> deducted from available slots</p>
-                )}
-              </div>
+            <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">
+                {fmtTime(form.start_time)} – {fmtTime(endTime)}
+              </span>
+              {' · '}
+              {form.max_patients} patients
+              {' · '}
+              {form.minutes_per_patient} min each
+              {exceedsSession && (
+                <span className="ml-2 text-amber-600 text-xs">⚠ exceeds session</span>
+              )}
             </div>
           )}
 
@@ -631,7 +648,7 @@ function SessionDialog({
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
             <Button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : existing ? 'Update Session' : 'Add Session'}
+              {saving ? 'Saving…' : 'Add Session'}
             </Button>
           </DialogFooter>
         </form>

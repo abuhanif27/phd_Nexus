@@ -41,21 +41,62 @@ class DoctorAvailabilitySerializer(serializers.ModelSerializer):
         ).count()
 
     def validate(self, data):
-        """Prevent duplicate slots (same doctor + date + start_time) without a 500."""
+        """
+        1. Prevent duplicate start times on the same date.
+        2. Prevent overlapping sessions — a session cannot start or end
+           inside an existing session window on the same date.
+        3. Ensure max_patients reflects net time after breaks.
+        """
         request = self.context.get('request')
-        if request and not self.instance:  # only on create
-            try:
-                doctor = request.user.doctor_profile
-            except Exception:
-                raise serializers.ValidationError('Doctor profile not found.')
-            if DoctorAvailability.objects.filter(
-                doctor=doctor,
-                date=data.get('date'),
-                start_time=data.get('start_time'),
-            ).exists():
+        if not request:
+            return data
+
+        try:
+            doctor = request.user.doctor_profile
+        except Exception:
+            raise serializers.ValidationError('Doctor profile not found.')
+
+        date = data.get('date')
+        start_time = data.get('start_time')
+        session_duration = data.get('session_duration_minutes', 120)
+        minutes_per_patient = data.get('minutes_per_patient', 15)
+        breaks = data.get('breaks', [])
+
+        # Compute this session's end time
+        new_start_dt = datetime.combine(date, start_time)
+        new_end_dt = new_start_dt + timedelta(minutes=session_duration)
+        new_end = new_end_dt.time()
+
+        # All existing sessions for this doctor+date (exclude self on edit)
+        existing_qs = DoctorAvailability.objects.filter(doctor=doctor, date=date)
+        if self.instance:
+            existing_qs = existing_qs.exclude(pk=self.instance.pk)
+
+        for s in existing_qs:
+            s_start = s.start_time
+            s_end_dt = datetime.combine(date, s.start_time) + timedelta(minutes=s.session_duration_minutes)
+            s_end = s_end_dt.time()
+            # Overlap: new session starts before existing ends AND ends after existing starts
+            if start_time < s_end and new_end > s_start:
                 raise serializers.ValidationError(
-                    {'start_time': 'A session starting at this time already exists for this date.'}
+                    f'This session overlaps with an existing session '
+                    f'({s_start.strftime("%I:%M %p")} – {s_end.strftime("%I:%M %p")}). '
+                    f'Sessions cannot overlap.'
                 )
+
+        # Recalculate max_patients from net available time (session - breaks)
+        break_total = sum(
+            max(0, (datetime.strptime(b['end'], '%H:%M') -
+                    datetime.strptime(b['start'], '%H:%M')).seconds // 60)
+            for b in breaks if 'start' in b and 'end' in b
+        )
+        net_minutes = session_duration - break_total
+        auto_max = max(1, net_minutes // minutes_per_patient)
+        # Only override if doctor didn't explicitly set max_patients, or
+        # if the stored value is inconsistent with net time
+        provided_max = data.get('max_patients', auto_max)
+        data['max_patients'] = min(provided_max, auto_max)  # never exceed what's physically possible
+
         return data
 
 

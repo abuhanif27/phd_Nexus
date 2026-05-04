@@ -39,6 +39,7 @@ class UserSerializer(serializers.ModelSerializer):
                 dob_value = dob_value.isoformat()
             
             return {
+                'id': p.id,
                 'name': p.name,
                 'phone': p.phone,
                 'dob': dob_value,

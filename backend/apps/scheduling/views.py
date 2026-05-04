@@ -3,6 +3,7 @@ Views for scheduling appointments and doctor availability management.
 """
 from datetime import datetime, timedelta, date as date_type
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import viewsets, views, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -61,6 +62,10 @@ class DoctorSlotsView(views.APIView):
         session_start = datetime.combine(date, availability.start_time)
         session_end = session_start + timedelta(minutes=availability.session_duration_minutes)
 
+        # For today, skip slots whose start time has already passed
+        is_today = (date == date_type.today())
+        now_time = datetime.now().time() if is_today else None
+
         slots = []
         current = session_start
         patient_count = 0
@@ -68,6 +73,11 @@ class DoctorSlotsView(views.APIView):
         while current < session_end and patient_count < max_patients:
             slot_start = current.time()
             slot_end = (current + timedelta(minutes=slot_mins)).time()
+
+            # Skip past slots when booking for today
+            if is_today and slot_start <= now_time:
+                current += timedelta(minutes=slot_mins)
+                continue
 
             # Skip break windows
             in_break = False
@@ -125,10 +135,24 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         from datetime import datetime
         from apps.consent.models import Consent
-        
-        serializer = self.get_serializer(data=request.data)
+        from apps.patients.models import Patient as PatientModel
+
+        # Auto-resolve patient from the logged-in user so the client never
+        # needs to look up or send their own patient ID.
+        data = request.data.copy()
+        if request.user.role == 'patient':
+            try:
+                patient_obj = request.user.patient_profile
+                data['patient'] = patient_obj.id
+            except PatientModel.DoesNotExist:
+                return Response(
+                    {'error': 'Patient profile not found. Please complete your profile first.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
-        
+
         # Check for conflicts
         doctor = serializer.validated_data['doctor']
         date = serializer.validated_data['date']

@@ -523,6 +523,13 @@ function PatientCard({
         <Badge variant={status === 'registered' ? 'default' : 'secondary'}>
           {status === 'registered' ? 'Access Granted' : 'No Access'}
         </Badge>
+        {status === 'registered' && (
+          <Button asChild size="sm">
+            <Link href={`/patients/${appointment.patient}`}>
+              View Records
+            </Link>
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -554,8 +561,8 @@ function ConsentOnlyPatientCard({ consent }: ConsentOnlyPatientCardProps): React
       </div>
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <Badge variant="default">Access Granted</Badge>
-        <Button asChild size="sm" variant="outline">
-          <Link href={`/records?patient=${consent.patient}`}>View Records</Link>
+        <Button asChild size="sm">
+          <Link href={`/patients/${consent.patient}`}>View Records</Link>
         </Button>
       </div>
     </div>

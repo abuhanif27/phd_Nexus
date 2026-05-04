@@ -64,7 +64,13 @@ class Appointment(models.Model):
     
     class Meta:
         db_table = 'appointments'
-        unique_together = ['doctor', 'date', 'start_time']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['doctor', 'date', 'start_time'],
+                condition=models.Q(status='scheduled'),
+                name='unique_scheduled_appointment'
+            )
+        ]
         indexes = [
             models.Index(fields=['doctor', 'date', 'status']),
             models.Index(fields=['patient', 'date', 'status']),

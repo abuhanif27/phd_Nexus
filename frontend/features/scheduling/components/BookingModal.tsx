@@ -23,6 +23,7 @@ import {
 import { getDoctors } from '@/features/doctors/api';
 import { getAvailableSlots, bookAppointment } from '@/features/scheduling/api';
 import { useAuthStore } from '@/features/auth/store';
+import { useCurrentUser } from '@/features/auth/hooks';
 import {
   Dialog,
   DialogContent,
@@ -65,7 +66,10 @@ interface BookingModalProps {
 
 export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModalProps) {
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
+  const { user: storedUser } = useAuthStore();
+  const { data: freshUser } = useCurrentUser();
+  // Prefer fresh API data (has patient_profile.id); fall back to store while loading
+  const user = freshUser ?? storedUser;
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('all');
@@ -150,27 +154,38 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
       onClose();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to book appointment');
+      const d = error?.response?.data;
+      let msg = 'Failed to book appointment';
+      if (d) {
+        if (typeof d === 'string') msg = d;
+        else if (d.error) msg = d.error;
+        else if (d.detail) msg = d.detail;
+        else if (d.non_field_errors) msg = d.non_field_errors[0];
+        else {
+          // Pick the first field error
+          const first = Object.values(d)[0];
+          if (Array.isArray(first)) msg = first[0] as string;
+          else if (typeof first === 'string') msg = first;
+        }
+      }
+      toast.error(msg);
     },
   });
 
   const onSubmit = (data: BookingFormData) => {
-    if (!user?.patient_profile?.id) {
-      toast.error('Patient profile not found');
-      return;
-    }
-
-    // Parse time slot (format: "HH:MM")
+    // Parse time slot (format: "HH:MM-HH:MM")
     const [startTime, endTime] = data.time_slot.split('-');
 
     bookMutation.mutate({
       doctor: data.doctor,
-      patient: user.patient_profile.id,
+      // patient is auto-assigned server-side from the JWT token;
+      // sending it here too keeps the serializer happy as a fallback.
+      patient: (user as any)?.patient_profile?.id,
       date: data.date,
       start_time: startTime,
       end_time: endTime,
       notes: data.notes || '',
-      grant_consent: grantConsent, // Include consent preference
+      grant_consent: grantConsent,
     });
   };
 

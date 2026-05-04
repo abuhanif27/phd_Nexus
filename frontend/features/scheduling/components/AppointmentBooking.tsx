@@ -77,7 +77,7 @@ export function AppointmentBooking() {
       toast({
         variant: 'destructive',
         title: 'Booking Failed',
-        description: error.response?.data?.message || 'Failed to book appointment',
+        description: error.response?.data?.message || error.response?.data?.error || error.response?.data?.non_field_errors?.[0] || 'Failed to book appointment',
       });
     },
   });

@@ -53,7 +53,7 @@ function isPdfFile(file: { mime?: string; filename: string }) {
   return mime === 'application/pdf' || name.endsWith('.pdf');
 }
 
-export function MedicalRecordsPage() {
+export function MedicalRecordsPage({ patientId }: { patientId?: number } = {}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<RecordType>('all');
   const queryClient = useQueryClient();
@@ -137,23 +137,23 @@ export function MedicalRecordsPage() {
 
   // Fetch all records
   const { data: filesData, isLoading: loadingFiles } = useQuery({
-    queryKey: ['medical-files'],
-    queryFn: () => getMedicalFiles(),
+    queryKey: ['medical-files', patientId],
+    queryFn: () => getMedicalFiles(patientId ? { patient: patientId } : undefined),
   });
 
   const { data: labResultsData, isLoading: loadingLabs } = useQuery({
-    queryKey: ['lab-results'],
-    queryFn: () => getLabResults(),
+    queryKey: ['lab-results', patientId],
+    queryFn: () => getLabResults(patientId),
   });
 
   const { data: prescriptionsData, isLoading: loadingPrescriptions } = useQuery({
-    queryKey: ['prescriptions'],
-    queryFn: () => getPrescriptions(),
+    queryKey: ['prescriptions', patientId],
+    queryFn: () => getPrescriptions(patientId),
   });
 
   const { data: encountersData, isLoading: loadingEncounters } = useQuery({
-    queryKey: ['encounters'],
-    queryFn: () => getEncounters(),
+    queryKey: ['encounters', patientId],
+    queryFn: () => getEncounters(patientId),
   });
 
   const files = filesData?.results || [];
@@ -222,14 +222,16 @@ export function MedicalRecordsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Medical Records</h1>
-          <p className="mt-1 text-sm text-muted-foreground">View and manage your health records</p>
+          <p className="mt-1 text-sm text-muted-foreground">{patientId ? 'Viewing patient records' : 'View and manage your health records'}</p>
         </div>
-        <Button asChild className="bg-primary hover:bg-primary/90">
-          <Link href="/dashboard/records/upload">
-            <Upload className="mr-2 h-4 w-4" />
-            Upload Document
-          </Link>
-        </Button>
+        {!patientId && (
+          <Button asChild className="bg-primary hover:bg-primary/90">
+            <Link href="/records/upload">
+              <Upload className="mr-2 h-4 w-4" />
+              Upload Document
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -333,6 +335,7 @@ export function MedicalRecordsPage() {
             onViewFile={handleViewFile}
             onDownloadFile={handleDownloadToDevice}
             onDeleteFile={requestDeleteFile}
+            patientId={patientId}
           />
         </TabsContent>
       </Tabs>
@@ -704,12 +707,14 @@ function DocumentsTab({
   onViewFile,
   onDownloadFile,
   onDeleteFile,
+  patientId,
 }: {
   files: any[];
   isLoading: boolean;
   onViewFile: (file: { id: number; filename: string; mime?: string }) => void;
   onDownloadFile: (fileId: number, filename: string) => void;
   onDeleteFile: (fileId: number, filename: string) => void;
+  patientId?: number;
 }) {
   if (isLoading) {
     return <div className="py-12 text-center text-muted-foreground">Loading documents...</div>;
@@ -723,13 +728,17 @@ function DocumentsTab({
             <FileText className="h-6 w-6 text-primary" />
           </div>
           <p className="mt-4 text-sm font-medium text-muted-foreground">No documents found</p>
-          <p className="text-xs text-muted-foreground">Upload your first document to get started</p>
-          <Button className="mt-4" variant="default" asChild>
-            <Link href="/dashboard/records/upload">
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Document
-            </Link>
-          </Button>
+          {!patientId && (
+            <>
+              <p className="text-xs text-muted-foreground">Upload your first document to get started</p>
+              <Button className="mt-4" variant="default" asChild>
+                <Link href="/records/upload">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Document
+                </Link>
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
     );
