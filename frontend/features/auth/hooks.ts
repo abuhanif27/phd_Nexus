@@ -18,11 +18,18 @@ export const authKeys = {
  * Hook to get current user
  */
 export function useCurrentUser() {
+  const { updateUser } = useAuthStore();
+
   return useQuery({
     queryKey: authKeys.currentUser(),
-    queryFn: authApi.getCurrentUser,
+    // Fetch fresh profile (includes doctor_profile / patient_profile) and sync to store
+    queryFn: async () => {
+      const user = await authApi.getCurrentUser();
+      updateUser(user);
+      return user;
+    },
     retry: false,
-    staleTime: Infinity, // User data rarely changes
+    staleTime: Infinity,
   });
 }
 

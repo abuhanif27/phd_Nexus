@@ -1,5 +1,6 @@
 import { api } from '@/lib/api/axios';
-import { LoginInput, LoginResponse, RegisterInput, User } from './schemas';
+import { LoginInput, LoginResponse, RegisterInput } from './schemas';
+import type { User } from '@/types/api';
 
 /**
  * Auth API endpoints

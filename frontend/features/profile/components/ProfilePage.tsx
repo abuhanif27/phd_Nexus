@@ -33,11 +33,16 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/features/auth/store';
+import { useCurrentUser } from '@/features/auth/hooks';
 import { cn } from '@/lib/utils/cn';
 import { format } from 'date-fns';
 
 export function ProfilePage() {
-  const { user } = useAuthStore();
+  // Prefer fresh data from /api/auth/me/ (includes doctor_profile / patient_profile)
+  // Fall back to the Zustand persisted store while the request is in-flight.
+  const { user: storedUser } = useAuthStore();
+  const { data: freshUser } = useCurrentUser();
+  const user = freshUser ?? storedUser;
   const [isEditing, setIsEditing] = useState(false);
   const [saved, setSaved] = useState(false);
 
