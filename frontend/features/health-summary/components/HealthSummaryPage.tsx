@@ -223,8 +223,16 @@ export function HealthSummaryPage({
     {
       label: 'Blood Pressure',
       value: actualData?.extracted_vitals?.blood_pressure || 'N/A',
-      unit: actualData?.extracted_vitals?.blood_pressure && actualData?.extracted_vitals?.blood_pressure !== 'N/A' ? 'mmHg' : '',
-      status: 'normal',
+      unit:
+        actualData?.extracted_vitals?.blood_pressure &&
+        actualData?.extracted_vitals?.blood_pressure !== 'N/A'
+          ? 'mmHg'
+          : '',
+      status:
+        !actualData?.extracted_vitals?.blood_pressure ||
+        actualData?.extracted_vitals?.blood_pressure === 'N/A'
+          ? 'undefined'
+          : 'normal',
       trend: 'stable',
       icon: Heart,
       color: 'text-red-600',
@@ -234,8 +242,16 @@ export function HealthSummaryPage({
     {
       label: 'Heart Rate',
       value: actualData?.extracted_vitals?.heart_rate || 'N/A',
-      unit: actualData?.extracted_vitals?.heart_rate && actualData?.extracted_vitals?.heart_rate !== 'N/A' ? 'bpm' : '',
-      status: 'normal',
+      unit:
+        actualData?.extracted_vitals?.heart_rate &&
+        actualData?.extracted_vitals?.heart_rate !== 'N/A'
+          ? 'bpm'
+          : '',
+      status:
+        !actualData?.extracted_vitals?.heart_rate ||
+        actualData?.extracted_vitals?.heart_rate === 'N/A'
+          ? 'undefined'
+          : 'normal',
       trend: 'stable',
       icon: Activity,
       color: 'text-pink-600',
@@ -245,8 +261,16 @@ export function HealthSummaryPage({
     {
       label: 'Temperature',
       value: actualData?.extracted_vitals?.temperature || 'N/A',
-      unit: actualData?.extracted_vitals?.temperature && actualData?.extracted_vitals?.temperature !== 'N/A' ? '°F' : '',
-      status: 'normal',
+      unit:
+        actualData?.extracted_vitals?.temperature &&
+        actualData?.extracted_vitals?.temperature !== 'N/A'
+          ? '°F'
+          : '',
+      status:
+        !actualData?.extracted_vitals?.temperature ||
+        actualData?.extracted_vitals?.temperature === 'N/A'
+          ? 'undefined'
+          : 'normal',
       trend: 'stable',
       icon: Thermometer,
       color: 'text-orange-600',
@@ -256,8 +280,14 @@ export function HealthSummaryPage({
     {
       label: 'Weight',
       value: actualData?.extracted_vitals?.weight || 'N/A',
-      unit: actualData?.extracted_vitals?.weight && actualData?.extracted_vitals?.weight !== 'N/A' ? 'lbs' : '',
-      status: 'normal',
+      unit:
+        actualData?.extracted_vitals?.weight && actualData?.extracted_vitals?.weight !== 'N/A'
+          ? 'lbs'
+          : '',
+      status:
+        !actualData?.extracted_vitals?.weight || actualData?.extracted_vitals?.weight === 'N/A'
+          ? 'undefined'
+          : 'normal',
       trend: 'stable',
       icon: Weight,
       color: 'text-blue-600',
@@ -279,6 +309,8 @@ export function HealthSummaryPage({
         return 'text-yellow-600 bg-yellow-50 dark:bg-yellow-950/20';
       case 'critical':
         return 'text-red-600 bg-red-50 dark:bg-red-950/20';
+      case 'undefined':
+        return 'text-gray-500 bg-gray-100 dark:bg-gray-800/50';
       default:
         return 'text-gray-600 bg-gray-50 dark:bg-gray-950/20';
     }
