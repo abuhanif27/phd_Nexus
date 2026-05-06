@@ -4,6 +4,7 @@ OCR and document processing tasks.
 import os
 import re
 from typing import Dict, List
+import numpy as np
 
 try:
     import pytesseract
@@ -16,6 +17,16 @@ try:
     import easyocr
 except ImportError:
     easyocr = None
+
+try:
+    import pypdf
+except ImportError:
+    pypdf = None
+
+try:
+    from pdf2image import convert_from_path
+except ImportError:
+    convert_from_path = None
 
 # spaCy can raise runtime/config errors on unsupported Python versions.
 # Keep backend startup resilient by treating it as optional.
@@ -40,56 +51,135 @@ def _is_image_file(file_obj: File) -> bool:
     return any(name.endswith(ext) for ext in IMAGE_EXTENSIONS)
 
 
+def _is_pdf_file(file_obj: File) -> bool:
+    mime = (file_obj.mime or '').lower()
+    name = (file_obj.filename or '').lower()
+    return (mime == 'application/pdf' or name.endswith('.pdf'))
+
+
+def extract_pdf_text(file_path: str) -> str:
+    """
+    Extract text from a PDF file. 
+    First tries native text extraction, then falls back to OCR if empty.
+    """
+    raw_text = ""
+    
+    # 1. Try native text extraction
+    if pypdf:
+        try:
+            print(f"[PDF] Attempting native extraction for {file_path}")
+            text_parts = []
+            with open(file_path, "rb") as f:
+                reader = pypdf.PdfReader(f)
+                for page in reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text_parts.append(page_text)
+            raw_text = "\n".join(text_parts).strip()
+            if raw_text:
+                print(f"[PDF] Native extraction successful: {len(raw_text)} chars")
+                return raw_text
+        except Exception as e:
+            print(f"[PDF] Native extraction failed: {e}")
+
+    # 2. Fallback to OCR if native failed or returned nothing
+    if not raw_text and convert_from_path:
+        try:
+            print(f"[PDF] Native extraction empty. Attempting OCR fallback for {file_path}")
+            # Convert PDF pages to images
+            pages = convert_from_path(file_path, dpi=300)
+            ocr_parts = []
+            
+            # Use EasyOCR if available (more robust for noise)
+            reader = None
+            if easyocr:
+                print(f"[PDF] Using EasyOCR for PDF pages...")
+                reader = easyocr.Reader(['en'], gpu=False)
+            
+            for i, page_image in enumerate(pages):
+                print(f"[PDF] Processing page {i+1}/{len(pages)}")
+                page_text = ""
+                
+                if reader:
+                    try:
+                        # Convert PIL Image to numpy array for EasyOCR
+                        img_np = np.array(page_image)
+                        result = reader.readtext(img_np)
+                        page_text = '\n'.join([text[1] for text in result]).strip()
+                    except Exception as e:
+                        print(f"[PDF] EasyOCR page error: {e}")
+                
+                # Fallback to Tesseract for the page
+                if not page_text and Image and pytesseract:
+                    try:
+                        page_text = (pytesseract.image_to_string(page_image) or '').strip()
+                    except Exception as e:
+                        print(f"[PDF] Tesseract page error: {e}")
+                
+                if page_text:
+                    ocr_parts.append(page_text)
+            
+            raw_text = "\n\n".join(ocr_parts).strip()
+            if raw_text:
+                print(f"[PDF] OCR extraction successful: {len(raw_text)} chars")
+        except Exception as e:
+            print(f"[PDF] OCR extraction failed: {e}")
+            
+    return raw_text
+
+
 def process_file_ocr(file_id: int) -> Dict:
     """
-    Process uploaded file with OCR and extract structured data.
-    For image files (including kind=other), extracts text and stores in File.extracted_text
-    so the health summary can analyze document content.
+    Process uploaded file (Image or PDF) and extract structured data.
+    Stores text in File.extracted_text so the health summary can analyze document content.
     """
-    print(f"[OCR] Starting OCR for file_id={file_id}")
+    print(f"[OCR] Starting processing for file_id={file_id}")
     try:
         file_obj = File.objects.get(id=file_id)
         print(f"[OCR] File found: {file_obj.filename}")
-        if not _is_image_file(file_obj):
-            print(f"[OCR] Not an image file, skipping")
-            return {'status': 'skipped', 'reason': 'not an image file'}
+        
         if not os.path.exists(file_obj.storage_path):
             print(f"[OCR] File not found at path: {file_obj.storage_path}")
             return {'status': 'error', 'error': 'File not found on disk'}
         
-        print(f"[OCR] Processing image: {file_obj.storage_path}")
         raw_text = ""
         
-        # Try EasyOCR first (Python-only, no external dependencies)
-        if easyocr:
-            try:
-                print(f"[OCR] Attempting EasyOCR...")
-                reader = easyocr.Reader(['en'], gpu=False)
-                result = reader.readtext(file_obj.storage_path)
-                raw_text = '\n'.join([text[1] for text in result]).strip()
-                print(f"[OCR] EasyOCR success: extracted {len(raw_text)} chars")
-            except Exception as easyocr_error:
-                print(f"[OCR] EasyOCR error: {easyocr_error}")
-                raw_text = ""
+        # 1. Handle PDF
+        if _is_pdf_file(file_obj):
+            raw_text = extract_pdf_text(file_obj.storage_path)
         
-        # If EasyOCR failed or unavailable, try Tesseract
-        if not raw_text and Image and pytesseract:
-            try:
-                print(f"[OCR] Attempting Tesseract...")
-                image = Image.open(file_obj.storage_path)
-                raw_text = (pytesseract.image_to_string(image) or '').strip()
-                print(f"[OCR] Tesseract success: extracted {len(raw_text)} chars")
-            except Exception as ocr_error:
-                print(f"[OCR] Tesseract error: {ocr_error}")
-                raw_text = ""
-        
-        # If all OCR failed, use fallback placeholder
+        # 2. Handle Image
+        elif _is_image_file(file_obj):
+            print(f"[OCR] Processing image: {file_obj.storage_path}")
+            
+            # Try EasyOCR first
+            if easyocr:
+                try:
+                    print(f"[OCR] Attempting EasyOCR...")
+                    reader = easyocr.Reader(['en'], gpu=False)
+                    # Convert to numpy if it's a PIL Image (opened via Pillow)
+                    # For images we usually have a path, so EasyOCR can take the path
+                    result = reader.readtext(file_obj.storage_path)
+                    raw_text = '\n'.join([text[1] for text in result]).strip()
+                except Exception as easyocr_error:
+                    print(f"[OCR] EasyOCR error: {easyocr_error}")
+            
+            # Try Tesseract if needed
+            if not raw_text and Image and pytesseract:
+                try:
+                    print(f"[OCR] Attempting Tesseract...")
+                    image = Image.open(file_obj.storage_path)
+                    raw_text = (pytesseract.image_to_string(image) or '').strip()
+                except Exception as ocr_error:
+                    print(f"[OCR] Tesseract error: {ocr_error}")
+
+        # 3. Finalize
         if not raw_text:
-            print(f"[OCR] All OCR methods failed, using fallback...")
+            print(f"[OCR] All extraction methods failed, using fallback...")
             raw_text = _fallback_ocr(file_obj)
         
-        # Persist OCR text so health summary can use it (for all image files)
-        file_obj.extracted_text = raw_text[:10000]
+        # Persist extracted text
+        file_obj.extracted_text = raw_text[:15000] # PDF can be longer
         file_obj.save(update_fields=['extracted_text'])
         print(f"[OCR] Saved {len(raw_text)} chars to database")
 
@@ -98,20 +188,20 @@ def process_file_ocr(file_id: int) -> Dict:
         elif file_obj.kind == 'prescription':
             return _extract_prescription_data(file_obj, raw_text)
         return {'status': 'success', 'text': raw_text[:500]}
+        
     except Exception as e:
         print(f"[OCR] Error: {str(e)}")
         return {'status': 'error', 'error': str(e)}
 
 
 def _fallback_ocr(file_obj: File) -> str:
-    """Fallback OCR when Tesseract is not available. Returns placeholder to ensure document is acknowledged."""
-    return f"[Document: {file_obj.filename}. Type: {file_obj.get_kind_display()}. Text content could not be automatically extracted from this image file.]"
+    """Fallback message when text extraction is not possible."""
+    return f"[Document: {file_obj.filename}. Type: {file_obj.get_kind_display()}. Text content could not be automatically extracted from this file format.]"
 
 
 def _extract_lab_data(file_obj: File, text: str) -> Dict:
     """Extract structured lab result data."""
     try:
-        # Simple pattern matching for common lab values
         patterns = {
             'hemoglobin': r'hemoglobin[:\s]+(\d+\.?\d*)',
             'glucose': r'glucose[:\s]+(\d+\.?\d*)',
@@ -125,7 +215,6 @@ def _extract_lab_data(file_obj: File, text: str) -> Dict:
             if match:
                 data[key] = float(match.group(1))
         
-        # Create lab result
         lab = LabResult.objects.create(
             patient=file_obj.patient,
             title=f"Lab Result from {file_obj.filename}",
@@ -133,25 +222,19 @@ def _extract_lab_data(file_obj: File, text: str) -> Dict:
             data=data,
             file=file_obj
         )
-        
         return {'status': 'success', 'lab_id': lab.id, 'data': data}
-    
     except Exception as e:
         return {'status': 'error', 'error': str(e)}
 
 
 def _extract_prescription_data(file_obj: File, text: str) -> Dict:
-    """Extract prescription medication data using spaCy patterns."""
+    """Extract prescription medication data."""
     try:
-        nlp = spacy.load(settings.SPACY_MODEL)
-        doc = nlp(text)
-        
-        # Extract medications (simple pattern)
+        nlp = spacy.load(settings.SPACY_MODEL) if spacy else None
         items = []
         lines = text.split('\n')
         
         for line in lines:
-            # Look for drug-like patterns
             if any(keyword in line.lower() for keyword in ['mg', 'tablet', 'capsule', 'ml']):
                 items.append({
                     'drug': line.strip(),
@@ -160,74 +243,68 @@ def _extract_prescription_data(file_obj: File, text: str) -> Dict:
                     'instructions': ''
                 })
         
-        # Create prescription (needs doctor, using None for now)
         rx = Prescription.objects.create(
             patient=file_obj.patient,
             doctor=None,
             items=items,
             notes=text[:500]
         )
-        
         return {'status': 'success', 'prescription_id': rx.id, 'items': items}
-    
     except Exception as e:
         return {'status': 'error', 'error': str(e)}
 
 
 def get_or_extract_file_text(file_obj: File) -> str:
     """
-    Return extracted text for an image file: use stored extracted_text if present,
-    otherwise run OCR and save to file. Returns empty string if not an image or OCR fails.
+    Return extracted text for any supported file: use stored extracted_text if present,
+    otherwise run extraction and save.
     """
-    if not _is_image_file(file_obj):
-        return ''
     if getattr(file_obj, 'extracted_text', None) and (file_obj.extracted_text or '').strip():
         return (file_obj.extracted_text or '').strip()
+    
     if not os.path.exists(file_obj.storage_path):
         return ''
     
     raw_text = ""
     
-    # Try EasyOCR first
-    if easyocr:
-        try:
-            print(f"[get_or_extract_file_text] Using EasyOCR for {file_obj.filename}")
-            reader = easyocr.Reader(['en'], gpu=False)
-            result = reader.readtext(file_obj.storage_path)
-            raw_text = '\n'.join([text[1] for text in result]).strip()
-            print(f"[get_or_extract_file_text] EasyOCR extracted {len(raw_text)} chars")
-        except Exception as e:
-            print(f"[get_or_extract_file_text] EasyOCR failed: {e}")
+    # PDF
+    if _is_pdf_file(file_obj):
+        raw_text = extract_pdf_text(file_obj.storage_path)
     
-    # If EasyOCR failed, try Tesseract
-    if not raw_text and Image and pytesseract:
-        try:
-            print(f"[get_or_extract_file_text] Using Tesseract for {file_obj.filename}")
-            image = Image.open(file_obj.storage_path)
-            raw_text = (pytesseract.image_to_string(image) or '').strip()
-            print(f"[get_or_extract_file_text] Tesseract extracted {len(raw_text)} chars")
-        except Exception as e:
-            print(f"[get_or_extract_file_text] Tesseract failed: {e}")
+    # Image
+    elif _is_image_file(file_obj):
+        if easyocr:
+            try:
+                reader = easyocr.Reader(['en'], gpu=False)
+                result = reader.readtext(file_obj.storage_path)
+                raw_text = '\n'.join([text[1] for text in result]).strip()
+            except:
+                pass
+        
+        if not raw_text and Image and pytesseract:
+            try:
+                image = Image.open(file_obj.storage_path)
+                raw_text = (pytesseract.image_to_string(image) or '').strip()
+            except:
+                pass
     
-    # If still empty, use fallback
+    # Fallback
     if not raw_text:
-        print(f"[get_or_extract_file_text] All OCR methods failed for {file_obj.filename}")
         raw_text = _fallback_ocr(file_obj)
     
     if raw_text:
-        file_obj.extracted_text = raw_text[:10000]
+        file_obj.extracted_text = raw_text[:15000]
         file_obj.save(update_fields=['extracted_text'])
+        
     return raw_text
 
 
-# Celery task wrapper (if enabled)
+# Celery task wrapper
 def process_file_task(file_id: int):
-    """Task wrapper for OCR processing."""
+    """Task wrapper for file processing."""
     from django.conf import settings
-    
     if settings.USE_CELERY:
         from nexuscare.celery import app
         return app.send_task('apps.ai.tasks.process_file_ocr', args=[file_id])
     else:
-        # Run synchronously
         return process_file_ocr(file_id)

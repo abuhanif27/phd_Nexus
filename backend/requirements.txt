@@ -44,3 +44,5 @@ pytest-django
 # - Tesseract OCR installed from: https://github.com/UB-Mannheim/tesseract/wiki
 # - Uncomment torch if using GPU: torch==2.0.0+cu118 -f https://download.pytorch.org/whl/torch_stable.html
 
+pypdf==6.10.2
+pdf2image==1.17.0
