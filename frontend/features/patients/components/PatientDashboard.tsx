@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, FileText, Activity, Pill, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 import { getDashboardStats, getMyAppointments } from '../api';
+import { getHealthInsights } from '@/features/health-summary/api';
 import type { Appointment } from '@/types/api';
 import { format, parseISO } from 'date-fns';
 import Link from 'next/link';
@@ -27,7 +28,14 @@ export function PatientDashboard() {
     queryFn: () => getMyAppointments('scheduled'),
   });
 
+  // Fetch AI health insights
+  const { data: insightsData, isLoading: insightsLoading } = useQuery({
+    queryKey: ['health', 'insights'],
+    queryFn: getHealthInsights,
+  });
+
   const upcomingAppointments = appointmentsData?.results || [];
+  const insights = insightsData?.insights || [];
 
   return (
     <div className="space-y-8">
@@ -143,7 +151,7 @@ export function PatientDashboard() {
               icon={TrendingUp}
               label="Health Insights"
               description="AI-powered health summary"
-              href="/dashboard/insights"
+              href="/health-summary"
             />
           </CardContent>
         </Card>
@@ -160,12 +168,27 @@ export function PatientDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <InsightItem type="info" text="You have 2 upcoming appointments this week" />
-            <InsightItem type="warning" text="Lab results from last week are ready for review" />
-            <InsightItem type="success" text="Your health records are up to date" />
+            {insightsLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ) : insights.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">
+                Add more medical records to see personalized AI insights here.
+              </p>
+            ) : (
+              insights.slice(0, 3).map((insight, idx) => (
+                <InsightItem 
+                  key={idx} 
+                  type={idx % 3 === 0 ? "success" : idx % 3 === 1 ? "info" : "warning"} 
+                  text={insight} 
+                />
+              ))
+            )}
           </div>
           <Button variant="outline" className="mt-4 w-full" asChild>
-            <Link href="/dashboard/insights">View Detailed Insights</Link>
+            <Link href="/health-summary">View Detailed Summary</Link>
           </Button>
         </CardContent>
       </Card>

@@ -357,6 +357,25 @@ class DoctorAppointmentsView(views.APIView):
         return Response({'results': serializer.data, 'count': queryset.count()})
 
 
+class PatientAppointmentsView(views.APIView):
+    """List the logged-in patient's appointments, filterable by status."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            patient = request.user.patient_profile
+        except Exception:
+            return Response({'error': 'Patient profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        queryset = Appointment.objects.filter(patient=patient).order_by('date', 'start_time')
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        serializer = AppointmentSerializer(queryset, many=True)
+        return Response({'results': serializer.data, 'count': queryset.count()})
+
+
 class DoctorPatientsView(views.APIView):
     """Return distinct patients who have (or had) appointments with the doctor."""
     permission_classes = [IsAuthenticated]

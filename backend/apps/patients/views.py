@@ -81,6 +81,43 @@ class PatientViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(patient)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], url_path='dashboard/stats')
+    def dashboard_stats(self, request):
+        """Aggregate stats for the patient dashboard."""
+        try:
+            patient = request.user.patient_profile
+        except Exception:
+            return Response(
+                {'error': 'Patient profile not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        from apps.scheduling.models import Appointment
+        from apps.records.models import LabResult, Prescription, Encounter, File
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        today = timezone.now().date()
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        
+        return Response({
+            'upcoming_appointments': Appointment.objects.filter(
+                patient=patient, date__gte=today, status='scheduled'
+            ).count(),
+            'total_records': (
+                LabResult.objects.filter(patient=patient).count() +
+                Prescription.objects.filter(patient=patient).count() +
+                Encounter.objects.filter(patient=patient).count() +
+                File.objects.filter(patient=patient).count()
+            ),
+            'recent_labs': LabResult.objects.filter(
+                patient=patient, ts__gte=thirty_days_ago
+            ).count(),
+            'active_prescriptions': Prescription.objects.filter(
+                patient=patient, ts__gte=thirty_days_ago
+            ).count(),
+        })
+
     @action(detail=False, methods=['get'], url_path='search', permission_classes=[IsAuthenticated, IsDoctor])
     def search_patients(self, request):
         """Search patients by code, name, email, or phone (doctors only)."""
