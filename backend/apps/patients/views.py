@@ -114,7 +114,8 @@ class PatientViewSet(viewsets.ModelViewSet):
                 patient=patient, ts__gte=thirty_days_ago
             ).count(),
             'active_prescriptions': Prescription.objects.filter(
-                patient=patient, ts__gte=thirty_days_ago
+                Q(patient=patient, status='active') & 
+                (Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now()))
             ).count(),
         })
 

@@ -62,20 +62,38 @@ class Prescription(models.Model):
     """
     Medication prescriptions.
     """
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('completed', 'Completed'),
+        ('discontinued', 'Discontinued'),
+        ('on_hold', 'On Hold'),
+    ]
+    
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='prescriptions')
     doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, related_name='prescriptions')
     items = models.JSONField(default=list)  # [{drug, dosage, duration, instructions}]
     notes = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     ts = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         db_table = 'prescriptions'
         indexes = [
             models.Index(fields=['patient', 'ts']),
+            models.Index(fields=['patient', 'status']),
         ]
     
     def __str__(self):
-        return f"Prescription for {self.patient.name} by Dr. {self.doctor.name if self.doctor else 'Unknown'}"
+        return f"Prescription for {self.patient.name} - {self.status}"
+
+    def is_active(self):
+        """Check if prescription is clinically active."""
+        if self.status != 'active':
+            return False
+        if self.expires_at and self.expires_at < timezone.now():
+            return False
+        return True
 
 
 class Encounter(models.Model):

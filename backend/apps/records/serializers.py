@@ -27,10 +27,12 @@ class LabResultSerializer(serializers.ModelSerializer):
 
 
 class PrescriptionSerializer(serializers.ModelSerializer):
+    is_active = serializers.BooleanField(read_only=True)
+    
     class Meta:
         model = Prescription
-        fields = ['id', 'patient', 'doctor', 'items', 'notes', 'ts']
-        read_only_fields = ['id', 'ts']
+        fields = ['id', 'patient', 'doctor', 'items', 'notes', 'status', 'ts', 'expires_at', 'is_active']
+        read_only_fields = ['id', 'ts', 'is_active']
 
 
 class EncounterSerializer(serializers.ModelSerializer):
