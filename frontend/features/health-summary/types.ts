@@ -18,9 +18,9 @@ export interface VitalSign {
 export interface HealthCondition {
   id: number;
   name: string;
-  severity: 'mild' | 'moderate' | 'severe';
+  severity: 'mild' | 'moderate' | 'severe' | 'critical' | 'normal';
   diagnosed_date: string;
-  status: 'active' | 'managed' | 'resolved';
+  status: 'active' | 'managed' | 'resolved' | 'chronic';
 }
 
 export interface Allergy {
@@ -37,7 +37,7 @@ export interface Medication {
   frequency: string;
   start_date: string;
   end_date?: string;
-  status: 'active' | 'completed' | 'discontinued';
+  status: 'active' | 'completed' | 'discontinued' | 'on_hold';
 }
 
 export interface HealthSummary {

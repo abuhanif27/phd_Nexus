@@ -7,6 +7,7 @@ import string
 import pickle
 from pathlib import Path
 from typing import List, Dict, Tuple
+from datetime import datetime
 import numpy as np
 
 # ML/NLP imports
@@ -608,6 +609,65 @@ class AIService:
             'status': status,
             'diagnosed_date': timezone.now().isoformat()
         }
+
+    def _analyze_medication(self, med_text: str, record_date: datetime = None) -> Dict:
+        """
+        Intelligently infer medication status and expiration based on clinical standards.
+        Doctors don't write 'active', so we infer it from date, duration, and keywords.
+        """
+        text = med_text.lower()
+        if not record_date:
+            record_date = timezone.now()
+
+        # 1. Infer Duration (Clinical Standard Estimation)
+        # Default durations based on typical treatment cycles
+        duration_days = 30 # Standard default
+
+        # Acute/Short-term patterns
+        short_term_match = re.search(r'(\d+)\s*(?:days|day|hrs|hours)', text)
+        if short_term_match:
+            duration_days = int(short_term_match.group(1))
+        elif any(k in text for k in ('antibiotic', 'infection', 'acute', 'pain', 'sos', 'short term')):
+            duration_days = 10 # Acute course
+
+        # Chronic/Maintenance patterns
+        elif any(k in text for k in ('daily', 'maintenance', 'chronic', 'long-term', 'od', 'bd', 'tds', 'qid')):
+            duration_days = 90 # Standard chronic refill cycle
+
+        # 2. Calculate Expiration
+        expires_at = record_date + timedelta(days=duration_days)
+
+        # 3. Determine Status
+        status = 'active'
+        if expires_at < timezone.now():
+            status = 'completed'
+
+        # Keyword-based overrides
+        if any(k in text for k in ('stop', 'discontinue', 'ceased', 'discontinued')):
+            status = 'discontinued'
+        elif any(k in text for k in ('hold', 'suspend', 'on hold')):
+            status = 'on_hold'
+        elif any(k in text for k in ('finish', 'completed the course', 'finished')):
+            status = 'completed'
+
+        # 4. Cleanup Name
+        name = med_text
+        # Strip common clinical prefixes
+        name = re.sub(r'^(?:Medication:|Tab|Cap|Syr|Inj|Prescribed|Take)[\.\s:]*', '', name, flags=re.I).strip()
+        # Extract drug name before dosage/instructions if possible
+        name_match = re.search(r'^([^0-9,;]+)', name)
+        if name_match:
+            name = name_match.group(1).strip()
+
+        return {
+            'name': name.capitalize(),
+            'status': status,
+            'dosage': '', # Placeholder for specific extractor
+            'frequency': '',
+            'expires_at': expires_at.isoformat(),
+            'is_active': status == 'active'
+        }
+
     def _build_professional_summary(self, corpus: str) -> Tuple[str, List[str]]:
         """
         Turn raw OCR/corpus into a clean, professional narrative and short key findings.
@@ -1018,15 +1078,20 @@ class AIService:
         else:
             insights.extend([b for b in bullets if not self._is_noise(b)][:4])
 
-        # Medications as objects
+        # Medications as objects WITH INTELLIGENT CLINICAL INFERENCE
         final_medications = []
+        # Attempt to find the most recent record date for a better inference
+        # The corpus is sorted descending, so the first date marker is the newest.
+        ref_date = timezone.now()
+        first_date_match = re.search(r'\[(\d{4}-\d{2}-\d{2})\]', corpus)
+        if first_date_match:
+            try:
+                ref_date = timezone.make_aware(datetime.strptime(first_date_match.group(1), '%Y-%m-%d'))
+            except Exception:
+                pass
+
         for med in list(dict.fromkeys(manual_medications))[:12]:
-            final_medications.append({
-                'name': med,
-                'status': 'active',
-                'dosage': '',
-                'frequency': ''
-            })
+            final_medications.append(self._analyze_medication(med, record_date=ref_date))
 
         return {
             'summary': summary,

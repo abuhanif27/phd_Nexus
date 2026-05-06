@@ -770,10 +770,16 @@ export function HealthSummaryPage({
                               </div>
                               <Badge
                                 className={`flex-shrink-0 px-3 py-1 ${
-                                  med.status === 'active' ? 'bg-green-600' : 'bg-gray-500'
+                                  med.status === 'active' 
+                                    ? 'bg-green-600' 
+                                    : med.status === 'on_hold'
+                                      ? 'bg-yellow-600'
+                                      : med.status === 'discontinued'
+                                        ? 'bg-red-600'
+                                        : 'bg-gray-500'
                                 }`}
                               >
-                                {med.status.charAt(0).toUpperCase() + med.status.slice(1)}
+                                {med.status === 'on_hold' ? 'On Hold' : med.status.charAt(0).toUpperCase() + med.status.slice(1)}
                               </Badge>
                             </div>
                           ))}
