@@ -57,6 +57,16 @@ class AIService:
         r'\d{10,}', r'\(\d{3}\)', r'[\w.-]+@[\w.-]+\.\w+', r'http[s]?://'
     )
 
+    # Keywords that indicate a document has legitimate medical content
+    MEDICAL_KEYWORDS = (
+        r'mg', r'tablet', r'capsule', r'diagnosis', r'history', r'patient',
+        r'blood', r'result', r'test', r'lab', r'clinical', r'symptom',
+        r'treatment', r'physician', r'medicine', r'dose', r'dosage',
+        r'injection', r'iv', r'bp', r'heart', r'pulse', r'temperature',
+        r'pain', r'stable', r'acute', r'chronic', r'prescription', r'rx',
+        r'indication', r'finding', r'exam', r'medical', r'condition'
+    )
+
     def __init__(self, model_type: str = 'auto'):
         """
         Initialize AI Service.
@@ -497,6 +507,26 @@ class AIService:
             
         return False
 
+    def _has_medical_context(self, text: str) -> bool:
+        """Holistically determine if a block of text has legitimate medical relevance."""
+        if not text:
+            return False
+            
+        # 1. Check for medical keywords
+        for keyword in self.MEDICAL_KEYWORDS:
+            if re.search(keyword, text, re.IGNORECASE):
+                return True
+                
+        # 2. Check for numeric values with units (common in vitals/labs)
+        if re.search(r'\d+(\.\d+)?\s*(mg|ml|kg|lb|bpm|c|f|%|g/dl|mmol/l)', text, re.IGNORECASE):
+            return True
+            
+        # 3. Check for specific medical formatting like BP (120/80)
+        if re.search(r'\d{2,3}\s*/\s*[\d]{2,3}', text):
+            return True
+            
+        return False
+
     def _build_professional_summary(self, corpus: str) -> Tuple[str, List[str]]:
         """
         Turn raw OCR/corpus into a clean, professional narrative and short key findings.
@@ -720,10 +750,19 @@ class AIService:
 
         for f in patient.files.filter(created_at__gte=cutoff).order_by('-created_at')[:max_items]:
             extracted = get_or_extract_file_text(f)
+            
+            # Quietly skip documents that have NO medical context or are pure noise
+            # unless they were explicitly labeled as labs/prescriptions by the user
+            if f.kind == 'other' and not self._has_medical_context(extracted):
+                print(f"[RELEVANCE] Skipping non-medical file: {f.filename}")
+                continue
+                
             # Include files even if text extraction fails (e.g. OCR not working)
-            # to ensure they are counted in the records corpus
+            # but only if it seems like it *could* be medical (or is explicitly kind='lab/rx')
             if not extracted or not extracted.strip():
-                extracted = "[Image document uploaded; text extraction (OCR) not available or failed for this file content.]"
+                if f.kind == 'other':
+                    continue # Skip empty generic uploads
+                extracted = "[Medical document uploaded; text extraction (OCR) not available or failed for this file content.]"
             
             text = f"Medical Document ({f.get_kind_display()}): {extracted[:1000]}"
             items.append((f.created_at, 'file', text))
