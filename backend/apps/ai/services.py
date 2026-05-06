@@ -528,38 +528,86 @@ class AIService:
         return False
 
     def _analyze_condition(self, condition_text: str) -> Dict:
-        """Intelligently estimate severity and status of a medical condition from context."""
+        """
+        Intelligently estimate severity and status of a medical condition from context.
+        Uses clinical-style logic based on modifiers and descriptions.
+
+        Clinical Standard Mapping:
+        - Critical: Life-threatening or requiring immediate ICU-level monitoring.
+        - Severe: Uncontrolled, advanced stage, or significantly impacting organ function.
+        - Moderate: Symptomatic but stable, requiring regular monitoring/medication.
+        - Mild: Well-controlled, early-stage, or minor impact.
+        - Normal: Physiological findings within reference ranges or resolved issues.
+        """
         text = condition_text.lower()
-        
-        # Estimate Severity
-        severity = 'moderate' # Default
-        severe_keywords = ['severe', 'critical', 'uncontrolled', 'high risk', 'emergency', 'chronic', 'stage 3', 'stage 4']
-        mild_keywords = ['mild', 'controlled', 'stable', 'minor', 'borderline', 'improving', 'early stage']
-        
-        if any(k in text for k in severe_keywords):
+
+        # 1. Severity Logic (Clinical Modifier Priority)
+        severity = 'moderate' # Clinical default
+
+        # Priority 1: Critical / Life-threatening
+        critical_markers = [
+            'critical', 'emergency', 'acute respiratory distress', 'malignant', 
+            'severe sepsis', 'life-threatening', 'instability', 'impending'
+        ]
+
+        # Priority 2: Severe / Advanced
+        severe_markers = [
+            'severe', 'uncontrolled', 'chronic stage 4', 'chronic stage 5', 
+            'advanced', 'decompensated', 'high risk', 'grade 3', 'grade 4',
+            'worsening', 'end-stage'
+        ]
+
+        # Priority 3: Mild / Stable
+        mild_markers = [
+            'mild', 'controlled', 'stable', 'minor', 'borderline', 
+            'improving', 'early stage', 'well-controlled', 'grade 1'
+        ]
+
+        # Priority 4: Normal / Resolved
+        normal_markers = [
+            'normal', 'resolved', 'negative', 'within normal limits', 
+            'non-specific', 'unremarkable', 'asymptomatic'
+        ]
+
+        if any(m in text for m in critical_markers):
+            severity = 'critical'
+        elif any(m in text for m in severe_markers):
             severity = 'severe'
-        elif any(k in text for k in mild_keywords):
+        elif any(m in text for m in normal_markers):
+            severity = 'normal'
+        elif any(m in text for m in mild_markers):
             severity = 'mild'
-            
-        # Estimate Status
+
+        # 2. Status Logic (Longitudinal State)
         status = 'active' # Default
-        managed_keywords = ['controlled', 'managed', 'on medication', 'stable', 'improving', 'resolved', 'history of']
-        if any(k in text for k in managed_keywords):
+        managed_markers = [
+            'controlled', 'managed', 'on medication', 'stable', 'improving', 
+            'resolved', 'history of', 'maintenance', 'prophylaxis'
+        ]
+        recurrent_markers = ['recurrent', 'intermittent', 'episodic', 'chronic']
+
+        if 'resolved' in text or 'negative' in text:
+            status = 'resolved'
+        elif any(m in text for m in managed_markers):
             status = 'managed'
-            
-        # Extract Name (strip out medication or status noise for the header)
+        elif any(m in text for m in recurrent_markers):
+            status = 'chronic'
+
+        # 3. Name Cleanup (Removing clinical metadata noise)
         name = condition_text
-        # Common cleanup
         name = re.sub(r'Medication noted:', '', name, flags=re.I).strip()
         name = re.sub(r'Medication:', '', name, flags=re.I).strip()
-        
+        # Remove common severity words from the name itself for cleaner UI
+        clean_name = re.sub(r'\b(mild|moderate|severe|critical|stable|uncontrolled|chronic)\b', '', name, flags=re.I).strip()
+        # Capitalize and remove redundant spaces/punctuation
+        clean_name = clean_name.strip(',. ').capitalize()
+
         return {
-            'name': name,
+            'name': clean_name or name, # Fallback to original if cleanup was too aggressive
             'severity': severity,
             'status': status,
             'diagnosed_date': timezone.now().isoformat()
         }
-
     def _build_professional_summary(self, corpus: str) -> Tuple[str, List[str]]:
         """
         Turn raw OCR/corpus into a clean, professional narrative and short key findings.
