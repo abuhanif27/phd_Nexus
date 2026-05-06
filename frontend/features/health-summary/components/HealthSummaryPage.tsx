@@ -692,13 +692,19 @@ export function HealthSummaryPage({
                                       variant="outline"
                                       className={`px-3 py-1 ${getSeverityColor(condition.severity)}`}
                                     >
-                                      {condition.severity}
+                                      {condition.severity.charAt(0).toUpperCase() +
+                                        condition.severity.slice(1)}
                                     </Badge>
                                     <Badge
                                       variant="outline"
-                                      className="bg-blue-50 px-3 py-1 text-blue-700"
+                                      className={`px-3 py-1 ${
+                                        condition.status === 'managed'
+                                          ? 'bg-green-50 text-green-700 border-green-200'
+                                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                                      }`}
                                     >
-                                      {condition.status}
+                                      {condition.status.charAt(0).toUpperCase() +
+                                        condition.status.slice(1)}
                                     </Badge>
                                   </div>
                                 </div>
@@ -762,7 +768,13 @@ export function HealthSummaryPage({
                                   )}
                                 </div>
                               </div>
-                              <Badge className="flex-shrink-0 bg-green-600 px-3 py-1">Active</Badge>
+                              <Badge
+                                className={`flex-shrink-0 px-3 py-1 ${
+                                  med.status === 'active' ? 'bg-green-600' : 'bg-gray-500'
+                                }`}
+                              >
+                                {med.status.charAt(0).toUpperCase() + med.status.slice(1)}
+                              </Badge>
                             </div>
                           ))}
                         {medications.length === 0 && contentFromRecords.length > 0 && (

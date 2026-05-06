@@ -206,18 +206,46 @@ class HealthSummaryView(views.APIView):
         
         try:
             result = ai_service.generate_health_summary_from_records(patient.id)
+            
             # Shape for frontend HealthSummary + AI fields
+            # conditions and medications are already objects from services.py
+            conditions = []
+            for i, c in enumerate(result.get('conditions', [])[:15]):
+                if isinstance(c, dict):
+                    c['id'] = i
+                    conditions.append(c)
+                else:
+                    conditions.append({
+                        'id': i, 
+                        'name': str(c), 
+                        'severity': 'moderate', 
+                        'diagnosed_date': '', 
+                        'status': 'active'
+                    })
+
+            medications = []
+            for i, m in enumerate(result.get('medications', [])[:15]):
+                if isinstance(m, dict):
+                    m['id'] = i
+                    # Ensure start_date exists for frontend
+                    if 'start_date' not in m:
+                        m['start_date'] = ''
+                    medications.append(m)
+                else:
+                    medications.append({
+                        'id': i, 
+                        'name': str(m)[:80], 
+                        'dosage': '', 
+                        'frequency': '', 
+                        'start_date': '', 
+                        'status': 'active'
+                    })
+
             return Response({
                 'vital_signs': [],  # Optional: from vitals API later
-                'conditions': [
-                    {'id': i, 'name': c, 'severity': 'moderate', 'diagnosed_date': '', 'status': 'active'}
-                    for i, c in enumerate(result.get('conditions', [])[:15])
-                ],
+                'conditions': conditions,
                 'allergies': [],  # From profile if needed
-                'medications': [
-                    {'id': i, 'name': m[:80], 'dosage': '', 'frequency': '', 'start_date': '', 'status': 'active'}
-                    for i, m in enumerate(result.get('medications', [])[:15])
-                ],
+                'medications': medications,
                 'last_checkup': result.get('date_range', {}).get('newest'),
                 'next_appointment': None,
                 'health_score': None,
@@ -230,8 +258,12 @@ class HealthSummaryView(views.APIView):
                 'source_counts': result.get('source_counts', {}),
                 'record_count': result.get('record_count', 0),
                 'date_range': result.get('date_range', {}),
+                'extracted_vitals': result.get('extracted_vitals', {}),
             })
         except Exception as e:
+            import traceback
+            print(f"Error in HealthSummaryView: {e}")
+            print(traceback.format_exc())
             return Response(
                 {'error': f'Failed to generate health summary: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

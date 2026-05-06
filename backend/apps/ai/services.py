@@ -522,10 +522,43 @@ class AIService:
             return True
             
         # 3. Check for specific medical formatting like BP (120/80)
-        if re.search(r'\d{2,3}\s*/\s*[\d]{2,3}', text):
+        if re.search(r'\d{2,3}\s*/\s*\d{2,3}', text):
             return True
             
         return False
+
+    def _analyze_condition(self, condition_text: str) -> Dict:
+        """Intelligently estimate severity and status of a medical condition from context."""
+        text = condition_text.lower()
+        
+        # Estimate Severity
+        severity = 'moderate' # Default
+        severe_keywords = ['severe', 'critical', 'uncontrolled', 'high risk', 'emergency', 'chronic', 'stage 3', 'stage 4']
+        mild_keywords = ['mild', 'controlled', 'stable', 'minor', 'borderline', 'improving', 'early stage']
+        
+        if any(k in text for k in severe_keywords):
+            severity = 'severe'
+        elif any(k in text for k in mild_keywords):
+            severity = 'mild'
+            
+        # Estimate Status
+        status = 'active' # Default
+        managed_keywords = ['controlled', 'managed', 'on medication', 'stable', 'improving', 'resolved', 'history of']
+        if any(k in text for k in managed_keywords):
+            status = 'managed'
+            
+        # Extract Name (strip out medication or status noise for the header)
+        name = condition_text
+        # Common cleanup
+        name = re.sub(r'Medication noted:', '', name, flags=re.I).strip()
+        name = re.sub(r'Medication:', '', name, flags=re.I).strip()
+        
+        return {
+            'name': name,
+            'severity': severity,
+            'status': status,
+            'diagnosed_date': timezone.now().isoformat()
+        }
 
     def _build_professional_summary(self, corpus: str) -> Tuple[str, List[str]]:
         """
@@ -826,8 +859,7 @@ class AIService:
         summary = ' '.join(bullets) if bullets else "Medical records reviewed; see specific documents for details."
 
         # Entity extraction (spaCy NER; medical models can be plugged here)
-        conditions = []
-        medications = []
+        manual_medications = []
         entities_map = {}
         if self.spacy_model:
             doc = self.spacy_model(corpus)
@@ -839,12 +871,10 @@ class AIService:
                     # Filter entities too
                     if not self._is_noise(ent.text):
                         entities_map[label].append(ent.text)
-            # Map common labels to conditions/medications
+            # Map common labels to medications
             for label, vals in entities_map.items():
-                if label in ('DISEASE', 'CONDITION', 'PROBLEM', 'GPE') and label != 'GPE':
-                    conditions.extend(vals[:10])
-                elif label in ('DRUG', 'MEDICATION', 'CHEMICAL'):
-                    medications.extend(vals[:15])
+                if label in ('DRUG', 'MEDICATION', 'CHEMICAL'):
+                    manual_medications.extend(vals[:15])
 
         # Extract vitals (Blood pressure, heart rate, temperature, weight)
         import re
@@ -890,6 +920,8 @@ class AIService:
             sent_lower = s.lower()
             if any(k in sent_lower for k in condition_keywords):
                 manual_findings.append(s[:200])
+            if any(k in sent_lower for k in medication_keywords):
+                manual_medications.append(s[:200])
         
         # Professional summary: clean narrative + key findings (no raw OCR dump)
         professional_narrative = ''
@@ -899,10 +931,12 @@ class AIService:
         except Exception as e:
             print(f"Professional summary error: {e}")
         
-        if professional_findings:
-            conditions = professional_findings[:12]
-        elif manual_findings:
-            conditions = list(dict.fromkeys(manual_findings))[:12]
+        # CONVERT CONDITIONS TO OBJECTS WITH INTELLIGENT BADGES
+        conditions_list = []
+        raw_condition_sources = professional_findings if professional_findings else list(dict.fromkeys(manual_findings))[:10]
+        
+        for raw_cond in raw_condition_sources:
+            conditions_list.append(self._analyze_condition(raw_cond))
             
         if professional_narrative:
             summary = professional_narrative
@@ -936,6 +970,16 @@ class AIService:
         else:
             insights.extend([b for b in bullets if not self._is_noise(b)][:4])
 
+        # Medications as objects
+        final_medications = []
+        for med in list(dict.fromkeys(manual_medications))[:12]:
+            final_medications.append({
+                'name': med,
+                'status': 'active',
+                'dosage': '',
+                'frequency': ''
+            })
+
         return {
             'summary': summary,
             'bullets': bullets,
@@ -943,8 +987,8 @@ class AIService:
             'professional_findings': professional_findings,
             'record_highlights': record_highlights,
             'insights': insights[:10],
-            'conditions': conditions[:12],
-            'medications': medications[:12],
+            'conditions': conditions_list,
+            'medications': final_medications,
             'entities': entities_map,
             'source_counts': meta['source_counts'],
             'date_range': meta['date_range'],
