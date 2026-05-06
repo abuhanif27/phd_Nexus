@@ -43,6 +43,20 @@ class AIService:
     Supports sklearn and DistilBERT models with intelligent fallback.
     100% FREE - no API costs!
     """
+    
+    # Strictly filter out non-medical fragments (OCR noise, headers, names)
+    # We use these patterns to purge noise from ALL summary fields
+    SUMMARY_BLACKLIST = (
+        r'Dr\.?\s+[A-Z]', r'Hospital', r'Institute', r'Center', r'Clinic',
+        r'Phone', r'Email', r'Address', r'Website', r'www\.', r'Lane', r'Drive', r'Suite',
+        r'Date:', r'Time:', r'Patient:', r'Age:', r'Gender:', r'Sex:',
+        r'Fax', r'Tel:', r'Mobile', r'Miiy', r'Dui', r'Plsat', r'Viol', r'Id\s+Rroz',
+        r'Unknown', r'Content\s+from\s+image', r'Document:', r'Medical\s+Document',
+        r'Road', r'Street', r'St\.', r'Ave', r'Avenue', r'Bldg', r'Building',
+        r'Pharmacy', r'Diagnostic', r'Medical\s+College', r'University',
+        r'\d{10,}', r'\(\d{3}\)', r'[\w.-]+@[\w.-]+\.\w+', r'http[s]?://'
+    )
+
     def __init__(self, model_type: str = 'auto'):
         """
         Initialize AI Service.
@@ -467,24 +481,39 @@ class AIService:
             sentences = text.split('.')[:sentence_count]
             return [s.strip() + '.' for s in sentences if s.strip()]
 
+    def _is_noise(self, text: str) -> bool:
+        """Strictly verify if a piece of text is OCR noise or non-medical info."""
+        if not text or len(text.strip()) < 5:
+            return True
+        
+        # Check against blacklist patterns
+        for pattern in self.SUMMARY_BLACKLIST:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+                
+        # If it's just numbers and punctuation, it's noise
+        if re.search(r'^[0-9\W]+$', text.strip()):
+            return True
+            
+        return False
+
     def _build_professional_summary(self, corpus: str) -> Tuple[str, List[str]]:
         """
         Turn raw OCR/corpus into a clean, professional narrative and short key findings.
         Strips metadata, extracts conditions/syndromes/vaccination, returns meaningful summary.
         """
-        import re
-        # Extract actual content: remove "[date] [type] Document: ... Content from image:" and keep medical text
+        # Extract actual content: remove metadata blocks and keep medical text
         content_parts = []
         for block in re.split(r'\[\d{4}-\d{2}-\d{2}\]\s*\[\w+\]\s*Document:[^\n]*\.?\s*', corpus):
             block = block.replace('Content from image:', '').strip()
-            if len(block) > 30 and not block.startswith('['):
+            # Basic noise filter for the block
+            if not self._is_noise(block) and len(block) > 20:
                 content_parts.append(block)
         
-        # If no clean blocks found, just use the corpus but strip metadata
         raw_text = ' '.join(content_parts) if content_parts else corpus
         raw_text = re.sub(r'\[\d{4}-\d{2}-\d{2}\]\s*\[\w+\]\s*Document:[^\n]+', ' ', raw_text)
         raw_text = re.sub(r'Content from image:\s*', ' ', raw_text)
-        # Remove long phone/email/URL runs
+        # Remove contact info
         raw_text = re.sub(r'\(\d{3}\)\s*\d{3}[-\s]?\d{4}', ' ', raw_text)
         raw_text = re.sub(r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}', ' ', raw_text)
         raw_text = re.sub(r'[\w.-]+@[\w.-]+\.\w+', ' ', raw_text)
@@ -496,8 +525,9 @@ class AIService:
 
         def add_finding(s: str, max_len: int = 100):
             s = s.strip()
-            if not s or len(s) < 4:
+            if self._is_noise(s) or len(s) > 200:
                 return
+            
             s = s[:max_len].strip()
             key = s.lower()[:80]
             if key not in seen:
@@ -513,21 +543,24 @@ class AIService:
             (r'hypertension.*?lifestyle', 'Hypertension, managed with lifestyle changes'),
             (r'hypertension', 'Hypertension'),
             (r'diabetes', 'Diabetes'),
+            (r'cardiac', 'Cardiac condition noted'),
+            (r'cholesterol', 'Elevated cholesterol mentioned'),
         ]
         for pat, phrase in phrase_checks:
             if re.search(pat, raw_text, re.IGNORECASE):
                 add_finding(phrase)
         
-        # Look for medications (common in prescriptions)
-        med_matches = re.findall(r'(?:Tab|Cap|Syr|Inj)[:\s]+([A-Z][a-z]+(?:\s+[0-9]+m?g)?)', raw_text)
+        # Improved medication extraction (Tab/Cap followed by actual drug names)
+        med_matches = re.findall(r'(?:Tab|Cap|Syr|Inj)[\.\s:]*([A-Z][a-z]+(?:\s+[0-9]+m?g)?)', raw_text)
         for med in med_matches:
-            add_finding(f"Medication noted: {med}")
+            if len(med) > 3 and not self._is_noise(med):
+                add_finding(f"Medication: {med}")
 
-        # One free-form line after "List any Medical Problems" if short enough
-        m = re.search(r'(?:list any medical problems|diagnosis|history)[^:]*:\s*([^.]{10,120})', raw_text, re.IGNORECASE)
+        # One free-form line after diagnosis/history if medical keywords present
+        m = re.search(r'(?:diagnosis|history|problems)[^:]*:\s*([^.]{10,120})', raw_text, re.IGNORECASE)
         if m:
             g = re.sub(r'\s+', ' ', m.group(1)).strip()
-            if not re.search(r'\d{5}|street|avenue', g, re.IGNORECASE):
+            if any(k in g.lower() for k in ('stable', 'pain', 'severe', 'mild', 'chronic', 'acute', 'managed')):
                 add_finding(g[:100])
 
         # Vaccination / immunity
@@ -536,24 +569,17 @@ class AIService:
             if re.search(r'measles', raw_text, re.IGNORECASE):
                 imm.append('Measles: not immune')
             if re.search(r'varicella|chicken\s*pox', raw_text, re.IGNORECASE):
-                imm.append('Chicken pox (Varicella): see record')
+                imm.append('Chicken pox (Varicella): not immune')
             if re.search(r'hepatitis\s*B.*no|vaccination.*no', raw_text, re.IGNORECASE):
                 imm.append('Hepatitis B vaccination: no')
             for i in imm:
                 add_finding(i)
         
-        # Generic health status indicators
-        if re.search(r'stable|improving|normal|unremarkable', raw_text, re.IGNORECASE):
-            m = re.search(r'([^.]{10,60}(?:stable|improving|normal|unremarkable)[^.]{0,40})', raw_text, re.IGNORECASE)
-            if m:
-                add_finding(m.group(1))
-
-        # Short phrases that look like conditions (no long addresses)
+        # Short phrases that look like medical facts
         for part in re.split(r'[.;\n]', raw_text):
             part = part.strip()
-            if 10 < len(part) < 120 and not re.search(r'\d{5}|street|avenue|suite|lane|drive', part, re.IGNORECASE):
-                # Look for keywords that might indicate a condition or finding
-                if any(k in part.lower() for k in ('asthma', 'migraine', 'hypertension', 'medication', 'controlled', 'managed', 'stress', 'problem', 'condition', 'vaccination', 'immune', 'test', 'result', 'finding', 'noted', 'history')):
+            if 15 < len(part) < 120:
+                if any(k in part.lower() for k in ('asthma', 'migraine', 'hypertension', 'medication', 'controlled', 'managed', 'stress', 'vaccination', 'immune', 'test result')):
                     add_finding(part, 90)
 
         # Dedupe and limit
@@ -576,12 +602,12 @@ class AIService:
             else:
                 narrative += "."
         else:
-            # Fallback to TextRank-like summary if no specific findings
             bullets = self._extractive_summary(raw_text, sentence_count=2)
-            if bullets:
-                narrative = f"Based on {n} medical {record_word}. Summary: {' '.join(bullets)}"
+            filtered_bullets = [b for b in bullets if not self._is_noise(b)]
+            if filtered_bullets:
+                narrative = f"Based on {n} medical {record_word}. Summary: {' '.join(filtered_bullets)}"
             else:
-                narrative = f"Based on {n} medical {record_word}. No structured conditions could be extracted; review your documents for details."
+                narrative = f"Based on {n} medical {record_word}. Medical records reviewed; see specific documents for detailed history."
         
         return narrative, clean_findings
     
@@ -749,12 +775,16 @@ class AIService:
             }
 
         # Extractive summary (TextRank) – medical-domain friendly
-        bullets = self._extractive_summary(corpus, sentence_count=8)
+        # Aggressively filter bullets for noise
+        raw_bullets = self._extractive_summary(corpus, sentence_count=8)
+        bullets = [b for b in raw_bullets if not self._is_noise(b) and len(b.strip()) > 15]
+        
         if not bullets and corpus.strip():
-            # Fallback: use first meaningful lines/sentences so analyze part has content
-            lines = [s.strip() for s in corpus.split('\n') if len(s.strip()) > 30][:10]
-            bullets = lines or [corpus[:300]]
-        summary = ' '.join(bullets) if bullets else corpus[:500]
+            # Fallback: use meaningful lines that aren't noise
+            lines = [s.strip() for s in corpus.split('\n') if not self._is_noise(s) and len(s.strip()) > 30][:10]
+            bullets = lines
+            
+        summary = ' '.join(bullets) if bullets else "Medical records reviewed; see specific documents for details."
 
         # Entity extraction (spaCy NER; medical models can be plugged here)
         conditions = []
@@ -767,7 +797,9 @@ class AIService:
                 if label not in entities_map:
                     entities_map[label] = []
                 if ent.text not in entities_map[label]:
-                    entities_map[label].append(ent.text)
+                    # Filter entities too
+                    if not self._is_noise(ent.text):
+                        entities_map[label].append(ent.text)
             # Map common labels to conditions/medications
             for label, vals in entities_map.items():
                 if label in ('DISEASE', 'CONDITION', 'PROBLEM', 'GPE') and label != 'GPE':
@@ -800,38 +832,26 @@ class AIService:
         if weight_match:
             vitals['weight'] = weight_match.group(1)
 
-        # Fallback: keyword-based extraction from corpus (broadened so analyze part is full of content)
+        # Fallback: keyword-based extraction from corpus
         condition_keywords = (
             'diagnosis', 'diagnosed', 'condition', 'disease', 'disorder', 'syndrome',
-            'lab', 'result', 'test', 'patient', 'treatment', 'symptom', 'note', 'finding',
-            'content from image', 'document', 'encounter', 'prescription'
+            'lab', 'result', 'test', 'patient', 'treatment', 'symptom', 'note', 'finding'
         )
         medication_keywords = (
             'prescribed', 'drug', 'mg', 'tablet', 'capsule', 'medication', 'dose', 'dosage',
             'medicine', 'rx', 'pill', 'ml '
         )
+        
+        # Additional extraction only if not already found in structured professional findings
+        manual_findings = []
         for sent in corpus.replace('\n', ' ').split('.'):
             s = sent.strip()
-            if len(s) < 15:
+            if len(s) < 15 or self._is_noise(s):
                 continue
             sent_lower = s.lower()
             if any(k in sent_lower for k in condition_keywords):
-                conditions.append(s[:200])
-            if any(k in sent_lower for k in medication_keywords):
-                medications.append(s[:200])
-        conditions = list(dict.fromkeys(conditions))[:12]
-        medications = list(dict.fromkeys(medications))[:12]
-
-        # When still empty, fill from summary bullets so the analyze part is full of content from records
-        if not conditions and bullets:
-            conditions = [b[:200] for b in bullets[:10]]
-        if not medications and bullets:
-            med_bullets = [b for b in bullets if any(k in b.lower() for k in medication_keywords)]
-            if med_bullets:
-                medications = [b[:200] for b in med_bullets[:8]]
-            else:
-                medications = [b[:200] for b in bullets[:6]]
-
+                manual_findings.append(s[:200])
+        
         # Professional summary: clean narrative + key findings (no raw OCR dump)
         professional_narrative = ''
         professional_findings = []
@@ -839,18 +859,27 @@ class AIService:
             professional_narrative, professional_findings = self._build_professional_summary(corpus)
         except Exception as e:
             print(f"Professional summary error: {e}")
+        
         if professional_findings:
             conditions = professional_findings[:12]
+        elif manual_findings:
+            conditions = list(dict.fromkeys(manual_findings))[:12]
+            
         if professional_narrative:
             summary = professional_narrative
 
-        # Prefer clean findings for highlights so UI is not a mess
-        record_highlights = list(professional_findings) if professional_findings else list(bullets)
+        # Prefer clean findings for highlights
+        record_highlights = []
+        if professional_findings:
+            record_highlights = list(professional_findings)
+        else:
+            record_highlights = [b for b in bullets if not self._is_noise(b)]
+            
         if not record_highlights and summary:
             record_highlights = [summary[:400]]
         record_highlights = record_highlights[:15]
 
-        # Build short insights from summary + counts (clean, no raw dump)
+        # Build short insights
         insights = []
         sc = meta['source_counts']
         if sc.get('lab'):
@@ -861,10 +890,12 @@ class AIService:
             insights.append(f"Based on {sc['encounter']} encounter note(s).")
         if sc.get('file'):
             insights.append(f"Based on {sc['file']} uploaded document(s).")
+            
+        # Add filtered findings to insights
         if professional_findings:
             insights.extend(professional_findings[:4])
-        elif bullets:
-            insights.extend(bullets[:4])
+        else:
+            insights.extend([b for b in bullets if not self._is_noise(b)][:4])
 
         return {
             'summary': summary,
