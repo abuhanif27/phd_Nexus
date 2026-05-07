@@ -14,12 +14,14 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
       password: '',
+      rememberMe: true,
     },
   });
 
@@ -89,6 +91,7 @@ export function LoginForm() {
               <input
                 id="email"
                 type="email"
+                autoComplete="email"
                 disabled={isPending}
                 {...register('email')}
                 className="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-400 dark:disabled:bg-slate-800/70"
@@ -126,6 +129,7 @@ export function LoginForm() {
               <input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 disabled={isPending}
                 {...register('password')}
                 className="block w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-400 dark:disabled:bg-slate-800/70"
