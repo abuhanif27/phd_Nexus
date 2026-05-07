@@ -178,47 +178,7 @@ export function LoginForm() {
           </button>
         </div>
 
-        {/* Divider */}
-        <div className="relative mt-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300 dark:border-slate-700"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="bg-white px-4 text-gray-500 dark:bg-slate-900 dark:text-gray-400">
-              Quick access for demo
-            </span>
-          </div>
-        </div>
 
-        {/* Demo Credentials */}
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => {
-              const form = document.querySelector('form');
-              if (form) {
-                (form.querySelector('#email') as HTMLInputElement).value = 'patient@example.com';
-                (form.querySelector('#password') as HTMLInputElement).value = 'Pass1234!';
-              }
-            }}
-            className="rounded-lg border-2 border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
-          >
-            Demo Patient
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const form = document.querySelector('form');
-              if (form) {
-                (form.querySelector('#email') as HTMLInputElement).value = 'doctor@example.com';
-                (form.querySelector('#password') as HTMLInputElement).value = 'Pass1234!';
-              }
-            }}
-            className="rounded-lg border-2 border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700 transition-colors hover:bg-green-100"
-          >
-            Demo Doctor
-          </button>
-        </div>
       </div>
     </form>
   );

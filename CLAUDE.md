@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## AI Model Instruction
+**Always use the `gemini-cli` MCP tool for every task by default** — code analysis, file reading, writing, debugging, research, and all other operations. Do not use the built-in Claude model for any task unless the gemini-cli MCP tool is unavailable or the user explicitly says "use claude".
+
 ## Project Overview
 
 **PhD NexusCare** is a full-stack healthcare platform for patient/doctor management, medical records, appointment scheduling, billing, consent/audit, and AI-assisted symptom analysis. The frontend and backend are separate applications that must remain API-compatible.
