@@ -17,28 +17,35 @@ const ACCESS_TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 
 /**
- * Get access token from localStorage
+ * Get access token from storage
  */
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return localStorage.getItem(ACCESS_TOKEN_KEY) || sessionStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 /**
- * Get refresh token from localStorage
+ * Get refresh token from storage
  */
 export function getRefreshToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return localStorage.getItem(REFRESH_TOKEN_KEY) || sessionStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
 /**
  * Store both access and refresh tokens
  */
-export function setTokens(accessToken: string, refreshToken: string): void {
+export function setTokens(accessToken: string, refreshToken: string, rememberMe: boolean = true): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  const storage = rememberMe ? localStorage : sessionStorage;
+  
+  // Clear from the other storage to avoid conflicts
+  const otherStorage = rememberMe ? sessionStorage : localStorage;
+  otherStorage.removeItem(ACCESS_TOKEN_KEY);
+  otherStorage.removeItem(REFRESH_TOKEN_KEY);
+
+  storage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 }
 
 /**
@@ -48,6 +55,8 @@ export function clearTokens(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 /**

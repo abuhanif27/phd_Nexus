@@ -144,8 +144,9 @@ export function LoginForm() {
           <div className="flex items-center">
             <input
               id="remember-me"
-              name="remember-me"
               type="checkbox"
+              disabled={isPending}
+              {...register('rememberMe')}
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label

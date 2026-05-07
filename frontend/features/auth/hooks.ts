@@ -43,9 +43,9 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: authApi.login,
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       // Store tokens
-      setTokens(data.access, data.refresh);
+      setTokens(data.access, data.refresh, variables.rememberMe);
 
       // Update auth store with full user data
       setAuth(data.user, data.access, data.refresh);
