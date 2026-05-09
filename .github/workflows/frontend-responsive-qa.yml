@@ -43,7 +43,7 @@ jobs:
         run: npm run test:e2e:responsive
 
       - name: Visual snapshots
-        run: npm run test:e2e:visual
+        run: npm run test:e2e:visual -- --update-snapshots
 
       - name: Upload Playwright report
         if: always()
