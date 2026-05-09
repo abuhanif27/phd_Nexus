@@ -10,8 +10,8 @@ from rest_framework import status, generics, views
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, OTPToken
-from .serializers import RegisterSerializer, LoginSerializer, UserSerializer, TwoFASerializer
+from .models import User, OTPToken, UserSettings
+from .serializers import RegisterSerializer, LoginSerializer, UserSerializer, TwoFASerializer, UserSettingsSerializer, ChangePasswordSerializer, ProfileUpdateSerializer
 
 
 class RegisterView(generics.CreateAPIView):
@@ -24,6 +24,9 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        
+        # Create default UserSettings
+        UserSettings.objects.create(user=user)
         
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
@@ -153,3 +156,90 @@ class MeView(views.APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+
+
+class UserSettingsView(views.APIView):
+    """Get and update user settings."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        settings, _ = UserSettings.objects.get_or_create(user=request.user)
+        serializer = UserSettingsSerializer(settings)
+        return Response(serializer.data)
+
+    def put(self, request):
+        settings, _ = UserSettings.objects.get_or_create(user=request.user)
+        serializer = UserSettingsSerializer(settings, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class ProfileUpdateView(views.APIView):
+    """Update user profile details."""
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        serializer = ProfileUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        user = request.user
+        
+        if 'email' in data:
+            user.email = data['email']
+        if 'phone' in data:
+            user.phone = data['phone']
+        user.save()
+
+        if user.role == 'patient':
+            try:
+                profile = user.patient_profile
+                if 'name' in data: profile.name = data['name']
+                if 'dob' in data: profile.dob = data['dob']
+                if 'blood_group' in data: profile.blood_group = data['blood_group']
+                if 'emergency_contact' in data: profile.emergency_contact = data['emergency_contact']
+                if 'address' in data: profile.address = data['address']
+                profile.save()
+            except Exception:
+                pass
+        elif user.role == 'doctor':
+            try:
+                profile = user.doctor_profile
+                if 'name' in data: profile.name = data['name']
+                if 'specialty' in data: profile.specialty = data['specialty']
+                if 'qualifications' in data: profile.qualifications = data['qualifications']
+                if 'location' in data: profile.location = data['location']
+                profile.save()
+            except Exception:
+                pass
+
+        return Response(UserSerializer(user).data)
+
+
+class ChangePasswordView(views.APIView):
+    """Change user password."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        if not user.check_password(serializer.validated_data['current_password']):
+            return Response({"error": "Incorrect current password."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+        return Response({"message": "Password updated successfully."})
+
+
+class TwoFAToggleView(views.APIView):
+    """Toggle Two-Factor Authentication."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        user.twofa_enabled = not user.twofa_enabled
+        user.save()
+        return Response({"twofa_enabled": user.twofa_enabled, "message": "2FA status updated."})

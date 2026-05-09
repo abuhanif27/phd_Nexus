@@ -74,3 +74,36 @@ class OTPToken(models.Model):
     
     def __str__(self):
         return f"OTP {self.code} for {self.user.email}"
+
+
+class UserSettings(models.Model):
+    """
+    User settings including notifications, privacy, and preferences.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='settings')
+    
+    # Notifications
+    email_notifications = models.BooleanField(default=True)
+    push_notifications = models.BooleanField(default=True)
+    sms_notifications = models.BooleanField(default=False)
+    appointment_reminders = models.BooleanField(default=True)
+    medication_reminders = models.BooleanField(default=True)
+    health_alerts = models.BooleanField(default=True)
+    newsletters = models.BooleanField(default=False)
+
+    # Privacy
+    profile_visibility = models.CharField(max_length=20, default='private')
+    share_data_research = models.BooleanField(default=False)
+    allow_ai_analysis = models.BooleanField(default=True)
+    data_sync_enabled = models.BooleanField(default=True)
+
+    # Preferences
+    theme = models.CharField(max_length=20, default='system')
+    language = models.CharField(max_length=20, default='en-US')
+    timezone = models.CharField(max_length=50, default='UTC')
+
+    class Meta:
+        db_table = 'user_settings'
+
+    def __str__(self):
+        return f"Settings for {self.user.email}"

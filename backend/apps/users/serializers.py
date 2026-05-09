@@ -144,3 +144,42 @@ class LoginSerializer(serializers.Serializer):
 
 class TwoFASerializer(serializers.Serializer):
     code = serializers.CharField(max_length=6)
+
+
+from .models import UserSettings
+
+class UserSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserSettings
+        fields = [
+            'email_notifications', 'push_notifications', 'sms_notifications',
+            'appointment_reminders', 'medication_reminders', 'health_alerts', 'newsletters',
+            'profile_visibility', 'share_data_research', 'allow_ai_analysis', 'data_sync_enabled',
+            'theme', 'language', 'timezone'
+        ]
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({"new_password": "Passwords don't match."})
+        return attrs
+
+class ProfileUpdateSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=False)
+    phone = serializers.CharField(required=False, allow_blank=True)
+    
+    # Patient fields
+    name = serializers.CharField(required=False)
+    dob = serializers.DateField(required=False, allow_null=True)
+    blood_group = serializers.CharField(required=False, allow_blank=True)
+    emergency_contact = serializers.CharField(required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
+    
+    # Doctor fields
+    specialty = serializers.CharField(required=False, allow_blank=True)
+    qualifications = serializers.CharField(required=False, allow_blank=True)
+    location = serializers.CharField(required=False, allow_blank=True)
