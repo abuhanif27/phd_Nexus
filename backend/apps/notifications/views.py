@@ -24,6 +24,26 @@ class NotificationListView(generics.ListAPIView):
         return Notification.objects.filter(user=self.request.user).order_by('-ts')
 
 
+class MarkNotificationsReadView(views.APIView):
+    """Mark the current user's notifications as read."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        notification_ids = request.data.get('ids')
+        queryset = Notification.objects.filter(user=request.user, read=False)
+
+        if notification_ids is not None:
+            if not isinstance(notification_ids, list):
+                return Response(
+                    {'error': 'ids must be a list of notification IDs'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            queryset = queryset.filter(id__in=notification_ids)
+
+        updated = queryset.update(read=True)
+        return Response({'updated': updated}, status=status.HTTP_200_OK)
+
+
 class RequestAccessNotificationView(views.APIView):
     """Doctor requests patient consent via in-app notification."""
     permission_classes = [IsAuthenticated, IsDoctor]
@@ -143,6 +163,20 @@ class AcceptAccessRequestView(views.APIView):
             expires_at=timezone.now() + timedelta(hours=duration_hours),
             status='active'
         )
+
+        unread_notifications = Notification.objects.filter(
+            user=request.user,
+            channel='in_app',
+            read=False,
+        )
+        matching_notification_ids = [
+            notification.id
+            for notification in unread_notifications
+            if notification.payload.get('type') == 'access_request'
+            and notification.payload.get('from_doctor_id') == doctor.id
+        ]
+        if matching_notification_ids:
+            Notification.objects.filter(id__in=matching_notification_ids).update(read=True)
 
         return Response(
             {'consent_id': consent.id, 'message': 'Access granted'},

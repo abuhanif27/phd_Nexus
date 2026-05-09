@@ -26,6 +26,7 @@ class Notification(models.Model):
     channel = models.CharField(max_length=10, choices=CHANNEL_CHOICES)
     payload = models.JSONField(default=dict)  # {subject, body, to, etc.}
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='queued')
+    read = models.BooleanField(default=False)
     error = models.TextField(blank=True)
     ts = models.DateTimeField(default=timezone.now)
     
@@ -33,6 +34,7 @@ class Notification(models.Model):
         db_table = 'notifications'
         indexes = [
             models.Index(fields=['user', 'status']),
+            models.Index(fields=['user', 'read']),
         ]
     
     def __str__(self):

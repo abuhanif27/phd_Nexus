@@ -21,7 +21,8 @@ export interface BackendNotification {
   user: number;
   channel: 'email' | 'sms' | 'in_app';
   payload: NotificationPayload;
-  status: 'sent' | 'read' | 'archived';
+  status: 'queued' | 'sent' | 'failed';
+  read: boolean;
   error?: string;
   ts: string;
 }
@@ -61,5 +62,13 @@ export async function acceptAccessRequest(
     doctor_user_id: doctorUserId, // Fallback for old notifications
     duration_hours: durationHours,
   });
+  return data;
+}
+
+/**
+ * Mark notifications as read. Omitting IDs marks all current user's unread notifications.
+ */
+export async function markNotificationsRead(ids?: number[]): Promise<{ updated: number }> {
+  const { data } = await apiClient.post(`${BASE}/mark-read/`, ids ? { ids } : {});
   return data;
 }

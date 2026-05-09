@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { Menu, Bell, User, Heart, LogOut, Settings as SettingsIcon, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +17,7 @@ import { useAuthStore } from '@/features/auth/store';
 import { useLogout } from '@/features/auth/hooks';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { toast } from '@/components/ui/use-toast';
+import { getNotifications } from '@/features/notifications/api';
 
 interface AppHeaderProps {
   onToggleSidebar: () => void;
@@ -25,6 +27,15 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
   const { user } = useAuthStore();
   const { mutate: logout } = useLogout();
   const [mounted, setMounted] = React.useState(false);
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => getNotifications(),
+    enabled: mounted && !!user,
+    refetchInterval: 30000,
+  });
+
+  const unreadCount =
+    notificationsData?.results?.filter((notification) => notification.read === false).length ?? 0;
 
   React.useEffect(() => {
     setMounted(true);
@@ -62,9 +73,11 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
             className="relative hover:bg-blue-50 dark:hover:bg-gray-800"
           >
             <Bell className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-semibold text-white shadow-lg">
-              3
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-semibold text-white shadow-lg">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </Button>
         </Link>
 

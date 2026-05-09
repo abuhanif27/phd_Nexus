@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import {
   getNotifications,
   acceptAccessRequest,
+  markNotificationsRead,
   type BackendNotification,
 } from '@/features/notifications/api';
 import React from 'react';
@@ -41,6 +42,23 @@ export function NotificationsPage(): React.ReactElement {
   }, [refetch]);
 
   const notifications = useMemo(() => notificationsData?.results || [], [notificationsData]);
+  const unreadNotificationIds = useMemo(
+    () => notifications.filter((notification) => !notification.read).map((notification) => notification.id),
+    [notifications]
+  );
+
+  const markReadMutation = useMutation({
+    mutationFn: (ids: number[]) => markNotificationsRead(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+
+  useEffect(() => {
+    if (unreadNotificationIds.length > 0 && !markReadMutation.isPending) {
+      markReadMutation.mutate(unreadNotificationIds);
+    }
+  }, [unreadNotificationIds, markReadMutation]);
 
   const acceptMutation = useMutation({
     mutationFn: (data: { doctorId: number; doctorUserId?: number }) => {

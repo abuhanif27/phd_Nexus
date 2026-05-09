@@ -8,5 +8,5 @@ from .models import Notification
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = ['id', 'channel', 'payload', 'status', 'error', 'ts']
-        read_only_fields = ['id', 'status', 'error', 'ts']
+        fields = ['id', 'user', 'channel', 'payload', 'status', 'read', 'error', 'ts']
+        read_only_fields = ['id', 'user', 'status', 'read', 'error', 'ts']
