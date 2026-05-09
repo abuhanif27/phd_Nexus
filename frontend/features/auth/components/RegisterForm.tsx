@@ -111,12 +111,8 @@ export function RegisterForm() {
         payload.doctor_profile = doctorProfile;
       }
 
-      console.log('📤 Submitting registration:', payload);
-
       // Submit to API
       const response = await authService.register(payload);
-
-      console.log('✅ Registration successful:', response);
 
       // Save tokens
       if (response.access && response.refresh) {

@@ -72,7 +72,6 @@ export function DoctorPatientsPage() {
     mutationFn: ({ patientId, message }: { patientId: number; message: string }) =>
       requestAccessNotification(patientId, message),
     onSuccess: (_, variables) => {
-      console.log('Request sent to patient:', variables.patientId);
       setSentRequestPatientIds((prev) => new Set([...prev, variables.patientId]));
       toast.success('Access request sent to patient');
     },
@@ -114,8 +113,8 @@ export function DoctorPatientsPage() {
     },
   });
 
-  const appointments = appointmentsData || [];
-  const consents = consentsData?.results || [];
+  const appointments = useMemo(() => appointmentsData || [], [appointmentsData]);
+  const consents = useMemo(() => consentsData?.results || [], [consentsData]);
 
   const { registeredPatients, unregisteredPatients, consentOnlyPatients } = useMemo(() => {
     const consentPatientIds = new Set(

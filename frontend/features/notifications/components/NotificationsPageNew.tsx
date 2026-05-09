@@ -40,15 +40,13 @@ export function NotificationsPage(): React.ReactElement {
     refetch();
   }, [refetch]);
 
-  const notifications = notificationsData?.results || [];
+  const notifications = useMemo(() => notificationsData?.results || [], [notificationsData]);
 
   const acceptMutation = useMutation({
     mutationFn: (data: { doctorId: number; doctorUserId?: number }) => {
-      console.log('Accepting access request from doctor:', data);
       return acceptAccessRequest(data.doctorId, 24, data.doctorUserId);
     },
-    onSuccess: (data, variables) => {
-      console.log('Access granted:', data);
+    onSuccess: (_data, variables) => {
       setAcceptedDoctors((prev) => new Set([...prev, variables.doctorId]));
       toast.success('Access granted to doctor');
       // Refetch notifications to update the list

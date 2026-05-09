@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api/axios';
 import type { Appointment } from '@/types/api';
-import { format, isToday, parseISO } from 'date-fns';
+import { format, isAfter, isToday, parseISO } from 'date-fns';
 
 export default function ConsultationsPage() {
   const qc = useQueryClient();
@@ -65,8 +65,9 @@ export default function ConsultationsPage() {
   });
 
   const all: Appointment[] = Array.isArray(data) ? data : data?.results || [];
-  const todayList = all.filter((a) => a.status === 'scheduled' && isToday(parseISO(a.date)));
-  const upcomingList = all.filter((a) => a.status === 'scheduled' && !isToday(parseISO(a.date)));
+  const scheduledList = all.filter((a) => a.status === 'scheduled');
+  const todayList = scheduledList.filter((a) => isToday(parseISO(a.date)));
+  const upcomingList = scheduledList.filter((a) => isAfter(parseISO(a.date), new Date()));
   const completedList = all.filter((a) => a.status === 'done').slice(0, 10);
 
   const openDialog = (apt: Appointment) => {

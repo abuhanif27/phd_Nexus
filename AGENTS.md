@@ -1,169 +1,50 @@
-# AGENTS.md
+# Repository Guidelines
 
-Purpose: shared context for coding agents working in this repository.
+## Project Structure & Module Organization
 
-## 1) Project Summary
+PhD NexusCare is split into two API-compatible applications:
 
-PhD NexusCare is a full-stack healthcare platform with:
-- Patient/doctor management
-- Medical records and scheduling
-- Billing flows
-- Consent and audit features
-- AI-assisted symptom/specialist analysis
+- `backend/`: Django 5 REST API, app modules, migrations, and backend tests.
+- `frontend/`: Next.js 15 React/TypeScript app, UI, feature modules, API clients, and tests.
+- `docs/`: product and domain documentation.
+- `docker/`: local container setup.
+- `start-all.sh` / `stop-all.sh`: convenience scripts for running both apps.
 
-Architecture is split:
-- Backend: Django REST API (SQLite in local dev)
-- Frontend: Next.js (React + TypeScript)
+Key backend apps live under `backend/apps/`, including `ai`, `consent`, `patients`, `doctors`, `records`, `scheduling`, `billing`, and `users`. Frontend features are under `frontend/features/*`; app routes live in `frontend/app`.
 
-The frontend and backend are separate applications, but they are part of one product and must stay API-compatible.
+## Build, Test, and Development Commands
 
-## 2) Tech Stack
+- `./start-all.sh`: start the local full stack.
+- `./stop-all.sh`: stop local services.
+- `cd backend && python manage.py migrate`: apply Django migrations.
+- `cd backend && python manage.py runserver`: run the API on port `8000`.
+- `cd backend && python manage.py train_sklearn`: create local AI classifier artifacts if missing.
+- `cd frontend && npm run dev`: run Next.js on port `3000`.
+- `cd frontend && npm run build`: create a production frontend build.
+- `cd frontend && npm run typecheck`: run TypeScript checks.
+- `cd frontend && npm run lint`: run ESLint.
 
-Backend:
-- Django 5
-- Django REST Framework
-- SimpleJWT authentication
-- Celery + Redis (async/background tasks)
-- scikit-learn, spaCy, FAISS, NLP utilities
+## Coding Style & Naming Conventions
 
-Frontend:
-- Next.js 15
-- React 19
-- TypeScript
-- Tailwind CSS
-- TanStack Query
-- Zustand
-- Vitest + Playwright
+Backend code follows Django conventions: app-local `models.py`, `serializers.py`, `views.py`, `urls.py`, and migrations in `migrations/`. Preserve existing permission checks and prefer additive API changes.
 
-## 3) Repository Layout
+Frontend uses TypeScript, React function components, Tailwind CSS, and feature folders. Use PascalCase for components, camelCase for variables/functions, and keep API types in `frontend/types` or feature API modules.
 
-- backend/: Django apps, API, AI services, migrations, tests
-- frontend/: Next.js app router UI, feature modules, client state, API clients
-- docs/: project structure and domain docs
-- docker/: local container setup files
-- start-all.(sh|ps1), stop-all.(sh|ps1): convenience scripts
+## Testing Guidelines
 
-Key backend app modules include:
-- apps/ai
-- apps/consent
-- apps/patients
-- apps/doctors
-- apps/records
-- apps/scheduling
-- apps/billing
-- apps/users
+Backend changes should run relevant Django tests from `backend/`; add tests near the impacted app when behavior changes. Frontend uses Vitest and Playwright:
 
-## 4) Local Runbook
+- `cd frontend && npm test`: unit tests.
+- `cd frontend && npm run test:e2e`: Playwright end-to-end tests.
 
-Windows (PowerShell):
-- Start all: ./start-all.ps1
-- Stop all: ./stop-all.ps1
+For cross-stack API changes, verify backend serializers/views and frontend callers/types together.
 
-Linux/macOS:
-- Start all: ./start-all.sh
-- Stop all: ./stop-all.sh
+## Commit & Pull Request Guidelines
 
-Direct backend run:
-- cd backend
-- activate venv
-- python manage.py migrate
-- python manage.py runserver
+Recent history uses Conventional Commit-style messages, for example `feat: enhance LoginForm...`. Prefer `feat:`, `fix:`, `chore:`, or `docs:`.
 
-Direct frontend run:
-- cd frontend
-- npm install
-- npm run dev
+Pull requests should include a short description, linked issue when available, screenshots for UI changes, migration notes for schema changes, and the exact checks run.
 
-Default ports:
-- Frontend: 3000
-- Backend: 8000
+## Security & Configuration Tips
 
-## 5) Required AI Setup
-
-AI classifier artifacts are expected for AI endpoints.
-If missing, train at least the sklearn model:
-- cd backend
-- activate venv
-- python manage.py train_sklearn
-
-## 6) Environment and API Contract
-
-Frontend env handling defaults to local backend:
-- NEXT_PUBLIC_API_BASE_URL defaults to http://localhost:8000
-
-API base path is /api on backend.
-Auth is JWT Bearer token.
-
-When changing API serializers/views/routes, verify frontend API usage and types remain compatible.
-
-## 7) How Agents Should Interpret Requests
-
-When a user asks for a change, classify first:
-- frontend-only UI/UX change
-- backend-only business/API change
-- cross-cutting change affecting contracts
-- AI/model/training/runtime change
-- infra/dev-experience change
-
-Then apply this rule:
-- If any API shape may change, check both backend endpoint definitions and frontend callers/types.
-
-## 8) Clarification Checklist (Ask If Missing)
-
-Before implementing ambiguous requests, ask for:
-- Scope: frontend, backend, or both?
-- Expected behavior: exact input/output examples
-- Target users/roles: patient, doctor, admin, staff
-- Backward compatibility requirement
-- Whether DB schema changes are allowed
-- Whether AI behavior must be deterministic or can be heuristic
-
-If the request is simple and clear, implement directly without extra questions.
-
-## 9) Safe Change Policy
-
-- Keep changes minimal and scoped.
-- Do not rename public API fields unless requested.
-- Prefer additive API changes over breaking changes.
-- Preserve existing auth/permission checks.
-- For Django model changes, create migrations.
-- For frontend behavior changes, check loading/error states.
-
-## 10) Validation Checklist
-
-Backend:
-- Run relevant Django tests (or targeted pytest)
-- Validate endpoint behavior manually if tests are missing
-
-Frontend:
-- npm run typecheck
-- npm run lint
-- run targeted unit/e2e tests when relevant
-
-Cross-stack:
-- Confirm frontend can still authenticate and call modified endpoints.
-
-## 11) Common Request Patterns
-
-"Fix UI issue":
-- inspect feature module in frontend/features/*
-- verify component usage in app routes
-- avoid changing backend unless needed
-
-"API not working":
-- inspect backend app urls/views/serializers first
-- inspect frontend lib/api client usage second
-- confirm base URL and auth token handling
-
-"AI prediction issue":
-- verify model files exist
-- verify AI services/tasks import path and fallback logic
-- verify request payload/response schema
-
-## 12) Definition of Done
-
-A task is done when:
-- requested behavior is implemented
-- no obvious regressions introduced
-- impacted checks/tests are run (or explicitly reported if not run)
-- assumptions and limitations are clearly stated in the final update
+Do not commit secrets or local tokens. Frontend API calls default to `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`; backend auth uses JWT Bearer tokens. Keep patient data, consent, and audit behavior backward-compatible unless explicitly required.

@@ -102,7 +102,10 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
     queryFn: () => getDoctors({}),
   });
 
-  const doctors = Array.isArray(doctorsData) ? doctorsData : (doctorsData?.results || []);
+  const doctors = useMemo(
+    () => (Array.isArray(doctorsData) ? doctorsData : doctorsData?.results || []),
+    [doctorsData]
+  );
 
   // Filter doctors based on search and specialty
   const filteredDoctors = useMemo(() => {

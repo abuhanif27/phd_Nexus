@@ -364,6 +364,7 @@ export function MedicalRecordsPage({ patientId }: { patientId?: number } = {}) {
               <>
                 {isImageFile(viewFile) && (
                   <div className="rounded-lg border bg-muted/30 p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={viewUrl}
                       alt={viewFile.filename}
