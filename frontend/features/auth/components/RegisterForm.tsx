@@ -114,6 +114,13 @@ export function RegisterForm() {
       // Submit to API
       const response = await authService.register(payload);
 
+      if (response.pending_approval) {
+        setSuccess(response.message || 'Account created successfully! Please wait for admin approval.');
+        setIsLoading(false);
+        // Don't redirect automatically for doctors, they can't login yet
+        return;
+      }
+
       // Save tokens
       if (response.access && response.refresh) {
         localStorage.setItem('access_token', response.access);
@@ -139,7 +146,27 @@ export function RegisterForm() {
 
       if (err?.response?.data) {
         const resp = err.response.data;
-        if (typeof resp === 'object') {
+        
+        // Handle the new 'details' field for better error reporting
+        if (resp.details) {
+          const details = resp.details;
+          if (typeof details === 'object') {
+            const msgs: string[] = [];
+            for (const [key, v] of Object.entries(details)) {
+              const label = key === 'non_field_errors' ? '' : `${key}: `;
+              if (Array.isArray(v)) {
+                msgs.push(...v.map((item) => `${label}${String(item)}`).filter((x) => !!x));
+              } else if (typeof v === 'string') {
+                msgs.push(`${label}${extractTextFromHTML(v)}`);
+              } else if (typeof v === 'object' && v !== null) {
+                msgs.push(`${label}${JSON.stringify(v)}`);
+              }
+            }
+            if (msgs.length > 0) message = msgs.join(', ');
+          } else {
+            message = extractTextFromHTML(String(details));
+          }
+        } else if (typeof resp === 'object') {
           const msgs: string[] = [];
           for (const v of Object.values(resp)) {
             if (Array.isArray(v)) {

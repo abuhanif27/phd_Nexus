@@ -9,6 +9,13 @@ class Doctor(models.Model):
     """
     Doctor profile with specialty and credentials.
     """
+    STATUS_CHOICES = [
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('suspended', 'Suspended'),
+    ]
+
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='doctor_profile')
     name = models.CharField(max_length=200)
     specialty = models.CharField(max_length=100)
@@ -18,8 +25,14 @@ class Doctor(models.Model):
     rating = models.FloatField(default=0.0)
     calendar_connected = models.BooleanField(default=False)
     
+    # Verification & Approval
+    is_verified = models.BooleanField(default=False)
+    verification_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_notes = models.TextField(blank=True, help_text="Notes from admin during approval process")
+    verified_at = models.DateTimeField(null=True, blank=True)
+    
     class Meta:
         db_table = 'doctors'
     
     def __str__(self):
-        return f"Dr. {self.name} - {self.specialty}"
+        return f"Dr. {self.name} - {self.specialty} ({self.verification_status})"

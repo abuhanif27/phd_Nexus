@@ -29,20 +29,41 @@ class RegisterView(generics.CreateAPIView):
     
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        
-        # Create default UserSettings
-        UserSettings.objects.get_or_create(user=user)
-        
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
-        
-        return Response({
-            'user': UserSerializer(user).data,
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
-        }, status=status.HTTP_201_CREATED)
+        try:
+            serializer.is_valid(raise_exception=True)
+            user = serializer.save()
+            
+            # Create default UserSettings
+            UserSettings.objects.get_or_create(user=user)
+            
+            # If user is a doctor, they are initially INACTIVE and require admin approval
+            is_doctor = user.role == 'doctor'
+            if is_doctor:
+                user.is_active = False
+                user.save()
+            
+            # Generate JWT tokens (only if active)
+            if user.is_active:
+                refresh = RefreshToken.for_user(user)
+                return Response({
+                    'user': UserSerializer(user).data,
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    'user': UserSerializer(user).data,
+                    'message': 'Account created successfully. Please wait for admin approval before you can sign in.',
+                    'pending_approval': True
+                }, status=status.HTTP_201_CREATED)
+                
+        except Exception as e:
+            # Better error detail
+            error_data = getattr(e, 'detail', str(e))
+            return Response(
+                {'error': 'Registration failed', 'details': error_data},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class LoginView(views.APIView):
@@ -67,7 +88,24 @@ class LoginView(views.APIView):
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
         
         if not user.is_active:
-            return Response({'error': 'Account is inactive'}, status=status.HTTP_403_FORBIDDEN)
+            # Check if it's a doctor waiting for approval
+            if user.role == 'doctor':
+                try:
+                    profile = user.doctor_profile
+                    if profile.verification_status == 'pending':
+                        return Response(
+                            {'error': 'Your account is pending admin approval. We will notify you once approved.'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                    elif profile.verification_status == 'rejected':
+                        return Response(
+                            {'error': f'Your registration was rejected. Reason: {profile.admin_notes}'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Exception:
+                    pass
+            
+            return Response({'error': 'Account is inactive. Please contact support.'}, status=status.HTTP_403_FORBIDDEN)
         
         if user.twofa_enabled:
             # Check for TOTP vs Email/SMS

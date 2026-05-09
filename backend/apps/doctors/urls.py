@@ -3,7 +3,7 @@ URL routing for doctors.
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import DoctorViewSet
+from .views import DoctorViewSet, DoctorApprovalView
 from apps.scheduling.views import (
     DoctorAvailabilityViewSet,
     DoctorProfileView,
@@ -20,6 +20,10 @@ router.register('', DoctorViewSet, basename='doctor')
 router.register('availability', DoctorAvailabilityViewSet, basename='doctor-availability')
 
 urlpatterns = [
+    # Admin approval endpoints
+    path('approvals/', DoctorApprovalView.as_view(), name='doctor-approvals'),
+    path('approvals/<int:pk>/', DoctorApprovalView.as_view(), name='doctor-approval-detail'),
+    
     # Doctor-specific endpoints (must come before the router to avoid
     # being swallowed by the '' registration's detail pattern)
     path('me/', DoctorProfileView.as_view(), name='doctor-me'),
