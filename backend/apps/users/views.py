@@ -3,15 +3,22 @@ Authentication views with JWT and 2FA support.
 """
 import random
 import string
+import pyotp
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth import authenticate
+from django.core.mail import send_mail
+from django.conf import settings
 from rest_framework import status, generics, views
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, OTPToken, UserSettings
-from .serializers import RegisterSerializer, LoginSerializer, UserSerializer, TwoFASerializer, UserSettingsSerializer, ChangePasswordSerializer, ProfileUpdateSerializer
+from .serializers import (
+    RegisterSerializer, LoginSerializer, UserSerializer, TwoFASerializer,
+    UserSettingsSerializer, ChangePasswordSerializer, ProfileUpdateSerializer,
+    EmailChangeSerializer, VerifyOTPSerializer, TOTPVerifySerializer
+)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -26,7 +33,7 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save()
         
         # Create default UserSettings
-        UserSettings.objects.create(user=user)
+        UserSettings.objects.get_or_create(user=user)
         
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
@@ -49,8 +56,6 @@ class LoginView(views.APIView):
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
         
-        # For custom User model with email as USERNAME_FIELD,
-        # we need to fetch the user and check password manually
         try:
             user = User.objects.get(email=email)
             if not user.check_password(password):
@@ -59,28 +64,20 @@ class LoginView(views.APIView):
             user = None
         
         if not user:
-            return Response(
-                {'error': 'Invalid credentials'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
         
-        # Check if user is active
         if not user.is_active:
-            return Response(
-                {'error': 'Account is inactive'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({'error': 'Account is inactive'}, status=status.HTTP_403_FORBIDDEN)
         
-        # Check if 2FA is enabled
         if user.twofa_enabled:
+            # Check for TOTP vs Email/SMS
             return Response({
                 'requires_2fa': True,
-                'user_id': user.id
+                'user_id': user.id,
+                'twofa_method': user.twofa_method
             })
         
-        # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
-        
         return Response({
             'user': UserSerializer(user).data,
             'access': str(refresh.access_token),
@@ -89,73 +86,74 @@ class LoginView(views.APIView):
 
 
 class TwoFASendView(views.APIView):
-    """Send 2FA OTP code."""
+    """Send 2FA OTP code (Email/SMS)."""
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
         user = request.user
-        
-        # Generate 6-digit OTP
         code = ''.join(random.choices(string.digits, k=6))
         
-        # Create OTP token
-        otp = OTPToken.objects.create(
+        OTPToken.objects.create(
             user=user,
             code=code,
             purpose='2fa',
             expires_at=timezone.now() + timedelta(minutes=5)
         )
         
-        # In production, send via email/SMS
-        # For dev, just print to console
-        print(f"[2FA OTP] Code for {user.email}: {code}")
+        # Real Email Sending
+        send_mail(
+            'Your 2FA Code',
+            f'Your PhD Nexus security code is: {code}',
+            settings.DEFAULT_FROM_EMAIL or 'noreply@phdnexus.com',
+            [user.email],
+            fail_silently=False,
+        )
         
-        return Response({
-            'message': 'OTP sent',
-            'otp_last4': code[-4:]  # Show last 4 digits for dev
-        })
+        return Response({'message': 'OTP sent'})
 
 
 class TwoFAVerifyView(views.APIView):
-    """Verify 2FA OTP code."""
-    permission_classes = [IsAuthenticated]
+    """Verify 2FA OTP code (Email/SMS or TOTP)."""
+    permission_classes = [AllowAny] # Used during login or setting up
     
     def post(self, request):
-        serializer = TwoFASerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        user_id = request.data.get('user_id')
+        code = request.data.get('code')
         
-        code = serializer.validated_data['code']
-        
-        # Find valid OTP
+        if not user_id or not code:
+            return Response({'error': 'User ID and code required'}, status=400)
+            
         try:
-            otp = OTPToken.objects.get(
-                user=request.user,
-                code=code,
-                purpose='2fa',
-                used=False,
-                expires_at__gt=timezone.now()
-            )
-            
-            # Mark as used
-            otp.used = True
-            otp.save()
-            
-            return Response({'message': '2FA verified'})
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+
+        is_valid = False
         
-        except OTPToken.DoesNotExist:
-            return Response(
-                {'error': 'Invalid or expired OTP'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if user.twofa_method == 'totp':
+            totp = pyotp.TOTP(user.twofa_secret)
+            is_valid = totp.verify(code)
+        else:
+            try:
+                otp = OTPToken.objects.get(
+                    user=user, code=code, purpose='2fa',
+                    used=False, expires_at__gt=timezone.now()
+                )
+                otp.used = True
+                otp.save()
+                is_valid = True
+            except OTPToken.DoesNotExist:
+                pass
 
-
-class MeView(views.APIView):
-    """Get current user info."""
-    permission_classes = [IsAuthenticated]
-    
-    def get(self, request):
-        serializer = UserSerializer(request.user)
-        return Response(serializer.data)
+        if is_valid:
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'user': UserSerializer(user).data,
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            })
+        
+        return Response({'error': 'Invalid or expired code'}, status=400)
 
 
 class UserSettingsView(views.APIView):
@@ -183,11 +181,8 @@ class ProfileUpdateView(views.APIView):
         serializer = ProfileUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-
         user = request.user
         
-        if 'email' in data:
-            user.email = data['email']
         if 'phone' in data:
             user.phone = data['phone']
         user.save()
@@ -195,24 +190,17 @@ class ProfileUpdateView(views.APIView):
         if user.role == 'patient':
             try:
                 profile = user.patient_profile
-                if 'name' in data: profile.name = data['name']
-                if 'dob' in data: profile.dob = data['dob']
-                if 'blood_group' in data: profile.blood_group = data['blood_group']
-                if 'emergency_contact' in data: profile.emergency_contact = data['emergency_contact']
-                if 'address' in data: profile.address = data['address']
+                for attr, val in data.items():
+                    if hasattr(profile, attr): setattr(profile, attr, val)
                 profile.save()
-            except Exception:
-                pass
+            except Exception: pass
         elif user.role == 'doctor':
             try:
                 profile = user.doctor_profile
-                if 'name' in data: profile.name = data['name']
-                if 'specialty' in data: profile.specialty = data['specialty']
-                if 'qualifications' in data: profile.qualifications = data['qualifications']
-                if 'location' in data: profile.location = data['location']
+                for attr, val in data.items():
+                    if hasattr(profile, attr): setattr(profile, attr, val)
                 profile.save()
-            except Exception:
-                pass
+            except Exception: pass
 
         return Response(UserSerializer(user).data)
 
@@ -224,22 +212,152 @@ class ChangePasswordView(views.APIView):
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         user = request.user
         if not user.check_password(serializer.validated_data['current_password']):
-            return Response({"error": "Incorrect current password."}, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response({"error": "Incorrect current password."}, status=400)
         user.set_password(serializer.validated_data['new_password'])
         user.save()
         return Response({"message": "Password updated successfully."})
 
 
-class TwoFAToggleView(views.APIView):
-    """Toggle Two-Factor Authentication."""
+# --- REAL EMAIL & 2FA LOGIC ---
+
+class EmailChangeRequestView(views.APIView):
+    """Initiate email change by sending OTP to the NEW email."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        serializer = EmailChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        new_email = serializer.validated_data['new_email']
+        
+        if User.objects.filter(email=new_email).exists():
+            return Response({'error': 'Email already in use'}, status=400)
+            
+        code = ''.join(random.choices(string.digits, k=6))
         user = request.user
-        user.twofa_enabled = not user.twofa_enabled
+        user.pending_email = new_email
         user.save()
-        return Response({"twofa_enabled": user.twofa_enabled, "message": "2FA status updated."})
+        
+        OTPToken.objects.create(
+            user=user, code=code, purpose='email_change',
+            expires_at=timezone.now() + timedelta(minutes=15)
+        )
+        
+        send_mail(
+            'Confirm your new email',
+            f'Your email change confirmation code is: {code}',
+            settings.DEFAULT_FROM_EMAIL or 'noreply@phdnexus.com',
+            [new_email],
+            fail_silently=False,
+        )
+        
+        return Response({'message': f'Verification code sent to {new_email}'})
+
+
+class EmailChangeVerifyView(views.APIView):
+    """Verify OTP and update user's email."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = VerifyOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        code = serializer.validated_data['code']
+        user = request.user
+        
+        try:
+            otp = OTPToken.objects.get(
+                user=user, code=code, purpose='email_change',
+                used=False, expires_at__gt=timezone.now()
+            )
+            if not user.pending_email:
+                return Response({'error': 'No pending email change'}, status=400)
+                
+            user.email = user.pending_email
+            user.pending_email = None
+            user.email_verified = True
+            user.save()
+            
+            otp.used = True
+            otp.save()
+            
+            return Response({'message': 'Email updated successfully', 'email': user.email})
+        except OTPToken.DoesNotExist:
+            return Response({'error': 'Invalid or expired code'}, status=400)
+
+
+class TwoFASetupView(views.APIView):
+    """Generate TOTP secret for Authenticator App."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not user.twofa_secret:
+            user.twofa_secret = pyotp.random_base32()
+            user.save()
+            
+        totp = pyotp.TOTP(user.twofa_secret)
+        provisioning_uri = totp.provisioning_uri(name=user.email, issuer_name="PhD Nexus")
+        
+        return Response({
+            'secret': user.twofa_secret,
+            'provisioning_uri': provisioning_uri
+        })
+
+
+class TwoFAToggleView(views.APIView):
+    """Enable/Disable 2FA after verification."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        action = request.data.get('action') # 'enable' or 'disable'
+        method = request.data.get('method', 'email') # 'email' or 'totp'
+        code = request.data.get('code')
+        
+        user = request.user
+        
+        if action == 'disable':
+            # Require code to disable
+            is_valid = False
+            if user.twofa_method == 'totp':
+                is_valid = pyotp.TOTP(user.twofa_secret).verify(code)
+            else:
+                is_valid = OTPToken.objects.filter(user=user, code=code, purpose='2fa', used=False).exists()
+            
+            if not is_valid: return Response({'error': 'Invalid verification code'}, status=400)
+            
+            user.twofa_enabled = False
+            user.save()
+            return Response({'message': '2FA disabled successfully'})
+
+        # To enable, we MUST verify a code first
+        if not code: return Response({'error': 'Verification code required to enable 2FA'}, status=400)
+        
+        is_valid = False
+        if method == 'totp':
+            if not user.twofa_secret: return Response({'error': 'TOTP secret not setup'}, status=400)
+            is_valid = pyotp.TOTP(user.twofa_secret).verify(code)
+        else:
+            try:
+                otp = OTPToken.objects.get(user=user, code=code, purpose='2fa', used=False, expires_at__gt=timezone.now())
+                otp.used = True
+                otp.save()
+                is_valid = True
+            except OTPToken.DoesNotExist: pass
+            
+        if is_valid:
+            user.twofa_enabled = True
+            user.twofa_method = method
+            user.save()
+            return Response({'message': f'2FA enabled successfully using {method}'})
+            
+        return Response({'error': 'Invalid verification code'}, status=400)
+
+
+class MeView(views.APIView):
+    """Get current user info."""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)

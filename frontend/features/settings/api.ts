@@ -33,6 +33,24 @@ export const changePassword = async (passwordData: any): Promise<any> => {
   return await api.post<any>('/api/auth/password/change/', passwordData);
 };
 
-export const toggle2FA = async (): Promise<{ twofa_enabled: boolean; message: string }> => {
-  return await api.post<{ twofa_enabled: boolean; message: string }>('/api/auth/2fa/toggle/');
+// --- NEW ROBUST AUTH ---
+
+export const requestEmailChange = async (newEmail: string): Promise<{ message: string }> => {
+  return await api.post('/api/auth/email/change-request/', { new_email: newEmail });
+};
+
+export const verifyEmailChange = async (code: string): Promise<{ message: string; email: string }> => {
+  return await api.post('/api/auth/email/change-verify/', { code });
+};
+
+export const setup2FA = async (): Promise<{ secret: string; provisioning_uri: string }> => {
+  return await api.get('/api/auth/2fa/setup/');
+};
+
+export const send2FAEmail = async (): Promise<{ message: string }> => {
+  return await api.post('/api/auth/2fa/send/', {});
+};
+
+export const toggle2FA = async (data: { action: 'enable' | 'disable'; method?: string; code: string }): Promise<{ message: string }> => {
+  return await api.post('/api/auth/2fa/toggle/', data);
 };

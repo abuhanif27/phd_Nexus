@@ -169,7 +169,6 @@ class ChangePasswordSerializer(serializers.Serializer):
         return attrs
 
 class ProfileUpdateSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=False)
     phone = serializers.CharField(required=False, allow_blank=True)
     
     # Patient fields
@@ -183,3 +182,12 @@ class ProfileUpdateSerializer(serializers.Serializer):
     specialty = serializers.CharField(required=False, allow_blank=True)
     qualifications = serializers.CharField(required=False, allow_blank=True)
     location = serializers.CharField(required=False, allow_blank=True)
+
+class EmailChangeSerializer(serializers.Serializer):
+    new_email = serializers.EmailField()
+
+class VerifyOTPSerializer(serializers.Serializer):
+    code = serializers.CharField(max_length=6)
+
+class TOTPVerifySerializer(serializers.Serializer):
+    code = serializers.CharField(max_length=6)

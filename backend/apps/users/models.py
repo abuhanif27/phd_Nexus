@@ -36,8 +36,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True, db_index=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='patient')
+    
+    # Verification & Robustness
+    email_verified = models.BooleanField(default=False)
+    pending_email = models.EmailField(blank=True, null=True)
+    
+    # 2FA
     twofa_enabled = models.BooleanField(default=False)
     twofa_secret = models.CharField(max_length=32, blank=True, null=True)
+    twofa_method = models.CharField(max_length=10, default='email') # 'email', 'totp', 'sms'
+    
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
