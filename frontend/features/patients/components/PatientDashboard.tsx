@@ -5,11 +5,11 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, FileText, Activity, Pill, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { Calendar, FileText, Activity, Pill, TrendingUp, Clock, AlertCircle, Search } from 'lucide-react';
 import { getDashboardStats, getMyAppointments } from '../api';
 import { getHealthInsights } from '@/features/health-summary/api';
 import type { Appointment } from '@/types/api';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isAfter, isSameDay } from 'date-fns';
 import Link from 'next/link';
 
 /**
@@ -22,7 +22,7 @@ export function PatientDashboard() {
     queryFn: getDashboardStats,
   });
 
-  // Fetch upcoming appointments
+  // Fetch appointments
   const { data: appointmentsData, isLoading: appointmentsLoading } = useQuery({
     queryKey: ['patient', 'appointments', 'upcoming'],
     queryFn: () => getMyAppointments('scheduled'),
@@ -34,7 +34,18 @@ export function PatientDashboard() {
     queryFn: getHealthInsights,
   });
 
-  const upcomingAppointments = appointmentsData?.results || [];
+  // Filter for truly upcoming appointments (today or future)
+  const upcomingAppointments = React.useMemo(() => {
+    const results = appointmentsData?.results || [];
+    const now = new Date();
+    return results
+      .filter((appointment) => {
+        const appointmentDate = parseISO(appointment.date);
+        return isAfter(appointmentDate, now) || isSameDay(appointmentDate, now);
+      })
+      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+  }, [appointmentsData]);
+
   const insights = insightsData?.insights || [];
 
   return (
@@ -46,9 +57,9 @@ export function PatientDashboard() {
           <p className="text-muted-foreground">Welcome back! Here's your health overview.</p>
         </div>
         <Button asChild>
-          <Link href="/dashboard/appointments/book">
-            <Calendar className="mr-2 h-4 w-4" />
-            Book Appointment
+          <Link href="/doctors">
+            <Search className="mr-2 h-4 w-4" />
+            Explore Doctors
           </Link>
         </Button>
       </div>
@@ -60,7 +71,7 @@ export function PatientDashboard() {
           value={stats?.upcoming_appointments}
           icon={Calendar}
           loading={statsLoading}
-          href="/dashboard/appointments"
+          href="/appointments"
         />
         <StatCard
           title="Medical Records"
@@ -93,7 +104,7 @@ export function PatientDashboard() {
             <CardTitle className="flex items-center justify-between">
               <span>Upcoming Appointments</span>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/dashboard/appointments">View All</Link>
+                <Link href="/appointments">View All</Link>
               </Button>
             </CardTitle>
             <CardDescription>Your scheduled medical appointments</CardDescription>
@@ -109,7 +120,7 @@ export function PatientDashboard() {
                 <Calendar className="mx-auto mb-2 h-12 w-12 opacity-50" />
                 <p>No upcoming appointments</p>
                 <Button variant="link" asChild className="mt-2">
-                  <Link href="/dashboard/appointments/book">Book your first appointment</Link>
+                  <Link href="/doctors">Explore Doctors and Book</Link>
                 </Button>
               </div>
             ) : (
@@ -130,10 +141,10 @@ export function PatientDashboard() {
           </CardHeader>
           <CardContent className="grid gap-3">
             <QuickActionButton
-              icon={Calendar}
-              label="Book Appointment"
-              description="Schedule a visit with a doctor"
-              href="/dashboard/appointments/book"
+              icon={Search}
+              label="Explore Doctors"
+              description="Find specialists and book visits"
+              href="/doctors"
             />
             <QuickActionButton
               icon={FileText}

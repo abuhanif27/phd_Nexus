@@ -37,7 +37,7 @@ const patientNavigation = [
     description: 'Symptom analysis & insights',
   },
   {
-    name: 'Doctors',
+    name: 'Explore Doctors',
     href: '/doctors',
     icon: Users,
     description: 'Find specialists',

@@ -142,7 +142,7 @@ export function DoctorsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Find a Doctor</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Explore Doctors</h1>
         <p className="text-muted-foreground">
           Search for specialists and book appointments with qualified healthcare professionals
         </p>
