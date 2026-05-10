@@ -39,11 +39,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 import { getHealthSummary, createHealthSummaryShare, saveHealthSummary } from '../api';
 import { getMyAppointments } from '@/features/scheduling/api';
-import { getMedicalFiles } from '@/features/records/api';
+import { getMedicalFiles, getMedicalFileBlob } from '@/features/records/api';
 import { exportHealthSummaryPdf } from '../exportHealthSummaryPdf';
 import type { HealthSummary } from '../types';
 
@@ -54,6 +61,19 @@ import { AllergiesList } from './AllergiesList';
 import { AiInsightsSection } from './AiInsightsSection';
 import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
 import { AiSummaryCard } from './AiSummaryCard';
+
+function isImageFile(file: { mime?: string; filename: string }) {
+  const mime = (file.mime || '').toLowerCase();
+  const name = (file.filename || '').toLowerCase();
+  if (mime.startsWith('image/')) return true;
+  return /\.(jpg|jpeg|png|gif|webp|bmp|heic)$/.test(name);
+}
+
+function isPdfFile(file: { mime?: string; filename: string }) {
+  const mime = (file.mime || '').toLowerCase();
+  const name = (file.filename || '').toLowerCase();
+  return mime === 'application/pdf' || name.endsWith('.pdf');
+}
 
 interface HealthSummaryPageProps {
   sharedData?: HealthSummary;
@@ -66,9 +86,44 @@ export function HealthSummaryPage({
 }: HealthSummaryPageProps = {}) {
   const { toast } = useToast();
   const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
+  const [activeFileIds, setActiveFileIds] = useState<number[]>([]);
   const [hasSetDefaults, setHasSetDefaults] = useState(false);
   const [manualTriggered, setManualTriggered] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Document viewing state
+  const [viewFile, setViewFile] = useState<{ id: number; filename: string; mime?: string } | null>(
+    null
+  );
+  const [viewUrl, setViewUrl] = useState<string | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  const handleViewFile = async (file: { id: number; filename: string; mime?: string }) => {
+    if (isSharedView) {
+      // In shared view, we don't have access to getMedicalFileBlob without a share token proxy yet.
+      // So we can fallback to opening in a new tab or let the component handle it natively via URL
+      return;
+    }
+    setViewFile(file);
+    setViewUrl(null);
+    setViewLoading(true);
+    try {
+      const blob = await getMedicalFileBlob(file.id);
+      const url = URL.createObjectURL(blob);
+      setViewUrl(url);
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not load file.' });
+      setViewFile(null);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const closeViewFile = () => {
+    if (viewUrl) URL.revokeObjectURL(viewUrl);
+    setViewFile(null);
+    setViewUrl(null);
+  };
 
   const { data: filesData } = useQuery({
     queryKey: ['medical-files'],
@@ -96,7 +151,9 @@ export function HealthSummaryPage({
       const defaultIds = new Set(within3Months.map(f => f.id));
       files.slice(0, 5).forEach(f => defaultIds.add(f.id));
       
-      setSelectedFileIds(Array.from(defaultIds));
+      const ids = Array.from(defaultIds);
+      setSelectedFileIds(ids);
+      setActiveFileIds(ids);
       setHasSetDefaults(true);
     }
   }, [files, hasSetDefaults, isSharedView]);
@@ -108,10 +165,15 @@ export function HealthSummaryPage({
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['health-summary', selectedFileIds],
-    queryFn: () => getHealthSummary(selectedFileIds.length > 0 ? selectedFileIds : undefined),
+    queryKey: ['health-summary', activeFileIds],
+    queryFn: () => getHealthSummary(activeFileIds.length > 0 ? activeFileIds : undefined),
     enabled: !sharedData && (isSharedView || manualTriggered), // Only fetch if shared view or manually triggered
   });
+
+  const activeFiles = useMemo(() => {
+    return files.filter(f => activeFileIds.includes(f.id));
+  }, [files, activeFileIds]);
+
   const [minLoadingUntil, setMinLoadingUntil] = useState<number | null>(null);
   const isSummarizing = isFetching || minLoadingUntil !== null;
   const [shareLink, setShareLink] = useState<string | null>(null);
@@ -128,9 +190,13 @@ export function HealthSummaryPage({
   }, [isFetching, minLoadingUntil]);
 
   const handleSummarize = () => {
+    setActiveFileIds(selectedFileIds);
     setManualTriggered(true);
     setMinLoadingUntil(Date.now() + 2500);
-    refetch();
+    // refetch is not strictly necessary if activeFileIds changes, but good for safety
+    if (activeFileIds.length === selectedFileIds.length && activeFileIds.every(id => selectedFileIds.includes(id))) {
+      refetch();
+    }
   };
 
   const toggleFileSelection = (id: number) => {
@@ -664,6 +730,8 @@ export function HealthSummaryPage({
           sourceCounts={sourceCounts}
           dateRange={dateRange}
           professionalFindings={professionalFindings}
+          sourceFiles={actualData?.source_files || activeFiles}
+          onViewFile={handleViewFile}
         />
       ) : !isSummarizing && !isSharedView && !manualTriggered ? (
         <Card className="border-2 border-dashed border-purple-200 bg-purple-50/30 p-12 dark:bg-purple-950/10">
@@ -770,6 +838,65 @@ export function HealthSummaryPage({
           </Card>
         </div>
       </div>
+
+      {/* Document Viewer Modal */}
+      <Dialog open={!!viewFile} onOpenChange={(open) => !open && closeViewFile()}>
+        <DialogContent className="max-w-3xl border bg-background shadow-lg sm:rounded-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              {viewFile?.filename}
+            </DialogTitle>
+            <DialogDescription>Document Reference</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-[200px]">
+            {viewLoading && (
+              <div className="flex h-64 items-center justify-center text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            )}
+            {!viewLoading && viewUrl && viewFile && (
+              <>
+                {isImageFile(viewFile) && (
+                  <div className="rounded-lg border bg-muted/30 p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={viewUrl}
+                      alt={viewFile.filename}
+                      className="max-h-[70vh] w-full rounded-md object-contain"
+                    />
+                  </div>
+                )}
+                {isPdfFile(viewFile) && (
+                  <div className="rounded-lg border bg-muted/30 p-2">
+                    <iframe
+                      src={viewUrl}
+                      title={viewFile.filename}
+                      className="h-[70vh] w-full rounded-md border-0"
+                    />
+                  </div>
+                )}
+                {!isImageFile(viewFile) && !isPdfFile(viewFile) && (
+                  <div className="rounded-lg border bg-muted/30 p-6 text-center">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <p className="mt-2 text-sm text-muted-foreground">Preview not available</p>
+                    <Button
+                      variant="default"
+                      className="mt-4"
+                      onClick={() => viewUrl && window.open(viewUrl, '_blank')}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Open in new tab
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

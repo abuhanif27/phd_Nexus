@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import {
   FileText,
@@ -54,6 +55,10 @@ function isPdfFile(file: { mime?: string; filename: string }) {
 }
 
 export function MedicalRecordsPage({ patientId }: { patientId?: number } = {}) {
+  const searchParams = useSearchParams();
+  const fileIdParam = searchParams.get('fileId');
+  const hasAutoOpened = useRef(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<RecordType>('all');
   const queryClient = useQueryClient();
@@ -162,6 +167,18 @@ export function MedicalRecordsPage({ patientId }: { patientId?: number } = {}) {
   const encounters = encountersData?.results || [];
 
   const isLoading = loadingFiles || loadingLabs || loadingPrescriptions || loadingEncounters;
+
+  // Deep link effect
+  useEffect(() => {
+    if (fileIdParam && files.length > 0 && !hasAutoOpened.current) {
+      const targetId = parseInt(fileIdParam, 10);
+      const fileToOpen = files.find((f) => f.id === targetId);
+      if (fileToOpen) {
+        handleViewFile(fileToOpen);
+        hasAutoOpened.current = true;
+      }
+    }
+  }, [fileIdParam, files]);
 
   // Filter records based on search
   const filteredFiles = files.filter((file) =>

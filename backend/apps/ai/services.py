@@ -684,39 +684,25 @@ class AIService:
         Turn raw OCR/corpus into a clean, professional narrative and short key findings.
         Strips metadata, extracts conditions/syndromes/vaccination, returns meaningful summary.
         """
-        # Extract actual content: remove metadata blocks and keep medical text
-        content_parts = []
-        for block in re.split(r'\[\d{4}-\d{2}-\d{2}\]\s*\[\w+\]\s*Document:[^\n]*\.?\s*', corpus):
-            block = block.replace('Content from image:', '').strip()
-            # Basic noise filter for the block
-            if not self._is_noise(block) and len(block) > 20:
-                content_parts.append(block)
+        # Split corpus by headers like [2023-01-01] [file:12]
+        header_pattern = r'\[\d{4}-\d{2}-\d{2}\]\s*\[([a-z]+):(\d+)\]'
+        parts = re.split(header_pattern, corpus)
         
-        raw_text = ' '.join(content_parts) if content_parts else corpus
-        raw_text = re.sub(r'\[\d{4}-\d{2}-\d{2}\]\s*\[\w+\]\s*Document:[^\n]+', ' ', raw_text)
-        raw_text = re.sub(r'Content from image:\s*', ' ', raw_text)
-        # Remove contact info
-        raw_text = re.sub(r'\(\d{3}\)\s*\d{3}[-\s]?\d{4}', ' ', raw_text)
-        raw_text = re.sub(r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}', ' ', raw_text)
-        raw_text = re.sub(r'[\w.-]+@[\w.-]+\.\w+', ' ', raw_text)
-        raw_text = re.sub(r'www\.\S+', ' ', raw_text)
-        raw_text = ' '.join(raw_text.split())
-
         findings = []
         seen = set()
 
-        def add_finding(s: str, max_len: int = 100):
+        def add_finding(s: str, source_tag: str, max_len: int = 100):
             s = s.strip()
             if self._is_noise(s) or len(s) > 200:
                 return
-            
             s = s[:max_len].strip()
             key = s.lower()[:80]
             if key not in seen:
                 seen.add(key)
+                if source_tag:
+                    s = f"{s} {source_tag}"
                 findings.append(s)
 
-        # Medical problems / conditions – clean, professional phrases only
         phrase_checks = [
             (r'mild\s+asthma.*?controlled.*?medication', 'Mild asthma, controlled with medication'),
             (r'asthma.*?controlled', 'Asthma, controlled with medication'),
@@ -728,41 +714,90 @@ class AIService:
             (r'cardiac', 'Cardiac condition noted'),
             (r'cholesterol', 'Elevated cholesterol mentioned'),
         ]
-        for pat, phrase in phrase_checks:
-            if re.search(pat, raw_text, re.IGNORECASE):
-                add_finding(phrase)
-        
-        # Improved medication extraction (Tab/Cap followed by actual drug names)
-        med_matches = re.findall(r'(?:Tab|Cap|Syr|Inj)[\.\s:]*([A-Z][a-z]+(?:\s+[0-9]+m?g)?)', raw_text)
-        for med in med_matches:
-            if len(med) > 3 and not self._is_noise(med):
-                add_finding(f"Medication: {med}")
 
-        # One free-form line after diagnosis/history if medical keywords present
-        m = re.search(r'(?:diagnosis|history|problems)[^:]*:\s*([^.]{10,120})', raw_text, re.IGNORECASE)
-        if m:
-            g = re.sub(r'\s+', ' ', m.group(1)).strip()
-            if any(k in g.lower() for k in ('stable', 'pain', 'severe', 'mild', 'chronic', 'acute', 'managed')):
-                add_finding(g[:100])
+        if len(parts) == 1:
+            # No structured headers found, fallback
+            raw_text = corpus
+            raw_text = re.sub(r'\[\d{4}-\d{2}-\d{2}\]\s*\[\w+\]\s*Document:[^\n]+', ' ', raw_text)
+            raw_text = re.sub(r'Content from image:\s*', ' ', raw_text)
+            raw_text = re.sub(r'\(\d{3}\)\s*\d{3}[-\s]?\d{4}', ' ', raw_text)
+            raw_text = re.sub(r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}', ' ', raw_text)
+            raw_text = re.sub(r'[\w.-]+@[\w.-]+\.\w+', ' ', raw_text)
+            raw_text = re.sub(r'www\.\S+', ' ', raw_text)
+            raw_text = ' '.join(raw_text.split())
+            
+            for pat, phrase in phrase_checks:
+                if re.search(pat, raw_text, re.IGNORECASE):
+                    add_finding(phrase, "")
+                    
+            med_matches = re.findall(r'(?:Tab|Cap|Syr|Inj)[\.\s:]*([A-Z][a-z]+(?:\s+[0-9]+m?g)?)', raw_text)
+            for med in med_matches:
+                if len(med) > 3 and not self._is_noise(med):
+                    add_finding(f"Medication: {med}", "")
+                    
+            m = re.search(r'(?:diagnosis|history|problems)[^:]*:\s*([^.]{10,120})', raw_text, re.IGNORECASE)
+            if m:
+                g = re.sub(r'\s+', ' ', m.group(1)).strip()
+                if any(k in g.lower() for k in ('stable', 'pain', 'severe', 'mild', 'chronic', 'acute', 'managed')):
+                    add_finding(g[:100], "")
+                    
+            if re.search(r'not\s+immune|NOT\s+IMMUNE', raw_text, re.IGNORECASE):
+                if re.search(r'measles', raw_text, re.IGNORECASE):
+                    add_finding('Measles: not immune', "")
+                if re.search(r'varicella|chicken\s*pox', raw_text, re.IGNORECASE):
+                    add_finding('Chicken pox (Varicella): not immune', "")
+                if re.search(r'hepatitis\s*B.*no|vaccination.*no', raw_text, re.IGNORECASE):
+                    add_finding('Hepatitis B vaccination: no', "")
+                    
+            for part in re.split(r'[.;\n]', raw_text):
+                part = part.strip()
+                if 15 < len(part) < 120:
+                    if any(k in part.lower() for k in ('asthma', 'migraine', 'hypertension', 'medication', 'controlled', 'managed', 'stress', 'vaccination', 'immune', 'test result')):
+                        add_finding(part, "", 90)
+        else:
+            for i in range(1, len(parts), 3):
+                typ = parts[i]
+                item_id = parts[i+1]
+                block_text = parts[i+2]
+                
+                source_tag = f"[file:{item_id}]" if typ == 'file' else ""
+                
+                block_text = re.sub(r'Medical Document \([^\)]+\):\s*', ' ', block_text)
+                block_text = re.sub(r'Content from image:\s*', ' ', block_text)
+                block_text = re.sub(r'\(\d{3}\)\s*\d{3}[-\s]?\d{4}', ' ', block_text)
+                block_text = re.sub(r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}', ' ', block_text)
+                block_text = re.sub(r'[\w.-]+@[\w.-]+\.\w+', ' ', block_text)
+                block_text = re.sub(r'www\.\S+', ' ', block_text)
+                block_text = ' '.join(block_text.split())
+                
+                for pat, phrase in phrase_checks:
+                    if re.search(pat, block_text, re.IGNORECASE):
+                        add_finding(phrase, source_tag)
+                
+                med_matches = re.findall(r'(?:Tab|Cap|Syr|Inj)[\.\s:]*([A-Z][a-z]+(?:\s+[0-9]+m?g)?)', block_text)
+                for med in med_matches:
+                    if len(med) > 3 and not self._is_noise(med):
+                        add_finding(f"Medication: {med}", source_tag)
+                        
+                m = re.search(r'(?:diagnosis|history|problems)[^:]*:\s*([^.]{10,120})', block_text, re.IGNORECASE)
+                if m:
+                    g = re.sub(r'\s+', ' ', m.group(1)).strip()
+                    if any(k in g.lower() for k in ('stable', 'pain', 'severe', 'mild', 'chronic', 'acute', 'managed')):
+                        add_finding(g[:100], source_tag)
+                        
+                if re.search(r'not\s+immune|NOT\s+IMMUNE', block_text, re.IGNORECASE):
+                    if re.search(r'measles', block_text, re.IGNORECASE):
+                        add_finding('Measles: not immune', source_tag)
+                    if re.search(r'varicella|chicken\s*pox', block_text, re.IGNORECASE):
+                        add_finding('Chicken pox (Varicella): not immune', source_tag)
+                    if re.search(r'hepatitis\s*B.*no|vaccination.*no', block_text, re.IGNORECASE):
+                        add_finding('Hepatitis B vaccination: no', source_tag)
 
-        # Vaccination / immunity
-        if re.search(r'not\s+immune|NOT\s+IMMUNE', raw_text, re.IGNORECASE):
-            imm = []
-            if re.search(r'measles', raw_text, re.IGNORECASE):
-                imm.append('Measles: not immune')
-            if re.search(r'varicella|chicken\s*pox', raw_text, re.IGNORECASE):
-                imm.append('Chicken pox (Varicella): not immune')
-            if re.search(r'hepatitis\s*B.*no|vaccination.*no', raw_text, re.IGNORECASE):
-                imm.append('Hepatitis B vaccination: no')
-            for i in imm:
-                add_finding(i)
-        
-        # Short phrases that look like medical facts
-        for part in re.split(r'[.;\n]', raw_text):
-            part = part.strip()
-            if 15 < len(part) < 120:
-                if any(k in part.lower() for k in ('asthma', 'migraine', 'hypertension', 'medication', 'controlled', 'managed', 'stress', 'vaccination', 'immune', 'test result')):
-                    add_finding(part, 90)
+                for part in re.split(r'[.;\n]', block_text):
+                    part = part.strip()
+                    if 15 < len(part) < 120:
+                        if any(k in part.lower() for k in ('asthma', 'migraine', 'hypertension', 'medication', 'controlled', 'managed', 'stress', 'vaccination', 'immune', 'test result')):
+                            add_finding(part, source_tag, 90)
 
         # Dedupe and limit
         clean_findings = []
@@ -771,8 +806,8 @@ class AIService:
                 clean_findings.append(f)
 
         # Build short narrative
-        n = len(re.findall(r'\[\d{4}-\d{2}-\d{2}\]', corpus)) if corpus else 0
-        n = max(n, 1) if content_parts or corpus.strip() else 0
+        n = (len(parts) - 1) // 3 if len(parts) > 1 else max(1, len(re.findall(r'\[\d{4}-\d{2}-\d{2}\]', corpus)))
+        n = max(n, 1)
         record_word = 'record' if n == 1 else 'records'
         
         if clean_findings:
@@ -784,8 +819,8 @@ class AIService:
             else:
                 narrative += "."
         else:
-            bullets = self._extractive_summary(raw_text, sentence_count=2)
-            filtered_bullets = [b for b in bullets if not self._is_noise(b)]
+            bullets = self._extractive_summary(corpus, sentence_count=2)
+            filtered_bullets = [re.sub(r'\[\d{4}-\d{2}-\d{2}\]\s*\[[a-z]+:\d+\]', '', b).strip() for b in bullets if not self._is_noise(b)]
             if filtered_bullets:
                 narrative = f"Based on {n} medical {record_word}. Summary: {' '.join(filtered_bullets)}"
             else:
@@ -881,7 +916,7 @@ class AIService:
             text = f"Lab: {lab.title}. {lab.summary or ''}"
             if lab.data:
                 text += " " + " ".join(f"{k}: {v}" for k, v in list(lab.data.items())[:10])
-            items.append((lab.ts, 'lab', text))
+            items.append((lab.ts, 'lab', lab.id, text))
 
         for rx in patient.prescriptions.filter(ts__gte=cutoff).order_by('-ts')[:max_items]:
             parts = ["Prescription:"]
@@ -894,11 +929,11 @@ class AIService:
                 else:
                     parts.append(str(item))
             parts.append(rx.notes or "")
-            items.append((rx.ts, 'prescription', " ".join(parts)))
+            items.append((rx.ts, 'prescription', rx.id, " ".join(parts)))
 
         for enc in patient.encounters.filter(ts__gte=cutoff).order_by('-ts')[:max_items]:
             text = f"Encounter: {enc.notes}. Diagnosis: {enc.diagnosis}. Plan: {enc.plan}"
-            items.append((enc.ts, 'encounter', text))
+            items.append((enc.ts, 'encounter', enc.id, text))
 
         # Handle Files with customization support
         file_qs = patient.files.all()
@@ -941,7 +976,7 @@ class AIService:
             elif hasattr(sort_ts, 'year'): # It's likely a date object
                 sort_ts = timezone.make_aware(datetime.combine(sort_ts, datetime.min.time()))
             
-            items.append((sort_ts, 'file', text))
+            items.append((sort_ts, 'file', f.id, text))
 
         # Sort by date descending (most recent first), then take up to max_items
         items.sort(key=lambda x: x[0], reverse=True)
@@ -949,10 +984,10 @@ class AIService:
 
         sections = []
         source_counts = {'lab': 0, 'prescription': 0, 'encounter': 0, 'file': 0}
-        for ts, typ, text in items:
+        for ts, typ, item_id, text in items:
             source_counts[typ] = source_counts.get(typ, 0) + 1
             date_str = ts.strftime('%Y-%m-%d') if hasattr(ts, 'strftime') else str(ts)
-            sections.append(f"[{date_str}] [{typ}] {text}")
+            sections.append(f"[{date_str}] [{typ}:{item_id}] {text}")
 
         corpus = "\n".join(sections)
         date_range = {}
@@ -961,10 +996,14 @@ class AIService:
                 'oldest': min(x[0] for x in items).isoformat() if hasattr(items[-1][0], 'isoformat') else str(items[-1][0]),
                 'newest': max(x[0] for x in items).isoformat() if hasattr(items[0][0], 'isoformat') else str(items[0][0]),
             }
+        
+        selected_source_ids = [item[2] for item in items if item[1] == 'file']
+
         return corpus, {
             'source_counts': source_counts,
             'date_range': date_range,
             'record_count': len(items),
+            'selected_source_ids': selected_source_ids,
         }
 
     def generate_health_summary_from_records(self, patient_id: int,
@@ -1157,6 +1196,7 @@ class AIService:
             'date_range': meta['date_range'],
             'record_count': meta['record_count'],
             'extracted_vitals': vitals,
+            'selected_source_ids': meta.get('selected_source_ids', []),
         }
 
 

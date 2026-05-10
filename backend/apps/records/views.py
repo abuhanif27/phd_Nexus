@@ -172,16 +172,28 @@ class FileServeView(views.APIView):
                 else:
                     return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
             
-            # Resolve path: stored path, or MEDIA_ROOT/patient_id/filename
+            # Resolve path: handle Windows-style absolute paths stored in DB when running on Linux
             path = file_obj.storage_path
+            
+            # If path looks like a Windows absolute path (e.g., F:\CODE\...), extract the relative part
+            if ':\\' in path or path.startswith('\\\\'):
+                # Extract parts after 'media' or use patient_id/filename as fallback
+                if 'media' in path.lower():
+                    relative_part = path.lower().split('media')[-1].lstrip('\\/')
+                    path = os.path.join(settings.MEDIA_ROOT, relative_part.replace('\\', '/'))
+                else:
+                    path = os.path.join(settings.MEDIA_ROOT, str(file_obj.patient_id), file_obj.filename)
+            
+            if not os.path.isabs(path):
+                path = os.path.join(settings.MEDIA_ROOT, path)
+
             if not os.path.isfile(path):
+                # Fallback to standard patient_id/filename structure
                 path = os.path.join(settings.MEDIA_ROOT, str(file_obj.patient_id), file_obj.filename)
-            if not os.path.isfile(path):
-                alt = os.path.join(settings.MEDIA_ROOT, path) if not os.path.isabs(path) else path
-                if os.path.isfile(alt):
-                    path = alt
+
             if not os.path.isfile(path):
                 return Response({'error': 'File not found on disk'}, status=status.HTTP_404_NOT_FOUND)
+
             response = FileResponse(
                 open(path, 'rb'),
                 content_type=file_obj.mime or 'application/octet-stream',

@@ -1,3 +1,5 @@
+import type { MedicalFile } from '@/features/records/types';
+
 export interface HealthMetric {
   label: string;
   value: string;
@@ -69,4 +71,6 @@ export interface HealthSummary {
     temperature: string;
     weight: string;
   };
+  /** Detailed source files used for this summary. */
+  source_files?: MedicalFile[];
 }

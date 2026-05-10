@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.patients.models import Patient
 from apps.records.models import File, SymptomLog
+from apps.records.serializers import FileSerializer
 from .models import AISummary, HealthSummaryShare
 from .serializers import (
     SymptomAnalyzeSerializer, SpecialistPredictSerializer,
@@ -149,6 +150,13 @@ class HealthSummaryView(views.APIView):
                 else:
                     medications.append({'id': i, 'name': str(m)[:80], 'dosage': '', 'frequency': '', 'start_date': '', 'status': 'active'})
 
+            # Get source file details for linking
+            used_file_ids = result.get('selected_source_ids', [])
+            source_files_data = []
+            if used_file_ids:
+                source_files = File.objects.filter(id__in=used_file_ids, patient=patient)
+                source_files_data = FileSerializer(source_files, many=True).data
+
             return Response({
                 'vital_signs': [],
                 'conditions': conditions,
@@ -164,7 +172,8 @@ class HealthSummaryView(views.APIView):
                 'record_count': result.get('record_count', 0),
                 'date_range': result.get('date_range', {}),
                 'extracted_vitals': result.get('extracted_vitals', {}),
-                'selected_source_ids': file_ids # Reflect what was used
+                'selected_source_ids': used_file_ids,
+                'source_files': source_files_data
             })
         except Exception as e:
             return Response({'error': str(e)}, status=500)
