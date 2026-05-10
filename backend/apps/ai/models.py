@@ -43,10 +43,15 @@ class AISummary(models.Model):
     citations = models.JSONField(default=list)  # File/record IDs referenced
     ts = models.DateTimeField(default=timezone.now)
     
+    # Persistent storage fields
+    title = models.CharField(max_length=200, blank=True)
+    is_saved = models.BooleanField(default=False)
+    
     class Meta:
         db_table = 'ai_summaries'
         indexes = [
             models.Index(fields=['patient', 'ts']),
+            models.Index(fields=['patient', 'is_saved']),
         ]
     
     def __str__(self):

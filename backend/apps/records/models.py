@@ -25,12 +25,14 @@ class File(models.Model):
     mime = models.CharField(max_length=100)
     size = models.IntegerField()
     created_at = models.DateTimeField(default=timezone.now)
+    clinical_date = models.DateField(null=True, blank=True, help_text="The actual date from within the document")
     extracted_text = models.TextField(blank=True, default='')  # OCR text for images, used in health summary
     
     class Meta:
         db_table = 'files'
         indexes = [
             models.Index(fields=['patient', 'kind']),
+            models.Index(fields=['patient', 'clinical_date']),
         ]
     
     def __str__(self):

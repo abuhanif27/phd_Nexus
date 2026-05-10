@@ -1,9 +1,36 @@
 import { apiClient } from '@/lib/api/axios';
 import type { HealthSummary } from './types';
 
+export interface SavedSummary {
+  id: number;
+  title: string;
+  text: string;
+  ts: string;
+  source_ids: number[];
+}
+
 // Get health summary for the current patient
-export async function getHealthSummary(): Promise<HealthSummary> {
-  const response = await apiClient.get('/api/health/summary/');
+export async function getHealthSummary(fileIds?: number[]): Promise<HealthSummary & { selected_source_ids?: number[] }> {
+  const params = fileIds ? { file_ids: fileIds.join(',') } : {};
+  const response = await apiClient.get('/api/health/summary/', { params });
+  return response.data;
+}
+
+// Save a health summary to database
+export async function saveHealthSummary(data: { summary: string; title?: string; source_ids?: number[] }): Promise<{ message: string; id: number }> {
+  const response = await apiClient.post('/api/health/summary/', data);
+  return response.data;
+}
+
+// Get all saved summaries for current patient
+export async function getSavedSummaries(): Promise<{ summaries: SavedSummary[] }> {
+  const response = await apiClient.get('/api/health/saved-summaries/');
+  return response.data;
+}
+
+// Delete a saved summary
+export async function deleteSavedSummary(id: number): Promise<{ message: string }> {
+  const response = await apiClient.delete(`/api/health/saved-summaries/${id}/`);
   return response.data;
 }
 

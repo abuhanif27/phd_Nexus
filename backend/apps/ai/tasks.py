@@ -128,6 +128,32 @@ def extract_pdf_text(file_path: str) -> str:
     return raw_text
 
 
+def _extract_clinical_date(text: str):
+    """
+    Attempt to extract a clinical date from text using regex.
+    Supports YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, and Month DD, YYYY.
+    """
+    import dateutil.parser as dparser
+    
+    # Common date patterns
+    patterns = [
+        r'\b\d{4}-\d{1,2}-\d{1,2}\b', # 2023-05-10
+        r'\b\d{1,2}/\d{1,2}/\d{4}\b', # 10/05/2023 or 05/10/2023
+        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}\b', # May 10, 2023
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            try:
+                # Use dateutil for flexible parsing
+                dt = dparser.parse(match.group(0), fuzzy=True)
+                return dt.date()
+            except:
+                continue
+    return None
+
+
 def process_file_ocr(file_id: int) -> Dict:
     """
     Process uploaded file (Image or PDF) and extract structured data.
@@ -180,8 +206,13 @@ def process_file_ocr(file_id: int) -> Dict:
         
         # Persist extracted text
         file_obj.extracted_text = raw_text[:15000] # PDF can be longer
-        file_obj.save(update_fields=['extracted_text'])
-        print(f"[OCR] Saved {len(raw_text)} chars to database")
+        
+        # Extract clinical date if not already set
+        if not file_obj.clinical_date:
+            file_obj.clinical_date = _extract_clinical_date(raw_text)
+            
+        file_obj.save(update_fields=['extracted_text', 'clinical_date'])
+        print(f"[OCR] Saved {len(raw_text)} chars to database. Clinical date: {file_obj.clinical_date}")
 
         if file_obj.kind == 'lab':
             return _extract_lab_data(file_obj, raw_text)
@@ -256,8 +287,8 @@ def _extract_prescription_data(file_obj: File, text: str) -> Dict:
 
 def get_or_extract_file_text(file_obj: File) -> str:
     """
-    Return extracted text for any supported file: use stored extracted_text if present,
-    otherwise run extraction and save.
+    Return extracted text for any supported file.
+    Proxies to Remote Brain if available to prevent local crashes.
     """
     if getattr(file_obj, 'extracted_text', None) and (file_obj.extracted_text or '').strip():
         return (file_obj.extracted_text or '').strip()
@@ -265,30 +296,47 @@ def get_or_extract_file_text(file_obj: File) -> str:
     if not os.path.exists(file_obj.storage_path):
         return ''
     
+    remote_url = getattr(settings, 'REMOTE_BRAIN_URL', None)
     raw_text = ""
     
-    # PDF
-    if _is_pdf_file(file_obj):
-        raw_text = extract_pdf_text(file_obj.storage_path)
-    
-    # Image
-    elif _is_image_file(file_obj):
-        if easyocr:
-            try:
-                reader = easyocr.Reader(['en'], gpu=False)
-                result = reader.readtext(file_obj.storage_path)
-                raw_text = '\n'.join([text[1] for text in result]).strip()
-            except:
-                pass
+    # 1. Try Remote Brain OCR first (for both Images and PDFs)
+    if remote_url and (_is_image_file(file_obj) or _is_pdf_file(file_obj)):
+        import requests
+        try:
+            print(f"[REMOTE OCR] Offloading {file_obj.filename} to {remote_url}")
+            with open(file_obj.storage_path, 'rb') as f:
+                # Use multipart/form-data to send the file
+                files = {'file': (file_obj.filename, f, file_obj.mime or 'application/octet-stream')}
+                response = requests.post(f"{remote_url.rstrip('/')}/ocr", files=files, timeout=120) # Longer timeout for PDFs
+                if response.status_code == 200:
+                    raw_text = response.json().get('text', '')
+                    if raw_text:
+                        print(f"[REMOTE OCR] Success: {len(raw_text)} chars")
+        except Exception as e:
+            print(f"[REMOTE OCR] Error: {e}")
+
+    # 2. Local Fallback (Only if remote failed or unavailable)
+    if not raw_text:
+        # PDF (Native text extraction is usually light)
+        if _is_pdf_file(file_obj):
+            raw_text = extract_pdf_text(file_obj.storage_path)
         
-        if not raw_text and Image and pytesseract:
-            try:
-                image = Image.open(file_obj.storage_path)
-                raw_text = (pytesseract.image_to_string(image) or '').strip()
-            except:
-                pass
+        # Image (Local OCR - CAUTION: Heavy)
+        elif _is_image_file(file_obj):
+            if easyocr:
+                try:
+                    reader = easyocr.Reader(['en'], gpu=False)
+                    result = reader.readtext(file_obj.storage_path)
+                    raw_text = '\n'.join([text[1] for text in result]).strip()
+                except: pass
+            
+            if not raw_text and Image and pytesseract:
+                try:
+                    image = Image.open(file_obj.storage_path)
+                    raw_text = (pytesseract.image_to_string(image) or '').strip()
+                except: pass
     
-    # Fallback
+    # Fallback message
     if not raw_text:
         raw_text = _fallback_ocr(file_obj)
     
@@ -297,6 +345,8 @@ def get_or_extract_file_text(file_obj: File) -> str:
         file_obj.save(update_fields=['extracted_text'])
         
     return raw_text
+
+
 
 
 # Celery task wrapper

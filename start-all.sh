@@ -49,8 +49,8 @@ else
         npm install
     fi
     
-    # Start Next.js dev server
-    npm run dev > /tmp/nexuscare-frontend.log 2>&1 &
+    # Start Next.js dev server with memory limit
+    NODE_OPTIONS="--max-old-space-size=1024" npm run dev -- --turbo > /tmp/nexuscare-frontend.log 2>&1 &
     FRONTEND_PID=$!
     echo -e "${GREEN}✅ React Frontend started (PID: $FRONTEND_PID)${NC}"
     echo "   Logs: /tmp/nexuscare-frontend.log"

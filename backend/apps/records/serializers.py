@@ -15,7 +15,7 @@ class FileSerializer(serializers.ModelSerializer):
     class Meta:
         model = File
         fields = ['id', 'patient', 'kind', 'file_type', 'title', 'description', 
-                  'filename', 'mime', 'size', 'file_size', 'created_at', 'uploaded_at']
+                  'filename', 'mime', 'size', 'file_size', 'created_at', 'uploaded_at', 'clinical_date']
         read_only_fields = ['id', 'patient', 'filename', 'mime', 'size', 'created_at']
 
 

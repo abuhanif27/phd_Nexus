@@ -7,6 +7,7 @@ export interface MedicalFile {
   mime: string;
   size: number;
   created_at: string;
+  clinical_date?: string;
 }
 
 export interface LabResult {

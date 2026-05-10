@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { format, subMonths, isAfter } from 'date-fns';
 import {
   Activity,
   Heart,
@@ -11,11 +11,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  AlertTriangle,
-  CheckCircle2,
-  AlertCircle,
   Calendar,
-  Pill,
   Shield,
   Sparkles,
   Brain,
@@ -25,26 +21,39 @@ import {
   Link2,
   Mail,
   MessageCircle,
-  Clock,
   Zap,
   Loader2,
+  FileText,
+  ChevronDown,
+  Save,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
-import { getHealthSummary, createHealthSummaryShare } from '../api';
+import { getHealthSummary, createHealthSummaryShare, saveHealthSummary } from '../api';
 import { getMyAppointments } from '@/features/scheduling/api';
+import { getMedicalFiles } from '@/features/records/api';
 import { exportHealthSummaryPdf } from '../exportHealthSummaryPdf';
 import type { HealthSummary } from '../types';
+
+import { VitalSignsGrid } from './VitalSignsGrid';
+import { ConditionsList } from './ConditionsList';
+import { MedicationsList } from './MedicationsList';
+import { AllergiesList } from './AllergiesList';
+import { AiInsightsSection } from './AiInsightsSection';
+import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
+import { AiSummaryCard } from './AiSummaryCard';
 
 interface HealthSummaryPageProps {
   sharedData?: HealthSummary;
@@ -55,6 +64,43 @@ export function HealthSummaryPage({
   sharedData,
   isSharedView = false,
 }: HealthSummaryPageProps = {}) {
+  const { toast } = useToast();
+  const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
+  const [hasSetDefaults, setHasSetDefaults] = useState(false);
+  const [manualTriggered, setManualTriggered] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const { data: filesData } = useQuery({
+    queryKey: ['medical-files'],
+    queryFn: () => getMedicalFiles(),
+    enabled: !isSharedView,
+  });
+
+  const files = useMemo(() => {
+    return (filesData?.results || []).sort((a, b) => {
+      const dateA = new Date(a.clinical_date || a.created_at).getTime();
+      const dateB = new Date(b.clinical_date || b.created_at).getTime();
+      return dateB - dateA;
+    });
+  }, [filesData]);
+
+  useEffect(() => {
+    if (files.length > 0 && !hasSetDefaults && !isSharedView) {
+      const threeMonthsAgo = subMonths(new Date(), 3);
+      const within3Months = files.filter(f => {
+        const d = new Date(f.clinical_date || f.created_at);
+        return isAfter(d, threeMonthsAgo);
+      });
+
+      // Default logic: include all from last 3 months, AND at least latest 5 if available
+      const defaultIds = new Set(within3Months.map(f => f.id));
+      files.slice(0, 5).forEach(f => defaultIds.add(f.id));
+      
+      setSelectedFileIds(Array.from(defaultIds));
+      setHasSetDefaults(true);
+    }
+  }, [files, hasSetDefaults, isSharedView]);
+
   const {
     data: summaryData,
     isLoading,
@@ -62,13 +108,12 @@ export function HealthSummaryPage({
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['health-summary'],
-    queryFn: getHealthSummary,
-    enabled: !sharedData, // Don't fetch if we already have shared data
+    queryKey: ['health-summary', selectedFileIds],
+    queryFn: () => getHealthSummary(selectedFileIds.length > 0 ? selectedFileIds : undefined),
+    enabled: !sharedData && (isSharedView || manualTriggered), // Only fetch if shared view or manually triggered
   });
   const [minLoadingUntil, setMinLoadingUntil] = useState<number | null>(null);
   const isSummarizing = isFetching || minLoadingUntil !== null;
-  const { toast } = useToast();
   const [shareLink, setShareLink] = useState<string | null>(null);
 
   // Use sharedData if available, otherwise use fetched data
@@ -83,8 +128,39 @@ export function HealthSummaryPage({
   }, [isFetching, minLoadingUntil]);
 
   const handleSummarize = () => {
+    setManualTriggered(true);
     setMinLoadingUntil(Date.now() + 2500);
     refetch();
+  };
+
+  const toggleFileSelection = (id: number) => {
+    setSelectedFileIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSaveSummary = async () => {
+    if (!aiSummary) return;
+    setIsSaving(true);
+    try {
+      await saveHealthSummary({
+        summary: aiSummary,
+        source_ids: selectedFileIds,
+        title: `Health Summary (${format(new Date(), 'MMM d, yyyy')})`
+      });
+      toast({
+        title: 'Summary saved!',
+        description: 'You can find this in your profile under "Saved Items".',
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to save summary',
+        description: 'Please try again later.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleGenerateShareLink = async () => {
@@ -382,9 +458,56 @@ export function HealthSummaryPage({
         </div>
         {!isSharedView && (
           <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  Select Documents ({selectedFileIds.length})
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel>Select documents for summary</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <div className="max-h-64 overflow-y-auto">
+                  {files.length === 0 ? (
+                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                      No documents found
+                    </div>
+                  ) : (
+                    files.map(file => (
+                      <DropdownMenuCheckboxItem
+                        key={file.id}
+                        checked={selectedFileIds.includes(file.id)}
+                        onCheckedChange={() => toggleFileSelection(file.id)}
+                        className="flex flex-col items-start gap-1 py-2"
+                      >
+                        <span className="font-medium">{file.filename}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(file.clinical_date || file.created_at), 'MMM d, yyyy')} •{' '}
+                          {file.kind.toUpperCase()}
+                        </span>
+                      </DropdownMenuCheckboxItem>
+                    ))
+                  )}
+                </div>
+                <DropdownMenuSeparator />
+                <div className="p-2">
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={handleSummarize}
+                    disabled={isSummarizing || selectedFileIds.length === 0}
+                  >
+                    Update Summary
+                  </Button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               onClick={handleSummarize}
-              disabled={isSummarizing}
+              disabled={isSummarizing || selectedFileIds.length === 0}
               className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-lg disabled:opacity-70"
             >
               {isSummarizing ? (
@@ -395,10 +518,27 @@ export function HealthSummaryPage({
               ) : (
                 <>
                   <Sparkles className="h-4 w-4" />
-                  Summarize my records
+                  Summarize
                 </>
               )}
             </Button>
+
+            {aiSummary && (
+              <Button
+                variant="outline"
+                className="gap-2 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-800 dark:bg-green-950/20 dark:text-green-400"
+                onClick={handleSaveSummary}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Save Summary
+              </Button>
+            )}
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
@@ -516,71 +656,39 @@ export function HealthSummaryPage({
       )}
 
       {/* AI Summary from medical records – animated reveal when ready */}
-      {!isSummarizing && (aiSummary || contentFromRecords.length > 0 || recordCount > 0) && (
-        <Card className="animate-summary-fade border-2 border-purple-200 bg-gradient-to-br from-purple-50/80 to-indigo-50/80 dark:from-purple-950/20 dark:to-indigo-950/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Brain className="h-6 w-6 text-purple-600" />
-              AI summary from your medical records
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Generated from lab results, prescriptions, encounters, and documents (most recent by
-              date). Uses extractive summarization and medical entity extraction.
+      {!isSummarizing && (actualData?.summary || actualData?.professional_summary || contentFromRecords.length > 0 || recordCount > 0) ? (
+        <AiSummaryCard
+          aiSummary={aiSummary}
+          contentFromRecords={contentFromRecords}
+          recordCount={recordCount}
+          sourceCounts={sourceCounts}
+          dateRange={dateRange}
+          professionalFindings={professionalFindings}
+        />
+      ) : !isSummarizing && !isSharedView && !manualTriggered ? (
+        <Card className="border-2 border-dashed border-purple-200 bg-purple-50/30 p-12 dark:bg-purple-950/10">
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30">
+              <Sparkles className="h-8 w-8 text-purple-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Ready to generate your health summary?
+            </h3>
+            <p className="mt-2 max-w-md text-sm text-gray-600 dark:text-gray-400">
+              Select the documents you want to include and click "Generate Summary" to get an
+              AI-powered overview of your medical history.
             </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {recordCount > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {sourceCounts.lab != null && sourceCounts.lab > 0 && (
-                  <Badge variant="secondary">Labs: {sourceCounts.lab}</Badge>
-                )}
-                {sourceCounts.prescription != null && sourceCounts.prescription > 0 && (
-                  <Badge variant="secondary">Prescriptions: {sourceCounts.prescription}</Badge>
-                )}
-                {sourceCounts.encounter != null && sourceCounts.encounter > 0 && (
-                  <Badge variant="secondary">Encounters: {sourceCounts.encounter}</Badge>
-                )}
-                {sourceCounts.file != null && sourceCounts.file > 0 && (
-                  <Badge variant="secondary">Documents: {sourceCounts.file}</Badge>
-                )}
-                {dateRange?.newest && (
-                  <Badge variant="outline">
-                    Latest: {format(new Date(dateRange.newest), 'MMM d, yyyy')}
-                  </Badge>
-                )}
-              </div>
-            )}
-            {aiSummary && (
-              <p
-                className="text-sm leading-relaxed text-foreground"
-                data-testid="professional-summary"
-              >
-                {aiSummary}
-              </p>
-            )}
-            {contentFromRecords.length > 0 && (
-              <div>
-                <p className="mb-2 text-sm font-medium text-foreground">
-                  {professionalFindings.length > 0
-                    ? 'Key findings'
-                    : 'Content from your uploaded records:'}
-                </p>
-                <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                  {contentFromRecords.map((b, i) => (
-                    <li
-                      key={i}
-                      className="animate-summary-stagger opacity-0"
-                      style={{ animationDelay: `${(i + 1) * 80}ms` }}
-                    >
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </CardContent>
+            <Button
+              onClick={handleSummarize}
+              className="mt-6 gap-2 bg-purple-600 hover:bg-purple-700"
+              size="lg"
+            >
+              <Zap className="h-4 w-4" />
+              Generate Summary
+            </Button>
+          </div>
         </Card>
-      )}
+      ) : null}
 
       {/* Removed Health Score Card */}
 
@@ -588,55 +696,11 @@ export function HealthSummaryPage({
         {/* Left Column - Vitals & Conditions */}
         <div className="space-y-6 lg:col-span-2">
           {/* Vital Signs */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Activity className="h-6 w-6 text-blue-600" />
-                Vital Signs
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="grid gap-6 md:grid-cols-2">
-                {vitalSigns.map((vital) => {
-                  const Icon = vital.icon;
-                  return (
-                    <Card key={vital.label} className="border-2 shadow-sm">
-                      <CardContent className="p-5">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex flex-1 gap-4">
-                            <div className={`flex-shrink-0 rounded-full p-3 ${vital.bgColor}`}>
-                              <Icon className={`h-6 w-6 ${vital.color}`} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium leading-relaxed text-gray-600 dark:text-gray-400">
-                                {vital.label}
-                              </p>
-                              <div className="mt-2 flex items-baseline gap-2">
-                                <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                                  {vital.value}
-                                </span>
-                                <span className="text-base text-gray-500">{vital.unit}</span>
-                              </div>
-                              <p className="mt-2 text-xs leading-relaxed text-gray-500">
-                                {vital.lastUpdated}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex-shrink-0">{getTrendIcon(vital.trend)}</div>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={`mt-4 px-3 py-1 ${getStatusColor(vital.status)}`}
-                        >
-                          {vital.status.charAt(0).toUpperCase() + vital.status.slice(1)}
-                        </Badge>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+          <VitalSignsGrid
+            vitalSigns={vitalSigns}
+            getTrendIcon={getTrendIcon}
+            getStatusColor={getStatusColor}
+          />
 
           {/* Conditions & Medications Tabs */}
           <Tabs defaultValue="conditions" className="w-full">
@@ -647,198 +711,22 @@ export function HealthSummaryPage({
             </TabsList>
 
             <TabsContent value="conditions" className="mt-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    {conditions.length === 0 && contentFromRecords.length === 0 ? (
-                      <p className="py-6 text-center text-sm text-muted-foreground">
-                        No conditions extracted from your records yet. Add lab results and encounter
-                        notes for AI to identify conditions.
-                      </p>
-                    ) : (
-                      <>
-                        {conditions.length > 0 &&
-                          conditions.map((condition, index) => (
-                            <div
-                              key={index}
-                              className="flex items-start justify-between gap-4 rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800"
-                            >
-                              <div className="flex flex-1 gap-4">
-                                <div className="mt-1 flex-shrink-0">
-                                  {condition.status === 'managed' ? (
-                                    <CheckCircle2 className="h-6 w-6 text-green-600" />
-                                  ) : (
-                                    <AlertCircle className="h-6 w-6 text-yellow-600" />
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
-                                    {condition.name}
-                                  </h4>
-                                  {(condition.diagnosed_date || (condition as any).diagnosed) && (
-                                    <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                                      Diagnosed:{' '}
-                                      {format(
-                                        new Date(
-                                          (condition.diagnosed_date ||
-                                            (condition as any).diagnosed) as string
-                                        ),
-                                        'MMM d, yyyy'
-                                      )}
-                                    </p>
-                                  )}
-                                  <div className="mt-3 flex flex-wrap gap-2">
-                                    <Badge
-                                      variant="outline"
-                                      className={`px-3 py-1 ${getSeverityColor(condition.severity)}`}
-                                    >
-                                      {condition.severity.charAt(0).toUpperCase() +
-                                        condition.severity.slice(1)}
-                                    </Badge>
-                                    <Badge
-                                      variant="outline"
-                                      className={`px-3 py-1 ${
-                                        condition.status === 'managed'
-                                          ? 'bg-green-50 text-green-700 border-green-200'
-                                          : 'bg-blue-50 text-blue-700 border-blue-200'
-                                      }`}
-                                    >
-                                      {condition.status.charAt(0).toUpperCase() +
-                                        condition.status.slice(1)}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        {conditions.length === 0 && contentFromRecords.length > 0 && (
-                          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                            <p className="mb-2 text-sm font-medium text-foreground">
-                              Findings from your uploaded records:
-                            </p>
-                            <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                              {contentFromRecords.slice(0, 10).map((line, i) => (
-                                <li key={i}>{line}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <ConditionsList
+                conditions={conditions}
+                contentFromRecords={contentFromRecords}
+                getSeverityColor={getSeverityColor}
+              />
             </TabsContent>
 
             <TabsContent value="medications" className="mt-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    {medications.length === 0 && contentFromRecords.length === 0 ? (
-                      <p className="py-6 text-center text-sm text-muted-foreground">
-                        No medications extracted from your records yet. Add prescriptions for AI to
-                        list medications.
-                      </p>
-                    ) : (
-                      <>
-                        {medications.length > 0 &&
-                          medications.map((med, index) => (
-                            <div
-                              key={index}
-                              className="flex items-start justify-between gap-4 rounded-lg border-2 border-green-200 bg-green-50 p-5 dark:border-green-800 dark:bg-green-950/20"
-                            >
-                              <div className="flex flex-1 gap-4">
-                                <div className="flex-shrink-0 rounded-full bg-green-100 p-3 dark:bg-green-900/30">
-                                  <Pill className="h-6 w-6 text-green-600" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
-                                    {med.name}
-                                  </h4>
-                                  <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                                    {[med.dosage, med.frequency].filter(Boolean).join(' • ') || '—'}
-                                  </p>
-                                  {(med.start_date || (med as any).nextDose) && (
-                                    <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
-                                      <Clock className="h-4 w-4" />
-                                      {(med as any).nextDose
-                                        ? `Next dose: ${(med as any).nextDose}`
-                                        : `Start: ${med.start_date}`}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <Badge
-                                className={`flex-shrink-0 px-3 py-1 ${
-                                  med.status === 'active' 
-                                    ? 'bg-green-600' 
-                                    : med.status === 'on_hold'
-                                      ? 'bg-yellow-600'
-                                      : med.status === 'discontinued'
-                                        ? 'bg-red-600'
-                                        : 'bg-gray-500'
-                                }`}
-                              >
-                                {med.status === 'on_hold' ? 'On Hold' : med.status.charAt(0).toUpperCase() + med.status.slice(1)}
-                              </Badge>
-                            </div>
-                          ))}
-                        {medications.length === 0 && contentFromRecords.length > 0 && (
-                          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                            <p className="mb-2 text-sm font-medium text-foreground">
-                              Content from your uploaded records:
-                            </p>
-                            <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                              {contentFromRecords.slice(0, 10).map((line, i) => (
-                                <li key={i}>{line}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <MedicationsList
+                medications={medications}
+                contentFromRecords={contentFromRecords}
+              />
             </TabsContent>
 
             <TabsContent value="allergies" className="mt-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    {allergies.length === 0 ? (
-                      <p className="py-6 text-center text-sm text-muted-foreground">
-                        No allergies on file. Update your profile or add them in Medical Records.
-                      </p>
-                    ) : (
-                      allergies.map((allergy, index) => (
-                        <div
-                          key={index}
-                          className="flex items-start gap-4 rounded-lg border-2 border-red-200 bg-red-50 p-5 dark:border-red-800 dark:bg-red-950/20"
-                        >
-                          <div className="flex-shrink-0 rounded-full bg-red-100 p-3 dark:bg-red-900/30">
-                            <AlertTriangle className="h-6 w-6 text-red-600" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h4 className="text-base font-semibold leading-relaxed text-gray-900 dark:text-white">
-                              {allergy.allergen}
-                            </h4>
-                            <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-                              Reaction: {allergy.reaction}
-                            </p>
-                            <Badge
-                              variant="outline"
-                              className="mt-3 border-red-300 bg-red-100 px-3 py-1 text-red-700"
-                            >
-                              {allergy.severity} severity
-                            </Badge>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <AllergiesList allergies={allergies} />
             </TabsContent>
           </Tabs>
         </div>
@@ -846,117 +734,13 @@ export function HealthSummaryPage({
         {/* Right Column - AI Insights & Appointments */}
         <div className="space-y-6">
           {/* AI Insights */}
-          <Card className="border-2 border-purple-200">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 pb-4 dark:from-purple-950/20 dark:to-pink-950/20">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Brain className="h-6 w-6 text-purple-600" />
-                AI Insights
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {aiInsights.length === 0 && contentFromRecords.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">
-                    No insights yet. Add medical records (labs, prescriptions, encounters) to get
-                    personalized AI insights.
-                  </p>
-                ) : (
-                  <>
-                    {aiInsights.length > 0 &&
-                      aiInsights.map((insight, index) => (
-                        <div
-                          key={`insight-${index}`}
-                          className="flex gap-4 rounded-lg bg-purple-50 p-4 dark:bg-purple-950/20"
-                        >
-                          <Zap className="mt-1 h-5 w-5 flex-shrink-0 text-purple-600" />
-                          <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                            {insight}
-                          </p>
-                        </div>
-                      ))}
-                    {aiInsights.length === 0 && contentFromRecords.length > 0 && (
-                      <>
-                        <p className="mb-2 text-sm font-medium text-foreground">
-                          From your uploaded records:
-                        </p>
-                        {contentFromRecords.slice(0, 5).map((line, index) => (
-                          <div
-                            key={`record-${index}`}
-                            className="flex gap-4 rounded-lg bg-purple-50 p-4 dark:bg-purple-950/20"
-                          >
-                            <Zap className="mt-1 h-5 w-5 flex-shrink-0 text-purple-600" />
-                            <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                              {line}
-                            </p>
-                          </div>
-                        ))}
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <AiInsightsSection
+            aiInsights={aiInsights}
+            contentFromRecords={contentFromRecords}
+          />
 
           {/* Upcoming Appointments */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Calendar className="h-6 w-6 text-blue-600" />
-                Upcoming Appointments
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-6 pt-0">
-              {upcomingAppointments.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  No upcoming appointments. Book one from the Appointments page.
-                </p>
-              ) : (
-                upcomingAppointments.map(
-                  (
-                    apt: {
-                      id?: number;
-                      date: string;
-                      start_time?: string;
-                      doctor_name?: string;
-                      doctor?: number;
-                      specialty?: string;
-                    },
-                    index: number
-                  ) => (
-                    <div
-                      key={apt.id ?? index}
-                      className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 transition-all hover:shadow-md dark:border-blue-800 dark:from-blue-950/30 dark:to-indigo-950/30"
-                    >
-                      <div className="mb-3 flex items-center justify-between">
-                        <Badge
-                          variant="outline"
-                          className="border-blue-300 bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:border-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
-                        >
-                          Scheduled
-                        </Badge>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {format(new Date(apt.date), 'MMM d, yyyy')}
-                        </div>
-                      </div>
-                      <h4 className="mb-1 text-base font-bold text-gray-900 dark:text-white">
-                        {apt.doctor_name ?? `Doctor #${apt.doctor}`}
-                      </h4>
-                      <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
-                        {apt.specialty ?? '—'}
-                      </p>
-                      <div className="flex items-center gap-2 rounded-lg bg-white/60 px-3 py-2 dark:bg-gray-800/60">
-                        <Calendar className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {apt.start_time ?? '—'}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                )
-              )}
-            </CardContent>
-          </Card>
+          <UpcomingAppointmentsSection upcomingAppointments={upcomingAppointments} />
 
           {/* Quick Actions */}
           <Card className="border-2 border-blue-200">

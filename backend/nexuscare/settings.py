@@ -215,6 +215,11 @@ FAISS_INDEX_PATH = BASE_DIR / os.getenv('FAISS_INDEX_PATH', 'ai_index/faiss.inde
 SYMPTOM_MODEL_PATH = BASE_DIR / os.getenv('SYMPTOM_MODEL_PATH', 'ai_models/specialist_clf.joblib')
 SPACY_MODEL = os.getenv('SPACY_MODEL', 'en_core_web_sm')
 
+# REMOTE BRAIN (Google Colab / Ngrok)
+# Set this to your Ngrok URL (e.g., 'https://xxxx-xx-xx.ngrok.io') 
+# to offload AI processing and prevent local crashes.
+REMOTE_BRAIN_URL = os.getenv('REMOTE_BRAIN_URL', None)
+
 # Windows-specific: Tesseract OCR path
 if IS_WINDOWS:
     # Try to auto-detect Tesseract path

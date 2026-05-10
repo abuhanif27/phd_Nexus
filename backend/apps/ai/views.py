@@ -5,14 +5,15 @@ from rest_framework import views, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.patients.models import Patient
-from apps.records.models import SymptomLog
-from .models import HealthSummaryShare
+from apps.records.models import File, SymptomLog
+from .models import AISummary, HealthSummaryShare
 from .serializers import (
     SymptomAnalyzeSerializer, SpecialistPredictSerializer,
     SummaryRequestSerializer, TextSummarySerializer, AISummarySerializer,
     HealthSummaryShareSerializer
 )
 from .services import ai_service
+from django.utils import timezone
 
 
 def _get_patient_or_403(request):
@@ -34,11 +35,8 @@ class SymptomAnalyzeView(views.APIView):
         serializer.is_valid(raise_exception=True)
         
         text = serializer.validated_data['text']
-        
-        # Analyze with AI service
         result = ai_service.analyze_symptoms(text)
         
-        # Save symptom log if user is a patient
         if request.user.role == 'patient':
             SymptomLog.objects.create(
                 patient=request.user.patient_profile,
@@ -51,99 +49,39 @@ class SymptomAnalyzeView(views.APIView):
 
 
 class SpecialistPredictView(views.APIView):
-    """
-    Predict specialist from symptom text.
-    
-    Supports two modes (100% FREE):
-    - 'quick': Fast sklearn (5-10ms, 88% confidence)
-    - 'deep': FREE DistilBERT CPU (100ms, improving confidence, no API costs)
-    """
+    """Predict specialist from symptom text."""
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
         serializer = SpecialistPredictSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
         text = serializer.validated_data['text']
-        
-        # Get mode: 'quick' (default) or 'deep'
         mode = request.data.get('mode', 'quick')
-        
-        # Optional model override (e.g., 'sklearn', 'distilbert', 'auto')
         model = request.data.get('model') or request.query_params.get('model')
-        
-        # Predict specialist with mode support
-        result = ai_service.predict_specialist(
-            text, 
-            model_type=model,
-            mode=mode
-        )
-        
+        result = ai_service.predict_specialist(text, model_type=model, mode=mode)
         return Response(result)
 
 
 class PatientSummaryView(views.APIView):
-    """Generate extractive summary of patient records."""
+    """Generate extractive summary of patient records for doctors."""
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
         serializer = SummaryRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
         patient_id = serializer.validated_data['patient_id']
         
         try:
             patient = Patient.objects.get(id=patient_id)
+            if request.user.role == 'patient' and patient.user != request.user:
+                return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
             
-            # Check access: either own patient or doctor with consent
-            if request.user.role == 'patient':
-                if patient.user != request.user:
-                    return Response(
-                        {'error': 'Access denied'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-            elif request.user.role == 'doctor':
-                # TODO: Check consent scope
-                pass
-            
-            # Generate summary
             result = ai_service.summarize_patient(patient_id)
-            
             return Response(result)
-        
         except Patient.DoesNotExist:
-            return Response(
-                {'error': 'Patient not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'error': 'Patient not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-class BuildIndexView(views.APIView):
-    """Build FAISS index for a patient (admin/dev only)."""
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request):
-        patient_id = request.data.get('patient_id')
-        
-        if not patient_id:
-            return Response(
-                {'error': 'patient_id required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            ai_service.build_patient_index(patient_id)
-            return Response({'message': 'Index built successfully'})
-        except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class TextSummaryView(views.APIView):
@@ -153,102 +91,69 @@ class TextSummaryView(views.APIView):
     def post(self, request):
         serializer = TextSummarySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
         text = serializer.validated_data['text']
-        
-        # Generate summary
         result = ai_service.summarize_text(text)
-        
         return Response(result)
 
 
 class HealthSummaryView(views.APIView):
     """
-    GET: AI health summary from all existing medical records (most recent by date).
-    Aggregates labs, prescriptions, encounters, documents and summarizes with TextRank + NER.
-    
-    Supports two access modes:
-    1. Authenticated user viewing their own summary (requires login)
-    2. Anyone with a valid share_token (public access via query param: ?share_token=xxx)
+    GET: AI health summary with custom record selection.
+    POST: Save a summary to database.
     """
-    permission_classes = []  # Allow unauthenticated access for shared links
+    permission_classes = []  # Allow unauthenticated for shared links if token present
 
     def get(self, request):
         share_token = request.query_params.get('share_token')
         
-        # Mode 1: Shared link with token (public access)
         if share_token:
             try:
-                share = HealthSummaryShare.objects.select_related('patient').get(
-                    share_token=share_token
-                )
+                share = HealthSummaryShare.objects.select_related('patient').get(share_token=share_token)
                 if not share.is_valid():
-                    return Response(
-                        {'error': 'This share link is no longer valid or has expired.'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
+                    return Response({'error': 'Share link expired'}, status=403)
                 patient = share.patient
             except HealthSummaryShare.DoesNotExist:
-                return Response(
-                    {'error': 'Invalid share link.'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-        # Mode 2: Authenticated user viewing own summary
+                return Response({'error': 'Invalid share link'}, status=404)
         else:
             if not request.user.is_authenticated:
-                return Response(
-                    {'error': 'Authentication required.'},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
+                return Response({'error': 'Authentication required'}, status=401)
             patient, err = _get_patient_or_403(request)
-            if err is not None:
-                return err
+            if err: return err
         
+        # Check for custom file selection
+        file_ids_raw = request.query_params.get('file_ids')
+        file_ids = None
+        if file_ids_raw:
+            try:
+                file_ids = [int(x) for x in file_ids_raw.split(',') if x.strip()]
+            except ValueError: pass
+
         try:
-            result = ai_service.generate_health_summary_from_records(patient.id)
+            result = ai_service.generate_health_summary_from_records(patient.id, file_ids=file_ids)
             
-            # Shape for frontend HealthSummary + AI fields
-            # conditions and medications are already objects from services.py
+            # Map results to frontend shape
             conditions = []
             for i, c in enumerate(result.get('conditions', [])[:15]):
                 if isinstance(c, dict):
                     c['id'] = i
                     conditions.append(c)
                 else:
-                    conditions.append({
-                        'id': i, 
-                        'name': str(c), 
-                        'severity': 'moderate', 
-                        'diagnosed_date': '', 
-                        'status': 'active'
-                    })
+                    conditions.append({'id': i, 'name': str(c), 'severity': 'moderate', 'diagnosed_date': '', 'status': 'active'})
 
             medications = []
             for i, m in enumerate(result.get('medications', [])[:15]):
                 if isinstance(m, dict):
                     m['id'] = i
-                    # Ensure start_date exists for frontend
-                    if 'start_date' not in m:
-                        m['start_date'] = ''
+                    if 'start_date' not in m: m['start_date'] = ''
                     medications.append(m)
                 else:
-                    medications.append({
-                        'id': i, 
-                        'name': str(m)[:80], 
-                        'dosage': '', 
-                        'frequency': '', 
-                        'start_date': '', 
-                        'status': 'active'
-                    })
+                    medications.append({'id': i, 'name': str(m)[:80], 'dosage': '', 'frequency': '', 'start_date': '', 'status': 'active'})
 
             return Response({
-                'vital_signs': [],  # Optional: from vitals API later
+                'vital_signs': [],
                 'conditions': conditions,
-                'allergies': [],  # From profile if needed
                 'medications': medications,
                 'last_checkup': result.get('date_range', {}).get('newest'),
-                'next_appointment': None,
-                'health_score': None,
                 'ai_insights': result.get('insights', []),
                 'summary': result.get('summary', ''),
                 'bullets': result.get('bullets', []),
@@ -259,111 +164,115 @@ class HealthSummaryView(views.APIView):
                 'record_count': result.get('record_count', 0),
                 'date_range': result.get('date_range', {}),
                 'extracted_vitals': result.get('extracted_vitals', {}),
+                'selected_source_ids': file_ids # Reflect what was used
             })
         except Exception as e:
-            import traceback
-            print(f"Error in HealthSummaryView: {e}")
-            print(traceback.format_exc())
-            return Response(
-                {'error': f'Failed to generate health summary: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({'error': str(e)}, status=500)
+
+    def post(self, request):
+        """Save a summary to patient's bookmarks."""
+        patient, err = _get_patient_or_403(request)
+        if err: return err
+            
+        summary_text = request.data.get('summary')
+        title = request.data.get('title', f"Health Summary - {timezone.now().strftime('%b %d, %Y')}")
+        source_ids = request.data.get('source_ids', [])
+        
+        if not summary_text:
+            return Response({'error': 'Summary text is required'}, status=400)
+            
+        summary = AISummary.objects.create(
+            patient=patient,
+            text=summary_text,
+            title=title,
+            source_ids=source_ids,
+            is_saved=True,
+            method='other'
+        )
+        
+        return Response({'message': 'Summary saved successfully', 'id': summary.id})
 
 
-class HealthInsightsView(views.APIView):
-    """GET: AI insights derived from health summary (same pipeline, insights only)."""
+class SavedSummaryListView(views.APIView):
+    """Manage saved health summaries."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         patient, err = _get_patient_or_403(request)
-        if err is not None:
-            return err
+        if err: return err
+            
+        summaries = AISummary.objects.filter(patient=patient, is_saved=True).order_by('-ts')
+        return Response({
+            'summaries': [{
+                'id': s.id,
+                'title': s.title,
+                'text': s.text,
+                'ts': s.ts,
+                'source_ids': s.source_ids
+            } for s in summaries]
+        })
+
+    def delete(self, request, pk):
+        patient, err = _get_patient_or_403(request)
+        if err: return err
+        try:
+            summary = AISummary.objects.get(id=pk, patient=patient)
+            summary.delete()
+            return Response({'message': 'Summary deleted'})
+        except AISummary.DoesNotExist:
+            return Response({'error': 'Summary not found'}, status=404)
+
+
+class HealthInsightsView(views.APIView):
+    """GET: AI insights only."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        patient, err = _get_patient_or_403(request)
+        if err: return err
         try:
             result = ai_service.generate_health_summary_from_records(patient.id)
             return Response({'insights': result.get('insights', [])})
         except Exception as e:
-            return Response(
-                {'error': str(e), 'insights': []},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({'error': str(e)}, status=500)
 
 
 class HealthSummaryShareView(views.APIView):
-    """
-    POST: Generate a shareable link for the patient's health summary.
-    GET: List all active share links for the current patient.
-    DELETE: Deactivate a share link.
-    """
+    """Manage shareable tokens."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        """Create a new share token for the authenticated patient."""
         patient, err = _get_patient_or_403(request)
-        if err is not None:
-            return err
+        if err: return err
         
-        # Check total share count (limit to 10)
-        total_shares = HealthSummaryShare.objects.filter(patient=patient).count()
-        
-        # Allow force_new parameter to create new link regardless
         force_new = request.data.get('force_new', False)
-        
         if not force_new:
-            # Check if an active share already exists
-            existing_share = HealthSummaryShare.objects.filter(
-                patient=patient,
-                is_active=True
-            ).first()
-            
-            if existing_share and existing_share.is_valid():
-                # Return existing valid share
+            existing = HealthSummaryShare.objects.filter(patient=patient, is_active=True).first()
+            if existing and existing.is_valid():
                 return Response({
-                    'share_token': str(existing_share.share_token),
-                    'share_url': f'/share/health-summary/{existing_share.share_token}',
-                    'created_at': existing_share.created_at,
-                    'is_active': existing_share.is_active,
+                    'share_token': str(existing.share_token),
+                    'share_url': f'/share/health-summary/{existing.share_token}',
+                    'created_at': existing.created_at,
+                    'is_active': existing.is_active,
                     'message': 'Using existing share link'
                 })
         
-        # Enforce 10-link limit
-        if total_shares >= 10:
-            return Response({
-                'error': 'Maximum of 10 share links allowed. Please delete an old link to create a new one.',
-                'limit_reached': True,
-                'total_shares': total_shares
-            }, status=status.HTTP_400_BAD_REQUEST)
+        if HealthSummaryShare.objects.filter(patient=patient).count() >= 10:
+            return Response({'error': 'Limit of 10 share links reached'}, status=400)
         
-        # Create new share
-        share = HealthSummaryShare.objects.create(
-            patient=patient,
-            expires_at=request.data.get('expires_at')  # Optional expiration
-        )
-        
+        share = HealthSummaryShare.objects.create(patient=patient, expires_at=request.data.get('expires_at'))
         return Response({
             'share_token': str(share.share_token),
             'share_url': f'/share/health-summary/{share.share_token}',
             'created_at': share.created_at,
             'is_active': share.is_active,
             'message': 'Share link created successfully'
-        }, status=status.HTTP_201_CREATED)
+        }, status=201)
     
     def get(self, request):
-        """List all share links for the authenticated patient."""
         patient, err = _get_patient_or_403(request)
-        if err is not None:
-            return err
-        
-        # Optional parameter to filter by active status
-        include_inactive = request.query_params.get('include_inactive', 'true').lower() == 'true'
-        
-        shares = HealthSummaryShare.objects.filter(patient=patient)
-        
-        # Filter out inactive links if requested
-        if not include_inactive:
-            shares = shares.filter(is_active=True)
-        
-        shares = shares.order_by('-created_at')
-        
+        if err: return err
+        shares = HealthSummaryShare.objects.filter(patient=patient).order_by('-created_at')
         return Response({
             'shares': [
                 {
@@ -379,365 +288,22 @@ class HealthSummaryShareView(views.APIView):
         })
     
     def put(self, request):
-        """Toggle active status of a share link (activate/deactivate)."""
         patient, err = _get_patient_or_403(request)
-        if err is not None:
-            return err
-        
-        share_token = request.data.get('share_token')
-        is_active = request.data.get('is_active')
-        
-        if not share_token:
-            return Response(
-                {'error': 'share_token is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+        if err: return err
         try:
-            share = HealthSummaryShare.objects.get(
-                share_token=share_token,
-                patient=patient
-            )
-            # Toggle if is_active not provided, otherwise set to specific value
-            if is_active is None:
-                share.is_active = not share.is_active
-            else:
-                share.is_active = bool(is_active)
-            
-            share.save()
-            status_text = 'activated' if share.is_active else 'deactivated'
-            return Response({
-                'message': f'Share link {status_text} successfully',
-                'is_active': share.is_active
-            })
+            s = HealthSummaryShare.objects.get(share_token=request.data.get('share_token'), patient=patient)
+            s.is_active = request.data.get('is_active', not s.is_active)
+            s.save()
+            return Response({'message': 'Share link status updated', 'is_active': s.is_active})
         except HealthSummaryShare.DoesNotExist:
-            return Response(
-                {'error': 'Share link not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({'error': 'Link not found'}, status=404)
     
     def delete(self, request):
-        """Permanently delete a share link."""
         patient, err = _get_patient_or_403(request)
-        if err is not None:
-            return err
-        
-        share_token = request.data.get('share_token')
-        if not share_token:
-            return Response(
-                {'error': 'share_token is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+        if err: return err
         try:
-            share = HealthSummaryShare.objects.get(
-                share_token=share_token,
-                patient=patient
-            )
-            share.delete()  # Permanently delete from database
-            return Response({'message': 'Share link permanently deleted'})
+            s = HealthSummaryShare.objects.get(share_token=request.data.get('share_token'), patient=patient)
+            s.delete()
+            return Response({'message': 'Share link deleted'})
         except HealthSummaryShare.DoesNotExist:
-            return Response(
-                {'error': 'Share link not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-
-class HealthAnalysisView(views.APIView):
-    """Generate comprehensive health analysis for patient."""
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        try:
-            # Get patient profile
-            if not hasattr(request.user, 'patient_profile'):
-                return Response(
-                    {'error': 'Patient profile not found. Please complete your profile first.'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
-            patient = request.user.patient_profile
-            
-            # Get patient's health data
-            from apps.records.models import LabResult, Prescription, Encounter, File
-            from apps.scheduling.models import Appointment
-            
-            records_count = (
-                LabResult.objects.filter(patient=patient).count()
-                + Encounter.objects.filter(patient=patient).count()
-                + File.objects.filter(patient=patient).count()
-            )
-            prescriptions_count = Prescription.objects.filter(patient=patient).count()
-            appointments_count = Appointment.objects.filter(patient=patient).count()
-            symptoms_count = SymptomLog.objects.filter(patient=patient).count()
-            
-            # Generate analysis
-            analysis = {
-                'health_score': 85,  # Default score
-                'summary': f"Based on your profile, you have {records_count} medical records, {prescriptions_count} prescriptions, and {appointments_count} appointments on file.",
-                'recommendations': [],
-                'risk_factors': [],
-                'statistics': {
-                    'total_records': records_count,
-                    'total_prescriptions': prescriptions_count,
-                    'total_appointments': appointments_count,
-                    'total_symptom_logs': symptoms_count,
-                }
-            }
-            
-            # Add recommendations based on data
-            if records_count == 0:
-                analysis['recommendations'].append({
-                    'title': 'Upload Medical Records',
-                    'description': 'Start by uploading your medical records to get personalized health insights.',
-                    'priority': 'high'
-                })
-            
-            if appointments_count == 0:
-                analysis['recommendations'].append({
-                    'title': 'Schedule Regular Checkups',
-                    'description': 'Regular health checkups are important for preventive care.',
-                    'priority': 'medium'
-                })
-            
-            if patient.medical_conditions:
-                analysis['risk_factors'].append({
-                    'condition': 'Pre-existing Conditions',
-                    'description': patient.medical_conditions,
-                    'level': 'monitor'
-                })
-            
-            # Add general health tips
-            analysis['recommendations'].append({
-                'title': 'Stay Hydrated',
-                'description': 'Drink at least 8 glasses of water daily for optimal health.',
-                'priority': 'low'
-            })
-            
-            analysis['recommendations'].append({
-                'title': 'Regular Exercise',
-                'description': 'Aim for at least 30 minutes of moderate exercise most days of the week.',
-                'priority': 'medium'
-            })
-            
-            return Response(analysis)
-            
-        except Exception as e:
-            return Response(
-                {'error': f'Failed to generate analysis: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-class EnhancedAnalysisView(views.APIView):
-    """
-    Enhanced AI analysis combining symptom analysis and specialist prediction.
-    
-    Supports both quick (sklearn) and deep (DistilBERT) modes.
-    """
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request):
-        try:
-            # Get request data
-            symptoms = request.data.get('symptoms', '')
-            mode = request.data.get('mode', 'quick')
-            include_history = request.data.get('include_history', False)
-            model = request.data.get('model', 'auto')
-            
-            if not symptoms:
-                return Response(
-                    {'error': 'Symptoms text is required'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Analyze symptoms
-            symptom_analysis = ai_service.analyze_symptoms(symptoms)
-            
-            # Predict specialist with selected mode
-            specialist_prediction = ai_service.predict_specialist(
-                symptoms,
-                model_type=model if model != 'auto' else None,
-                mode=mode
-            )
-            
-            # Get patient history if requested
-            patient_history = None
-            if include_history and hasattr(request.user, 'patient_profile'):
-                from apps.records.models import Encounter
-                patient = request.user.patient_profile
-                encounters = Encounter.objects.filter(patient=patient).order_by('-ts')[:5]
-                patient_history = {
-                    'medical_conditions': getattr(patient, 'medical_conditions', None) or 'None reported',
-                    'allergies': getattr(patient, 'allergies', None) or 'None reported',
-                    'recent_records': [
-                        {
-                            'date': enc.ts.isoformat(),
-                            'diagnosis': enc.diagnosis,
-                            'treatment': enc.plan
-                        } for enc in encounters
-                    ]
-                }
-            
-            # Extract specialist info
-            specialist = specialist_prediction.get('specialist', 'General Practitioner')
-            confidence = specialist_prediction.get('confidence', 0.0)
-            
-            # Determine urgency based on confidence and keywords
-            urgency = 'routine'
-            symptoms_lower = symptoms.lower()
-            if any(word in symptoms_lower for word in ['severe', 'emergency', 'bleeding', 'chest pain', 'difficulty breathing']):
-                urgency = 'urgent' if confidence > 0.6 else 'emergency'
-            elif any(word in symptoms_lower for word in ['pain', 'fever', 'infection']):
-                urgency = 'urgent' if confidence > 0.5 else 'routine'
-            
-            # Generate recommendations
-            recommendations = []
-            if confidence > 0.7:
-                recommendations.append(f"Consult with a {specialist} for specialized care")
-                recommendations.append("Schedule an appointment within 1-2 weeks for evaluation")
-            elif confidence > 0.5:
-                recommendations.append(f"Consider seeing a {specialist} or General Practitioner")
-                recommendations.append("Monitor symptoms and seek care if they worsen")
-            else:
-                recommendations.append("Consult with a General Practitioner for initial evaluation")
-                recommendations.append("Keep track of your symptoms and their progression")
-            
-            if urgency == 'urgent' or urgency == 'emergency':
-                recommendations.insert(0, "Seek immediate medical attention if symptoms worsen")
-            
-            # Add general recommendations
-            recommendations.extend([
-                "Stay hydrated and get adequate rest",
-                "Keep a symptom diary for your healthcare provider",
-                "Avoid self-medication without professional advice"
-            ])
-            
-            # Generate disclaimer
-            disclaimer = {
-                'warning': '⚠️ Medical Disclaimer',
-                'message': 'This is an AI-powered analysis and should not replace professional medical advice.',
-                'limitations': [
-                    'AI analysis is not a substitute for professional medical diagnosis',
-                    'Always consult with qualified healthcare professionals',
-                    'Seek immediate help for emergency symptoms',
-                    f'Analysis based on {mode} mode with {confidence:.1%} confidence'
-                ]
-            }
-            
-            # Generate next steps
-            next_steps = {
-                'action': f"Schedule appointment with {specialist}",
-                'urgency': urgency,
-                'preparation': [
-                    'Write down all symptoms with onset dates',
-                    'List any medications you\'re currently taking',
-                    'Note any allergies or medical conditions',
-                    'Bring relevant medical records'
-                ],
-                'monitoring': [
-                    'Track symptom changes daily',
-                    'Note any triggers or patterns',
-                    'Record severity on a scale of 1-10',
-                    'Document any new symptoms'
-                ]
-            }
-            
-            # Combine results with frontend-expected structure
-            result = {
-                'success': True,
-                'mode': mode,
-                'model_used': specialist_prediction.get('model_used', mode),
-                'analysis': {
-                    'recommended_specialist': specialist,
-                    'confidence': confidence,
-                    'reasoning': specialist_prediction.get('reasoning', f'{mode.title()} mode analysis suggests {specialist} based on symptom patterns'),
-                    'extracted_symptoms': symptom_analysis.get('entities', []),
-                    'cleaned_text': symptom_analysis.get('cleaned_text', symptoms)
-                },
-                'recommendations': recommendations,
-                'disclaimer': disclaimer,
-                'next_steps': next_steps,
-                'patient_history': patient_history,
-            }
-            
-            # Save symptom log if user is a patient
-            if hasattr(request.user, 'patient_profile'):
-                SymptomLog.objects.create(
-                    patient=request.user.patient_profile,
-                    text=symptoms,
-                    cleaned_text=symptom_analysis.get('cleaned_text', symptoms),
-                    entities=symptom_analysis.get('entities', {})
-                )
-            
-            return Response(result)
-            
-        except Exception as e:
-            import traceback
-            return Response(
-                {
-                    'success': False,
-                    'error': str(e),
-                    'traceback': traceback.format_exc()
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-class ModelStatusView(views.APIView):
-    """Get status of ML models (which models are trained and available)."""
-    permission_classes = [IsAuthenticated]
-    
-    def get(self, request):
-        import os
-        from django.conf import settings
-        
-        # Check which models exist
-        pytorch_model_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_pytorch.pt')
-        pytorch_labels_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_pytorch_labels.joblib')
-        sklearn_model_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn.joblib')
-        sklearn_labels_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn_labels.joblib')
-        
-        pytorch_available = os.path.exists(pytorch_model_path) and os.path.exists(pytorch_labels_path)
-        sklearn_available = os.path.exists(sklearn_model_path) and os.path.exists(sklearn_labels_path)
-        
-        # Get current model info
-        current_model = ai_service.specialist_classifier_type or 'none'
-        
-        status_info = {
-            'models': {
-                'pytorch': {
-                    'available': pytorch_available,
-                    'name': 'PyTorch DistilBERT',
-                    'accuracy': '85-95%',
-                    'type': 'deep_learning',
-                    'description': 'Transformer-based model with 66M parameters'
-                },
-                'sklearn': {
-                    'available': sklearn_available,
-                    'name': 'Scikit-learn TF-IDF + LogReg',
-                    'accuracy': '75-85%',
-                    'type': 'classical_ml',
-                    'description': 'Lightweight, fast inference model'
-                }
-            },
-            'current_model': current_model,
-            'recommendations': []
-        }
-        
-        # Add recommendations if no models are trained
-        if not pytorch_available and not sklearn_available:
-            status_info['recommendations'].append({
-                'message': 'No ML models are trained yet. Train at least one model to enable specialist prediction.',
-                'commands': [
-                    'python manage.py train_sklearn  # Fast: ~30 seconds',
-                    'python manage.py train_pytorch --epochs 10  # Accurate: ~5-15 minutes'
-                ]
-            })
-        elif not pytorch_available:
-            status_info['recommendations'].append({
-                'message': 'PyTorch model not trained. Train it for higher accuracy (85-95%).',
-                'commands': ['python manage.py train_pytorch --epochs 10']
-            })
-        
-        return Response(status_info)
+            return Response({'error': 'Link not found'}, status=404)

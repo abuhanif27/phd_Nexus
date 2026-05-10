@@ -29,6 +29,7 @@ except Exception:
     Tokenizer = None
     TextRankSummarizer = None
 
+from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
@@ -71,19 +72,34 @@ class AIService:
     def __init__(self, model_type: str = 'auto'):
         """
         Initialize AI Service.
-        
-        Args:
-            model_type: 'sklearn', 'distilbert', or 'auto' (defaults to sklearn)
+        Supports REMOTE_BRAIN mode for low-resource systems.
         """
         self.model_type = model_type
+        self.remote_url = getattr(settings, 'REMOTE_BRAIN_URL', None)
+        
         self.spacy_model = None
         self.embedding_model = None
         self.specialist_classifier = None
         self.specialist_classifier_type = None
-        self.distilbert_classifier = None  # FREE CPU-friendly DistilBERT
+        self.distilbert_classifier = None
         self.faiss_index = None
-        self._load_models()
-    
+        
+        # If we have a remote URL, we don't load heavy local models
+        if not self.remote_url:
+            self._load_models()
+        else:
+            print(f"🚀 AI Service running in REMOTE mode via {self.remote_url}")
+
+    def _call_remote_brain(self, endpoint: str, data: Dict) -> Dict:
+        """Helper to call Google Colab Brain."""
+        import requests
+        try:
+            response = requests.post(f"{self.remote_url.rstrip('/')}/{endpoint}", json=data, timeout=30)
+            return response.json()
+        except Exception as e:
+            print(f"Remote Brain Error: {e}")
+            return {}
+
     def _load_models(self):
         """Lazy load ML models."""
         try:
@@ -223,17 +239,12 @@ class AIService:
     def predict_specialist(self, text: str, model_type: str = None, mode: str = 'quick', 
                           patient_history: str = None) -> Dict:
         """
-        Predict specialist from symptom text using loaded classifier.
-        Supports sklearn (quick) and DistilBERT (deep) - 100% FREE!
-        
-        Args:
-            text: Symptom description
-            model_type: Override model type ('sklearn', 'distilbert')
-            mode: 'quick' (fast sklearn 5-10ms) or 'deep' (FREE DistilBERT 100ms)
-            patient_history: Optional patient history (currently unused)
-            
-        Returns specialist name, confidence, and top alternatives.
+        Predict specialist from symptom text.
+        Proxies to Remote Brain if available.
         """
+        if self.remote_url:
+            return self._call_remote_brain('predict', {'text': text})
+
         # If caller requests a specific model type, attempt to load it.
         if model_type:
             # Normalize
@@ -855,7 +866,7 @@ class AIService:
             }
 
     def get_recent_records_corpus(self, patient_id: int, max_items: int = 80,
-                                   max_days: int = 365) -> Tuple[str, Dict]:
+                                   max_days: int = 365, file_ids: List[int] = None) -> Tuple[str, Dict]:
         """
         Aggregate all medical records for a patient (most recent by date), build a single text corpus.
         Returns (corpus_text, meta) with meta: source_counts, date_range, record_count.
@@ -889,7 +900,23 @@ class AIService:
             text = f"Encounter: {enc.notes}. Diagnosis: {enc.diagnosis}. Plan: {enc.plan}"
             items.append((enc.ts, 'encounter', text))
 
-        for f in patient.files.filter(created_at__gte=cutoff).order_by('-created_at')[:max_items]:
+        # Handle Files with customization support
+        file_qs = patient.files.all()
+        if file_ids is not None:
+            # If explicit IDs provided, use them and ignore date filters
+            file_qs = file_qs.filter(id__in=file_ids)
+        else:
+            # DEFAULT LOGIC: Latest 5 documents within 3 months, prioritized by clinical_date
+            three_months_ago = timezone.now().date() - timedelta(days=90)
+            
+            # Prioritize clinical_date, fall back to created_at
+            # We filter clinical_date >= three_months_ago
+            file_qs = file_qs.filter(
+                models.Q(clinical_date__gte=three_months_ago) | 
+                models.Q(clinical_date__isnull=True, created_at__gte=three_months_ago)
+            ).order_by('-clinical_date', '-created_at')[:5]
+
+        for f in file_qs:
             extracted = get_or_extract_file_text(f)
             
             # Quietly skip documents that have NO medical context or are pure noise
@@ -899,14 +926,22 @@ class AIService:
                 continue
                 
             # Include files even if text extraction fails (e.g. OCR not working)
-            # but only if it seems like it *could* be medical (or is explicitly kind='lab/rx')
             if not extracted or not extracted.strip():
-                if f.kind == 'other':
-                    continue # Skip empty generic uploads
-                extracted = "[Medical document uploaded; text extraction (OCR) not available or failed for this file content.]"
+                if f.kind == 'other' and file_ids is None:
+                    continue # Skip empty generic uploads if not explicitly selected
+                extracted = "[Medical document uploaded; content extraction not available.]"
             
             text = f"Medical Document ({f.get_kind_display()}): {extracted[:1000]}"
-            items.append((f.created_at, 'file', text))
+            # Use clinical_date for sorting if available
+            sort_ts = f.clinical_date if f.clinical_date else f.created_at
+            
+            # Ensure sort_ts is a datetime object (never a date) to avoid TypeError in sorting
+            if isinstance(sort_ts, (datetime, timezone.datetime)):
+                pass
+            elif hasattr(sort_ts, 'year'): # It's likely a date object
+                sort_ts = timezone.make_aware(datetime.combine(sort_ts, datetime.min.time()))
+            
+            items.append((sort_ts, 'file', text))
 
         # Sort by date descending (most recent first), then take up to max_items
         items.sort(key=lambda x: x[0], reverse=True)
@@ -934,13 +969,15 @@ class AIService:
 
     def generate_health_summary_from_records(self, patient_id: int,
                                              max_items: int = 80,
-                                             max_days: int = 365) -> Dict:
+                                             max_days: int = 365,
+                                             file_ids: List[int] = None) -> Dict:
         """
-        Generate AI health summary from all existing medical records (most recent by date).
-        Uses TextRank for extractive summary and spaCy (or medical NER) for entities.
-        Categories: lab results, prescriptions, encounters, documents (others).
+        Generate AI health summary from records.
+        Supports custom document selection via file_ids.
         """
-        corpus, meta = self.get_recent_records_corpus(patient_id, max_items=max_items, max_days=max_days)
+        corpus, meta = self.get_recent_records_corpus(
+            patient_id, max_items=max_items, max_days=max_days, file_ids=file_ids
+        )
         if not corpus.strip():
             return {
                 'summary': 'No recent medical records found. Upload lab results, prescriptions, or encounter notes to get an AI-generated health summary.',
@@ -969,7 +1006,19 @@ class AIService:
         # Entity extraction (spaCy NER; medical models can be plugged here)
         manual_medications = []
         entities_map = {}
-        if self.spacy_model:
+
+        if self.remote_url:
+            # REMOTE BRAIN NER (Offload heavy work)
+            remote_ner = self._call_remote_brain('analyze', {'text': corpus})
+            for ent in remote_ner.get('entities', []):
+                label = ent['label']
+                if label not in entities_map:
+                    entities_map[label] = []
+                if ent['text'] not in entities_map[label]:
+                    if not self._is_noise(ent['text']):
+                        entities_map[label].append(ent['text'])
+        elif self.spacy_model:
+            # Local fallback
             doc = self.spacy_model(corpus)
             for ent in doc.ents:
                 label = ent.label_
@@ -979,10 +1028,11 @@ class AIService:
                     # Filter entities too
                     if not self._is_noise(ent.text):
                         entities_map[label].append(ent.text)
-            # Map common labels to medications
-            for label, vals in entities_map.items():
-                if label in ('DRUG', 'MEDICATION', 'CHEMICAL'):
-                    manual_medications.extend(vals[:15])
+        
+        # Map common labels to medications
+        for label, vals in entities_map.items():
+            if label in ('DRUG', 'MEDICATION', 'CHEMICAL', 'PRODUCT'):
+                manual_medications.extend(vals[:15])
 
         # Extract vitals (Blood pressure, heart rate, temperature, weight)
         import re
