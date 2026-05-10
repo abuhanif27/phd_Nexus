@@ -1,8 +1,7 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django import forms
-from .models import User, OTPToken
+from .models import User, OTPToken, UserSettings
 
 
 class UserCreationForm(forms.ModelForm):
@@ -22,7 +21,8 @@ class UserCreationForm(forms.ModelForm):
         return password2
 
     def save(self, commit=True):
-        user = super().save(commit=False)
+        # Explicit call to ModelForm.save instead of super()
+        user = forms.ModelForm.save(self, commit=False)
         user.set_password(self.cleaned_data["password1"])
         if commit:
             user.save()
@@ -41,18 +41,27 @@ class UserChangeForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ('email', 'password', 'role', 'phone', 'is_active', 'is_staff', 'is_superuser')
+        fields = ('email', 'password', 'role', 'phone', 'is_active', 'is_staff', 'is_superuser', 'email_verified', 'twofa_method')
 
 
-class UserAdmin(BaseUserAdmin):
+class UserSettingsInline(admin.StackedInline):
+    model = UserSettings
+    extra = 0
+    can_delete = False
+    verbose_name_plural = 'Settings'
+
+
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
     form = UserChangeForm
     add_form = UserCreationForm
 
-    list_display = ('email', 'role', 'phone', 'is_active', 'is_staff', 'twofa_enabled', 'created_at')
-    list_filter = ('role', 'is_staff', 'is_active', 'twofa_enabled', 'created_at')
+    list_display = ('email', 'role', 'phone', 'is_active', 'email_verified', 'twofa_enabled', 'twofa_method', 'created_at')
+    list_filter = ('role', 'is_staff', 'is_active', 'email_verified', 'twofa_enabled', 'created_at')
     fieldsets = (
         ('🔐 Authentication', {'fields': ('email', 'password')}),
-        ('👤 Personal Information', {'fields': ('phone', 'role', 'twofa_enabled', 'twofa_secret')}),
+        ('👤 Personal Information', {'fields': ('phone', 'role', 'email_verified', 'pending_email')}),
+        ('🛡️ Security', {'fields': ('twofa_enabled', 'twofa_method', 'twofa_secret')}),
         ('🛡️ Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('📅 Important Dates', {'fields': ('created_at', 'last_login')}),
     )
@@ -62,14 +71,21 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('email', 'role', 'phone', 'password1', 'password2', 'is_staff', 'is_superuser'),
         }),
     )
+    inlines = (UserSettingsInline,)
     readonly_fields = ('created_at', 'last_login')
     search_fields = ('email', 'phone')
     ordering = ('-created_at',)
     filter_horizontal = ('groups', 'user_permissions')
     
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs.select_related()
+        # Use explicit parent call to avoid super() issues in Python 3.14
+        qs = admin.ModelAdmin.get_queryset(self, request)
+        return qs
+
+    def get_fieldsets(self, request, obj=None):
+        if not obj:
+            return self.add_fieldsets
+        return admin.ModelAdmin.get_fieldsets(self, request, obj)
 
 
 @admin.register(OTPToken)
@@ -92,4 +108,7 @@ class OTPTokenAdmin(admin.ModelAdmin):
     is_expired.short_description = 'Status'
 
 
-admin.site.register(User, UserAdmin)
+@admin.register(UserSettings)
+class UserSettingsAdmin(admin.ModelAdmin):
+    list_display = ('user', 'theme', 'language', 'timezone')
+    search_fields = ('user__email',)

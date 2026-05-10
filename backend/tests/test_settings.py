@@ -1,4 +1,5 @@
 import pytest
+import pyotp
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from apps.users.models import UserSettings
@@ -53,8 +54,21 @@ def test_change_password(auth_client, user):
 
 @pytest.mark.django_db
 def test_toggle_2fa(auth_client, user):
-    assert not user.twofa_enabled
-    response = auth_client.post('/api/auth/2fa/toggle/')
+    # New flow: Setup -> Toggle with valid code
+    setup_resp = auth_client.get('/api/auth/2fa/setup/')
+    assert setup_resp.status_code == 200
+    secret = setup_resp.data['secret']
+    
+    totp = pyotp.TOTP(secret)
+    code = totp.now()
+    
+    # Enable
+    response = auth_client.post('/api/auth/2fa/toggle/', {
+        'action': 'enable',
+        'method': 'totp',
+        'code': code
+    }, format='json')
     assert response.status_code == 200
+    
     user.refresh_from_db()
-    assert user.twofa_enabled
+    assert user.twofa_enabled == True
