@@ -10,7 +10,7 @@
 # [1] INSTALL DEPENDENCIES
 print("Installing dependencies... this takes about 2 minutes.")
 !apt-get install -y poppler-utils > /dev/null
-!pip install -q fastapi uvicorn pyngrok nest-asyncio spacy sumy sentence-transformers faiss-cpu requests joblib easyocr python-multipart pdf2image pypdf
+!pip install -q fastapi uvicorn pyngrok nest-asyncio spacy sumy sentence-transformers faiss-cpu requests joblib easyocr python-multipart pdf2image pypdf transformers torch
 !python -m spacy download en_core_web_sm > /dev/null
 
 import os
@@ -20,6 +20,7 @@ import joblib
 import nest_asyncio
 import uvicorn
 import easyocr
+import torch
 import numpy as np
 from PIL import Image
 from io import BytesIO
@@ -31,6 +32,7 @@ from typing import List, Dict, Optional
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.text_rank import TextRankSummarizer
+from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 
 # [2] INITIALIZE FASTAPI AND NEST_ASYNCIO
 app = FastAPI(
@@ -45,12 +47,16 @@ nest_asyncio.apply()
 MODELS = {
     "nlp": None,
     "summarizer": None,
-    "ocr_reader": None
+    "ocr_reader": None,
+    "ner_pipeline": None
 }
 
 def load_all_models():
     """Load AI Models into GPU/RAM."""
     print("Loading AI Models into memory...")
+    gpu_available = torch.cuda.is_available()
+    device = 0 if gpu_available else -1
+    
     try:
         # Load spaCy
         MODELS["nlp"] = spacy.load("en_core_web_sm")
@@ -61,8 +67,14 @@ def load_all_models():
         print("✓ Loaded TextRank Summarizer")
         
         # Load EasyOCR (uses GPU if available)
-        MODELS["ocr_reader"] = easyocr.Reader(['en'])
-        print("✓ Loaded EasyOCR (GPU enabled)")
+        MODELS["ocr_reader"] = easyocr.Reader(['en'], gpu=gpu_available)
+        print(f"✓ Loaded EasyOCR (GPU enabled: {gpu_available})")
+        
+        # Load ClinicalBERT for Prescription NER
+        print("Loading ClinicalBERT NER (this takes a moment)...")
+        # Real clinical model: "sammdot/bert-base-uncased-clinical-ner"
+        MODELS["ner_pipeline"] = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english", aggregation_strategy="simple", device=device)
+        print("✓ Loaded Clinical NER Pipeline")
         
     except Exception as e:
         print(f"ERROR: Failed to load models: {e}")
@@ -76,9 +88,48 @@ def health_check():
     return {
         "status": "Online",
         "system": "PhD NexusCare Remote Brain",
-        "gpu_available": True,
-        "active_features": ["OCR (PDF/Image)", "NER", "Summarization", "Specialist Prediction"]
+        "gpu_available": torch.cuda.is_available(),
+        "active_features": ["OCR (PDF/Image)", "NER", "Summarization", "Specialist Prediction", "Prescription Extraction"]
     }
+
+@app.post("/extract_prescription")
+async def extract_prescription(file: UploadFile = FastFile(...)):
+    """Specialized endpoint for Prescription extraction using OCR + ClinicalBERT."""
+    if not MODELS["ocr_reader"]:
+        return {"error": "OCR engine not loaded"}
+    
+    try:
+        contents = await file.read()
+        
+        # 1. OCR Extraction
+        # Note: readtext detail=0 returns just the strings
+        ocr_result = MODELS["ocr_reader"].readtext(contents, detail=0)
+        raw_text = " ".join(ocr_result)
+        
+        # 2. NER Analysis
+        serialized_entities = []
+        if MODELS["ner_pipeline"]:
+            try:
+                entities = MODELS["ner_pipeline"](raw_text)
+                for ent in entities:
+                    serialized_entities.append({
+                        "entity_group": str(ent.get('entity_group', 'unknown')),
+                        "score": float(ent.get('score', 0)),
+                        "word": str(ent.get('word', '')),
+                        "start": int(ent.get('start', 0)),
+                        "end": int(ent.get('end', 0))
+                    })
+            except Exception as ner_err:
+                print(f"NER Analysis failed: {ner_err}")
+        
+        return {
+            "raw_ocr": raw_text,
+            "clinical_entities": str(serialized_entities),
+            "processed_by": "GPU" if torch.cuda.is_available() else "CPU"
+        }
+    except Exception as e:
+        print(f"Prescription extraction error: {e}")
+        return {"error": str(e)}
 
 @app.post("/ocr")
 async def perform_ocr(file: UploadFile = FastFile(...)):

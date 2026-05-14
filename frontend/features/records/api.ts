@@ -110,3 +110,19 @@ export async function summarizeDoctorPatientDocumentsByCode(
   });
   return response.data;
 }
+
+export const parsePrescriptionImage = async (fileId?: number, fileObj?: File) => {
+  const formData = new FormData();
+  if (fileObj) {
+    formData.append('file', fileObj);
+  } else if (fileId) {
+    formData.append('file_id', fileId.toString());
+  }
+  
+  const response = await apiClient.post('/api/records/prescriptions/parse-image/', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};

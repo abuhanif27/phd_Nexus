@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import { getSharedHealthSummary } from '@/features/health-summary/api';
-import { HealthSummaryPage } from '@/features/health-summary/components/HealthSummaryPage';
+import { ReportSummaryPage } from '@/features/health-summary/components/HealthSummaryPage';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ export default function SharedHealthSummaryPage() {
           <Card>
             <CardContent className="p-12 text-center">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-              <p className="mt-4 text-gray-600">Loading health summary...</p>
+              <p className="mt-4 text-gray-600">Loading report summary...</p>
             </CardContent>
           </Card>
         </div>
@@ -45,7 +45,7 @@ export default function SharedHealthSummaryPage() {
                 Invalid or Expired Link
               </h1>
               <p className="mt-4 text-gray-600 dark:text-gray-400">
-                This health summary link is either invalid, has expired, or has been deactivated.
+                This report summary link is either invalid, has expired, or has been deactivated.
               </p>
               <div className="mt-8 flex justify-center gap-4">
                 <Button asChild variant="outline">
@@ -65,7 +65,7 @@ export default function SharedHealthSummaryPage() {
     );
   }
 
-  // Render the health summary with shared data (in view-only mode)
+  // Render the report summary with shared data (in view-only mode)
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="border-b bg-white py-4 dark:bg-gray-900">
@@ -73,10 +73,10 @@ export default function SharedHealthSummaryPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                Shared Health Summary
+                Shared Report Summary
               </h1>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                This is a shared view of someone's health summary
+                This is a shared view of someone's report summary
               </p>
             </div>
             <Button asChild variant="outline" size="sm">
@@ -86,8 +86,8 @@ export default function SharedHealthSummaryPage() {
         </div>
       </div>
 
-      {/* Pass shared data to HealthSummaryPage component */}
-      <HealthSummaryPage sharedData={data} isSharedView={true} />
+      {/* Pass shared data to ReportSummaryPage component */}
+      <ReportSummaryPage sharedData={data} isSharedView={true} />
     </div>
   );
 }

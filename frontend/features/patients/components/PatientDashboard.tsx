@@ -161,9 +161,8 @@ export function PatientDashboard() {
             <QuickActionButton
               icon={TrendingUp}
               label="Health Insights"
-              description="AI-powered health summary"
-              href="/health-summary"
-            />
+              description="AI-powered report summary"
+              href="/health-summary"            />
           </CardContent>
         </Card>
       </div>

@@ -75,15 +75,15 @@ function isPdfFile(file: { mime?: string; filename: string }) {
   return mime === 'application/pdf' || name.endsWith('.pdf');
 }
 
-interface HealthSummaryPageProps {
+interface ReportSummaryPageProps {
   sharedData?: HealthSummary;
   isSharedView?: boolean;
 }
 
-export function HealthSummaryPage({
+export function ReportSummaryPage({
   sharedData,
   isSharedView = false,
-}: HealthSummaryPageProps = {}) {
+}: ReportSummaryPageProps = {}) {
   const { toast } = useToast();
   const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
   const [activeFileIds, setActiveFileIds] = useState<number[]>([]);
@@ -132,11 +132,13 @@ export function HealthSummaryPage({
   });
 
   const files = useMemo(() => {
-    return (filesData?.results || []).sort((a, b) => {
-      const dateA = new Date(a.clinical_date || a.created_at).getTime();
-      const dateB = new Date(b.clinical_date || b.created_at).getTime();
-      return dateB - dateA;
-    });
+    return (filesData?.results || [])
+      .filter((f: any) => f.kind === 'lab')
+      .sort((a, b) => {
+        const dateA = new Date(a.clinical_date || a.created_at).getTime();
+        const dateB = new Date(b.clinical_date || b.created_at).getTime();
+        return dateB - dateA;
+      });
   }, [filesData]);
 
   useEffect(() => {
@@ -212,7 +214,7 @@ export function HealthSummaryPage({
       await saveHealthSummary({
         summary: aiSummary,
         source_ids: selectedFileIds,
-        title: `Health Summary (${format(new Date(), 'MMM d, yyyy')})`
+        title: `Report Summary (${format(new Date(), 'MMM d, yyyy')})`
       });
       toast({
         title: 'Summary saved!',
@@ -260,7 +262,7 @@ export function HealthSummaryPage({
 
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast({ title: 'Link copied', description: 'Health Summary link copied to clipboard.' });
+      toast({ title: 'Link copied', description: 'Report Summary link copied to clipboard.' });
     } catch {
       toast({
         variant: 'destructive',
@@ -269,8 +271,8 @@ export function HealthSummaryPage({
       });
     }
   };
-  const shareTitle = 'NexusCare Health Summary';
-  const shareText = 'View my health summary on NexusCare.';
+  const shareTitle = 'NexusCare Report Summary';
+  const shareText = 'View my report summary on NexusCare.';
 
   const handleShareToApps = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -496,11 +498,11 @@ export function HealthSummaryPage({
   if (error) {
     return (
       <div className="space-y-6 p-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Health Summary</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Report Summary</h1>
         <Card className="border-destructive/50">
           <CardContent className="p-6">
             <p className="text-muted-foreground">
-              Could not load your health summary. Please try again later.
+              Could not load your report summary. Please try again later.
             </p>
           </CardContent>
         </Card>
@@ -514,11 +516,11 @@ export function HealthSummaryPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {isSharedView ? 'Shared Health Summary' : 'Health Summary'}
+            {isSharedView ? 'Shared Report Summary' : 'Report Summary'}
           </h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             {isSharedView
-              ? 'View-only access to this health summary'
+              ? 'View-only access to this report summary'
               : 'Your comprehensive health overview powered by AI (from your most recent records)'}
           </p>
         </div>
@@ -673,7 +675,7 @@ export function HealthSummaryPage({
                   ✓ Shareable link generated
                 </p>
                 <p className="mt-1 text-xs text-green-700 dark:text-green-400">
-                  Anyone with this link can view your health summary
+                  Anyone with this link can view your report summary
                 </p>
               </div>
               <Button
@@ -702,7 +704,7 @@ export function HealthSummaryPage({
               <Brain className="h-10 w-10 text-white" />
             </div>
             <p className="mt-6 text-lg font-medium text-foreground">Analyzing your records</p>
-            <p className="mt-1 text-sm text-muted-foreground">Building your health summary…</p>
+            <p className="mt-1 text-sm text-muted-foreground">Building your report summary…</p>
             <div className="mt-6 flex gap-1.5">
               <span
                 className="h-2 w-2 animate-dot-bounce rounded-full bg-purple-500"
@@ -740,7 +742,7 @@ export function HealthSummaryPage({
               <Sparkles className="h-8 w-8 text-purple-600" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Ready to generate your health summary?
+              Ready to generate your report summary?
             </h3>
             <p className="mt-2 max-w-md text-sm text-gray-600 dark:text-gray-400">
               Select the documents you want to include and click "Generate Summary" to get an

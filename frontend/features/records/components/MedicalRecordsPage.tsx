@@ -17,6 +17,8 @@ import {
   Upload,
   Trash2,
   Eye,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 import {
   getMedicalFiles,
@@ -779,7 +781,15 @@ function DocumentsTab({
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold">{file.filename}</h3>
                   <div className="mt-1 flex flex-wrap items-center gap-3">
-                    <Badge variant="outline">{file.kind}</Badge>
+                    <Badge variant="outline" className="capitalize">
+                      {file.kind}
+                    </Badge>
+                    {file.auto_classified && (
+                      <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400">
+                        <Sparkles className="mr-1 h-3 w-3" />
+                        AI Classified
+                      </Badge>
+                    )}
                     <span className="text-xs text-muted-foreground">
                       {file.size != null ? `${(file.size / 1024).toFixed(1)} KB` : ''}
                     </span>
@@ -787,6 +797,11 @@ function DocumentsTab({
                       {format(new Date(file.created_at), 'MMM d, yyyy')}
                     </span>
                   </div>
+                  {file.classification_note && (
+                    <p className="mt-2 text-xs text-blue-600 dark:text-blue-400 italic">
+                      Note: {file.classification_note}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">

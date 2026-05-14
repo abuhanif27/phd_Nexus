@@ -628,9 +628,8 @@ export function ProfilePage() {
                 </Button>
                 <Button variant="outline" className="w-full justify-start gap-3">
                   <Heart className="h-5 w-5 text-red-600" />
-                  Health Summary
-                </Button>
-              </CardContent>
+                  Report Summary
+                </Button>              </CardContent>
             </Card>
           </div>
         </div>

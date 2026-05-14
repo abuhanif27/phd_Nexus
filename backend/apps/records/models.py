@@ -28,6 +28,10 @@ class File(models.Model):
     clinical_date = models.DateField(null=True, blank=True, help_text="The actual date from within the document")
     extracted_text = models.TextField(blank=True, default='')  # OCR text for images, used in health summary
     
+    # AI Classification fields
+    auto_classified = models.BooleanField(default=False)
+    classification_note = models.CharField(max_length=255, blank=True, default='')
+    
     class Meta:
         db_table = 'files'
         indexes = [
@@ -137,3 +141,20 @@ class SymptomLog(models.Model):
     
     def __str__(self):
         return f"Symptoms: {self.text[:50]}..."
+
+class PrescriptionFeedback(models.Model):
+    """
+    Direct Preference Optimization (DPO) / RL Feedback Model.
+    Stores human corrections for reinforcement learning.
+    """
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    prescription = models.ForeignKey(Prescription, on_delete=models.SET_NULL, null=True, blank=True)
+    ocr_text = models.TextField(help_text="Raw OCR text chunk")
+    ai_extracted_json = models.JSONField(help_text="What ClinicalBERT extracted")
+    human_corrected_json = models.JSONField(help_text="Actual truth corrected by human")
+    reward_score = models.FloatField(default=0.0, help_text="Negative for error, positive for correct")
+    is_processed = models.BooleanField(default=False, help_text="Used in RL training loop")
+    ts = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'prescription_rl_feedback'

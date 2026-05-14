@@ -55,10 +55,16 @@ const patientNavigation = [
     description: 'Lab results & documents',
   },
   {
-    name: 'Health Summary',
+    name: 'Report Summary',
     href: '/health-summary',
     icon: Activity,
     description: 'AI-powered summary',
+  },
+  {
+    name: 'Prescription Analyzer',
+    href: '/prescription-analyzer',
+    icon: Sparkles,
+    description: 'Analyze medical prescriptions',
   },
   { name: 'Settings', href: '/settings', icon: Settings, description: 'Account & preferences' },
 ];

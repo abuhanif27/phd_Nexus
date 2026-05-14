@@ -160,10 +160,10 @@ export function ShareLinksManager() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-2xl">
             <Share2 className="h-6 w-6 text-blue-600" />
-            Health Summary Share Links
+            Report Summary Share Links
           </CardTitle>
           <CardDescription className="text-base">
-            Manage your shareable health summary links. You can create up to 10 unique links.
+            Manage your shareable report summary links. You can create up to 10 unique links.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -264,7 +264,7 @@ export function ShareLinksManager() {
               No Share Links Yet
             </h3>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Create your first shareable link to share your health summary with others.
+              Create your first shareable link to share your report summary with others.
             </p>
             <Button
               onClick={() => createMutation.mutate()}
@@ -431,7 +431,7 @@ export function ShareLinksManager() {
                   This will permanently delete this share link from the database.
                 </div>
                 <div>
-                  Anyone with this link will no longer be able to access your health summary.
+                  Anyone with this link will no longer be able to access your report summary.
                 </div>
                 <div className="font-semibold text-destructive">This action cannot be undone.</div>
               </div>

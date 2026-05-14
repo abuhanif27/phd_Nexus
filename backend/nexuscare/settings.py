@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'apps.billing',
     'apps.notifications',
     'apps.ai',
+    'apps.reminders',
 ]
 
 MIDDLEWARE = [

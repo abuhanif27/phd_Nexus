@@ -211,8 +211,20 @@ def process_file_ocr(file_id: int) -> Dict:
         if not file_obj.clinical_date:
             file_obj.clinical_date = _extract_clinical_date(raw_text)
             
-        file_obj.save(update_fields=['extracted_text', 'clinical_date'])
-        print(f"[OCR] Saved {len(raw_text)} chars to database. Clinical date: {file_obj.clinical_date}")
+        # --- DOCUMENT CLASSIFICATION & CORRECTION ---
+        from apps.ai.services import ai_service
+        classified_kind = ai_service.classify_document(raw_text)
+        
+        if classified_kind != 'other' and classified_kind != file_obj.kind:
+            print(f"[OCR] Category mismatch for {file_obj.filename}: User selected '{file_obj.kind}', AI detected '{classified_kind}'. Correcting...")
+            file_obj.classification_note = f"Automatically corrected from {file_obj.get_kind_display()} to {dict(File.KIND_CHOICES).get(classified_kind)}"
+            file_obj.kind = classified_kind
+            file_obj.auto_classified = True
+        elif classified_kind != 'other':
+            file_obj.auto_classified = True
+            
+        file_obj.save(update_fields=['extracted_text', 'clinical_date', 'kind', 'auto_classified', 'classification_note'])
+        print(f"[OCR] Saved {len(raw_text)} chars to database. Kind: {file_obj.kind}, Clinical date: {file_obj.clinical_date}")
 
         if file_obj.kind == 'lab':
             return _extract_lab_data(file_obj, raw_text)
@@ -259,29 +271,78 @@ def _extract_lab_data(file_obj: File, text: str) -> Dict:
 
 
 def _extract_prescription_data(file_obj: File, text: str) -> Dict:
-    """Extract prescription medication data."""
+    """Extract prescription medication data and create reminders."""
     try:
-        nlp = spacy.load(settings.SPACY_MODEL) if spacy else None
-        items = []
-        lines = text.split('\n')
+        from apps.ai.services import ai_service
+        from apps.reminders.models import MedicationReminder
+        from django.utils import timezone
+        from datetime import timedelta
         
-        for line in lines:
-            if any(keyword in line.lower() for keyword in ['mg', 'tablet', 'capsule', 'ml']):
-                items.append({
-                    'drug': line.strip(),
-                    'dosage': '',
-                    'duration': '',
-                    'instructions': ''
-                })
+        # 1. Extract structured items
+        items = ai_service.extract_prescription_items(text)
         
+        # 2. Use clinical date as start date if available
+        start_date = file_obj.clinical_date or timezone.now().date()
+        if isinstance(start_date, (datetime, timezone.datetime)):
+            start_date = start_date.date()
+            
+        # 3. Create Prescription record
         rx = Prescription.objects.create(
             patient=file_obj.patient,
             doctor=None,
             items=items,
-            notes=text[:500]
+            notes=text[:1000],
+            ts=timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
         )
-        return {'status': 'success', 'prescription_id': rx.id, 'items': items}
+        
+        # 4. Create Reminders and calculate overall expiration
+        max_duration = 0
+        reminders_created = 0
+        
+        for item in items:
+            duration_days = 30 # Default
+            duration_str = item.get('duration', '')
+            match = re.search(r'(\d+)', duration_str)
+            if match:
+                duration_days = int(match.group(1))
+            
+            if duration_days > max_duration:
+                max_duration = duration_days
+                
+            end_date = start_date + timedelta(days=duration_days)
+            
+            # Simple schedule based on frequency
+            freq = item.get('instructions', '').upper()
+            times = ["09:00"]
+            if freq == 'BD': times = ["09:00", "21:00"]
+            elif freq == 'TDS': times = ["09:00", "14:00", "21:00"]
+            elif freq == 'QID': times = ["08:00", "12:00", "16:00", "20:00"]
+            
+            MedicationReminder.objects.create(
+                patient=file_obj.patient,
+                prescription=rx,
+                drug_name=item.get('drug'),
+                dosage=item.get('dosage'),
+                frequency=freq,
+                start_date=start_date,
+                end_date=end_date,
+                scheduled_times=times
+            )
+            reminders_created += 1
+            
+        # Update prescription expiration
+        if max_duration > 0:
+            rx.expires_at = rx.ts + timedelta(days=max_duration)
+            rx.save(update_fields=['expires_at'])
+
+        return {
+            'status': 'success', 
+            'prescription_id': rx.id, 
+            'items': items,
+            'reminders_created': reminders_created
+        }
     except Exception as e:
+        print(f"[OCR] Prescription extraction error: {e}")
         return {'status': 'error', 'error': str(e)}
 
 

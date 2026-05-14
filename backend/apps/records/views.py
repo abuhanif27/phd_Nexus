@@ -1,3 +1,5 @@
+from django.utils.decorators import method_decorator
+from django.views.decorators.clickjacking import xframe_options_exempt
 """
 Views for medical records management.
 """
@@ -147,7 +149,20 @@ class FileSignedLinkView(views.APIView):
             )
 
 
+
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+class QueryParameterJWTAuthentication(JWTAuthentication):
+    def authenticate(self, request):
+        token = request.query_params.get('token')
+        if token:
+            validated_token = self.get_validated_token(token)
+            return self.get_user(validated_token), validated_token
+        return super().authenticate(request)
+
+@method_decorator(xframe_options_exempt, name='dispatch')
 class FileServeView(views.APIView):
+    authentication_classes = [QueryParameterJWTAuthentication]
     """Serve file content with authentication (for in-app viewing)."""
     permission_classes = [IsAuthenticated]
 
@@ -249,12 +264,90 @@ class LabResultViewSet(viewsets.ModelViewSet):
         return self.queryset.order_by('-ts')
 
 
+class NamedFileWrapper:
+    """Wrapper to provide a 'name' attribute for file-like objects without one (or read-only)."""
+    def __init__(self, file_obj, name):
+        self.file_obj = file_obj
+        self.name = name
+    def __getattr__(self, name):
+        return getattr(self.file_obj, name)
+    def seek(self, *args, **kwargs):
+        return self.file_obj.seek(*args, **kwargs)
+    def read(self, *args, **kwargs):
+        return self.file_obj.read(*args, **kwargs)
+    def close(self):
+        return self.file_obj.close()
+
+
 class PrescriptionViewSet(viewsets.ModelViewSet):
     """CRUD operations for prescriptions."""
     queryset = Prescription.objects.all()
     serializer_class = PrescriptionSerializer
     permission_classes = [IsAuthenticated]
-    
+
+    @action(detail=False, methods=['post'], url_path='parse-image', parser_classes=[MultiPartParser, FormParser])
+    def parse_image(self, request):
+        """Parse prescription image using AI service."""
+        user = request.user
+        if user.role == 'patient':
+            patient = user.patient_profile
+        else:
+            return Response({"error": "Only patients can parse their records currently"}, status=status.HTTP_403_FORBIDDEN)
+            
+        file_id = request.data.get('file_id') or request.data.get('fileId')
+        file_obj = request.FILES.get('file')
+        
+        target_file = None
+        opened_file = None
+        
+        try:
+            if file_id and str(file_id) != 'undefined':
+                try:
+                    db_file = File.objects.get(id=int(file_id), patient=patient)
+                except File.DoesNotExist:
+                    return Response({"error": f"Medical record with ID {file_id} not found for this patient."}, status=status.HTTP_404_NOT_FOUND)
+                
+                path = db_file.storage_path
+                # Handle path compatibility
+                if ':\\' in path or path.startswith('\\\\'):
+                    if 'media' in path.lower():
+                        relative_part = path.lower().split('media')[-1].lstrip('\\/')
+                        path = os.path.join(settings.MEDIA_ROOT, relative_part.replace('\\', '/'))
+                    else:
+                        path = os.path.join(settings.MEDIA_ROOT, str(db_file.patient_id), db_file.filename)
+                
+                if not os.path.isabs(path):
+                    path = os.path.join(settings.MEDIA_ROOT, path)
+                
+                if not os.path.exists(path):
+                    fallback = os.path.join(settings.MEDIA_ROOT, str(db_file.patient_id), db_file.filename)
+                    if os.path.exists(fallback):
+                        path = fallback
+                    else:
+                        return Response({"error": f"File content not found on server disk for record {file_id}."}, status=status.HTTP_404_NOT_FOUND)
+                    
+                opened_file = open(path, 'rb')
+                # Wrap it to avoid read-only 'name' attribute error
+                target_file = NamedFileWrapper(opened_file, db_file.filename)
+                
+            elif file_obj:
+                target_file = file_obj
+            else:
+                return Response({"error": "Please provide a file to upload or select an existing record ID."}, status=status.HTTP_400_BAD_REQUEST)
+                
+            from apps.ai.services import PrescriptionParser
+            results = PrescriptionParser.parse_image(target_file, patient)
+            return Response(results, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            print(f"[PrescriptionViewSet] ERROR: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response({"error": f"AI Parsing failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        finally:
+            if opened_file:
+                opened_file.close()
+
     def get_queryset(self):
         if self.request.user.role == 'patient':
             return self.queryset.filter(patient__user=self.request.user).order_by('-ts')

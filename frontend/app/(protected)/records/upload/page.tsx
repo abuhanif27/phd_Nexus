@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/use-toast';
 const KINDS = [
   { value: 'lab', label: 'Lab result' },
   { value: 'prescription', label: 'Prescription' },
+  { value: 'encounter', label: 'Encounter note' },
   { value: 'other', label: 'Other document' },
 ] as const;
 
