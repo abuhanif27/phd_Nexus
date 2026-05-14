@@ -48,14 +48,47 @@ MODELS = {
     "nlp": None,
     "summarizer": None,
     "ocr_reader": None,
-    "ner_pipeline": None
+    "ner_pipeline": None,
+    "symptom_transformer": None,
+    "symptom_embeddings": None,
+    "all_symptoms": []
 }
+
+# MASTER LIST OF 131 STANDARD SYMPTOMS (From 'chating system' dataset)
+ALL_SYMPTOMS = [
+    'abdominal_pain', 'abnormal_menstruation', 'acidity', 'acute_liver_failure', 'altered_sensorium', 
+    'anxiety', 'back_pain', 'belly_pain', 'blackheads', 'bladder_discomfort', 'blister', 
+    'blood_in_sputum', 'bloody_stool', 'blurred_and_distorted_vision', 'breathlessness', 
+    'brittle_nails', 'bruising', 'burning_micturition', 'chest_pain', 'chills', 'cold_hands_and_feets', 
+    'coma', 'congestion', 'constipation', 'continuous_feel_of_urine', 'continuous_sneezing', 
+    'cough', 'cramps', 'dark_urine', 'dehydration', 'depression', 'diarrhoea', 'dischromic_patches', 
+    'distention_of_abdomen', 'dizziness', 'drying_and_tingling_lips', 'enlarged_thyroid', 
+    'excessive_hunger', 'extra_marital_contacts', 'family_history', 'fast_heart_rate', 'fatigue', 
+    'fluid_overload', 'foul_smell_of_urine', 'headache', 'high_fever', 'hip_joint_pain', 
+    'history_of_alcohol_consumption', 'increased_appetite', 'indigestion', 'inflammatory_nails', 
+    'internal_itching', 'irregular_sugar_level', 'irritability', 'irritation_in_anus', 'itching', 
+    'joint_pain', 'knee_pain', 'lack_of_concentration', 'lethargy', 'loss_of_appetite', 
+    'loss_of_balance', 'loss_of_smell', 'malaise', 'mild_fever', 'mood_swings', 'movement_stiffness', 
+    'mucoid_sputum', 'muscle_pain', 'muscle_wasting', 'muscle_weakness', 'nausea', 'neck_pain', 
+    'nodal_skin_eruptions', 'obesity', 'pain_behind_the_eyes', 'pain_during_bowel_movements', 
+    'pain_in_anal_region', 'painful_walking', 'palpitations', 'passage_of_gases', 'patches_in_throat', 
+    'phlegm', 'polyuria', 'prominent_veins_on_calf', 'puffy_face_and_eyes', 'pus_filled_pimples', 
+    'receiving_blood_transfusion', 'receiving_unsterile_injections', 'red_sore_around_nose', 
+    'red_spots_over_body', 'redness_of_eyes', 'restlessness', 'runny_nose', 'rusty_sputum', 
+    'scurring', 'shivering', 'silver_like_dusting', 'sinus_pressure', 'skin_peeling', 'skin_rash', 
+    'slurred_speech', 'small_dents_in_nails', 'spinning_movements', 'spotting_urination', 
+    'stiff_neck', 'stomach_bleeding', 'stomach_pain', 'sunken_eyes', 'sweating', 'swelled_lymph_nodes', 
+    'swelling_joints', 'swelling_of_stomach', 'swollen_blood_vessels', 'swollen_extremeties', 
+    'swollen_legs', 'throat_irritation', 'toxic_look_(typhos)', 'ulcers_on_tongue', 'unsteadiness', 
+    'visual_disturbances', 'vomiting', 'watering_from_eyes', 'weight_gain', 'weight_loss', 
+    'yellow_crust_ooze', 'yellow_urine', 'yellowing_of_eyes', 'yellowish_skin'
+]
 
 def load_all_models():
     """Load AI Models into GPU/RAM."""
     print("Loading AI Models into memory...")
     gpu_available = torch.cuda.is_available()
-    device = 0 if gpu_available else -1
+    device = "cuda" if gpu_available else "cpu"
     
     try:
         # Load spaCy
@@ -72,9 +105,19 @@ def load_all_models():
         
         # Load ClinicalBERT for Prescription NER
         print("Loading ClinicalBERT NER (this takes a moment)...")
-        # Real clinical model: "sammdot/bert-base-uncased-clinical-ner"
-        MODELS["ner_pipeline"] = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english", aggregation_strategy="simple", device=device)
+        MODELS["ner_pipeline"] = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english", aggregation_strategy="simple", device=0 if gpu_available else -1)
         print("✓ Loaded Clinical NER Pipeline")
+
+        # Load Sentence Transformer for Symptom Mapping
+        print("Loading Symptom Transformer (BERT)...")
+        from sentence_transformers import SentenceTransformer, util
+        MODELS["symptom_transformer"] = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+        
+        # Pre-compute embeddings for standard symptoms
+        readable_symptoms = [s.replace('_', ' ').title() for s in ALL_SYMPTOMS]
+        MODELS["symptom_embeddings"] = MODELS["symptom_transformer"].encode(readable_symptoms, convert_to_tensor=True)
+        MODELS["all_symptoms"] = ALL_SYMPTOMS
+        print(f"✓ Loaded Symptom Transformer and pre-computed {len(ALL_SYMPTOMS)} embeddings")
         
     except Exception as e:
         print(f"ERROR: Failed to load models: {e}")
@@ -89,7 +132,48 @@ def health_check():
         "status": "Online",
         "system": "PhD NexusCare Remote Brain",
         "gpu_available": torch.cuda.is_available(),
-        "active_features": ["OCR (PDF/Image)", "NER", "Summarization", "Specialist Prediction", "Prescription Extraction"]
+        "active_features": ["OCR (PDF/Image)", "NER", "Summarization", "Symptom Extraction", "Prescription Extraction"]
+    }
+
+@app.post("/extract_symptoms")
+async def extract_symptoms(data: Dict = Body(...)):
+    """
+    Extract standard medical symptoms from free-text description using BERT semantic matching.
+    """
+    text = data.get("text", "").strip()
+    if not text or not MODELS["symptom_transformer"]:
+        return {"symptoms": []}
+    
+    from sentence_transformers import util
+    import re
+    
+    # Split text into descriptive phrases
+    phrases = re.split(r',|\.|\band\b| i have | i feel | i am ', text.lower())
+    phrases = [p.strip() for p in phrases if len(p.strip()) > 3]
+    
+    if not phrases:
+        return {"symptoms": []}
+    
+    detected_symptoms = set()
+    
+    # Compute embeddings for user phrases
+    phrase_embeddings = MODELS["symptom_transformer"].encode(phrases, convert_to_tensor=True)
+    
+    # Compute cosine similarities
+    cosine_scores = util.cos_sim(phrase_embeddings, MODELS["symptom_embeddings"])
+    
+    for i in range(len(phrases)):
+        best_score_idx = torch.argmax(cosine_scores[i]).item()
+        best_score = cosine_scores[i][best_score_idx].item()
+        
+        # Threshold for semantic match (0.45 is usually safe for medical terms)
+        if best_score > 0.45:
+            matched_symptom = MODELS["all_symptoms"][best_score_idx]
+            detected_symptoms.add(matched_symptom)
+            
+    return {
+        "symptoms": list(detected_symptoms),
+        "source": "BERT Semantic Matcher"
     }
 
 @app.post("/extract_prescription")

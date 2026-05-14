@@ -31,10 +31,16 @@ const patientNavigation = [
     description: 'Your health overview',
   },
   {
+    name: 'Symptom Checker',
+    href: '/symptom-checker',
+    icon: Stethoscope,
+    description: 'Check symptoms & specialists',
+  },
+  {
     name: 'AI Analysis',
     href: '/ai-analysis',
     icon: Brain,
-    description: 'Symptom analysis & insights',
+    description: 'Deep health analysis',
   },
   {
     name: 'Explore Doctors',

@@ -13,6 +13,11 @@ class SpecialistPredictSerializer(serializers.Serializer):
     text = serializers.CharField()
 
 
+class SymptomCheckSerializer(serializers.Serializer):
+    text = serializers.CharField(required=False, allow_blank=True)
+    manual_symptoms = serializers.ListField(child=serializers.CharField(), required=False)
+
+
 class SummaryRequestSerializer(serializers.Serializer):
     patient_id = serializers.IntegerField()
 

@@ -6,7 +6,7 @@ from .views import (
     SymptomAnalyzeView, SpecialistPredictView,
     PatientSummaryView, TextSummaryView,
     HealthSummaryView, HealthInsightsView, HealthSummaryShareView,
-    SavedSummaryListView
+    SavedSummaryListView, SymptomCheckView, SymptomListView
 )
 
 urlpatterns = [
@@ -16,6 +16,8 @@ urlpatterns = [
     path('health/saved-summaries/', SavedSummaryListView.as_view(), name='saved_summaries'),
     path('health/saved-summaries/<int:pk>/', SavedSummaryListView.as_view(), name='saved_summary_detail'),
     path('symptoms/analyze/', SymptomAnalyzeView.as_view(), name='symptoms_analyze'),
+    path('symptoms/check/', SymptomCheckView.as_view(), name='symptom_check'),
+    path('symptoms/list/', SymptomListView.as_view(), name='symptom_list'),
     path('ai/specialist/', SpecialistPredictView.as_view(), name='ai_specialist'),
     path('ai/predict-specialist/', SpecialistPredictView.as_view(), name='predict_specialist'),
     path('ai/summary/', TextSummaryView.as_view(), name='ai_text_summary'),

@@ -316,3 +316,39 @@ class HealthSummaryShareView(views.APIView):
             return Response({'message': 'Share link deleted'})
         except HealthSummaryShare.DoesNotExist:
             return Response({'error': 'Link not found'}, status=404)
+
+from .symptom_checker import SymptomCheckerService
+
+symptom_checker_service = SymptomCheckerService()
+
+class SymptomCheckView(views.APIView):
+    """
+    Symptom checker view using datasets from 'chating system'.
+    Predicts disease and suggests specialist.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = SymptomCheckSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        text = serializer.validated_data.get('text', '')
+        manual = serializer.validated_data.get('manual_symptoms', [])
+        
+        result = symptom_checker_service.check_symptoms(text, manual_symptoms=manual)
+        
+        if 'error' in result:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+            
+        return Response(result)
+
+class SymptomListView(views.APIView):
+    """Get list of all standard symptoms for frontend selection."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        symptoms = [s.replace('_', ' ').title() for s in symptom_checker_service.all_symptoms]
+        return Response({
+            'symptoms': symptoms,
+            'raw_symptoms': symptom_checker_service.all_symptoms
+        })

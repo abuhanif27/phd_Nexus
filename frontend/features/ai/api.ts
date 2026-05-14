@@ -94,3 +94,34 @@ export async function getRecordInsights(
   });
   return data;
 }
+
+/**
+ * Check symptoms and get disease/specialist recommendation
+ */
+export async function checkSymptoms(request: {
+  text?: string;
+  manual_symptoms?: string[];
+}): Promise<{
+  disease: string;
+  specialist: string;
+  confidence: number;
+  severity_score: number;
+  severity_level: string;
+  description: string;
+  precautions: string[];
+  detected_symptoms: string[];
+}> {
+  const { data } = await apiClient.post(`${BASE}/symptoms/check/`, request);
+  return data;
+}
+
+/**
+ * Get list of available symptoms for the checker
+ */
+export async function getSymptomList(): Promise<{
+  symptoms: string[];
+  raw_symptoms: string[];
+}> {
+  const { data } = await apiClient.get(`${BASE}/symptoms/list/`);
+  return data;
+}
