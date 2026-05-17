@@ -18,8 +18,10 @@ from .models import User, OTPToken, UserSettings
 from .serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer, TwoFASerializer,
     UserSettingsSerializer, ChangePasswordSerializer, ProfileUpdateSerializer,
-    EmailChangeSerializer, VerifyOTPSerializer, TOTPVerifySerializer
+    EmailChangeSerializer, VerifyOTPSerializer, TOTPVerifySerializer,
+    VerifyRegistrationSerializer, PasswordResetRequestSerializer, PasswordResetSerializer
 )
+from apps.notifications.utils import send_verification_otp, send_2fa_otp, send_email_change_otp
 
 
 class RegisterView(generics.CreateAPIView):
@@ -68,34 +70,89 @@ class RegisterView(generics.CreateAPIView):
             # Create default UserSettings
             UserSettings.objects.get_or_create(user=user)
             
-            # Doctors and service providers require admin approval before login.
-            requires_approval = user.role in ['doctor', 'provider']
-            if requires_approval:
-                user.is_active = False
-                user.save()
+            # ALL users start as inactive and must verify email first
+            user.is_active = False
+            user.email_verified = False
+            user.save()
+
+            # Generate and send OTP
+            code = ''.join(random.choices(string.digits, k=6))
+            OTPToken.objects.create(
+                user=user,
+                code=code,
+                purpose='registration',
+                expires_at=timezone.now() + timedelta(minutes=15)
+            )
             
-            # Generate JWT tokens (only if active)
-            if user.is_active:
-                refresh = RefreshToken.for_user(user)
-                return Response({
-                    'user': UserSerializer(user, context={'request': request}).data,
-                    'access': str(refresh.access_token),
-                    'refresh': str(refresh),
-                }, status=status.HTTP_201_CREATED)
-            else:
-                return Response({
-                    'user': UserSerializer(user, context={'request': request}).data,
-                    'message': 'Account created successfully. Please wait for admin approval before you can sign in.',
-                    'pending_approval': True
-                }, status=status.HTTP_201_CREATED)
+            # Send email via Resend
+            email_sent = send_verification_otp(user, code)
+            
+            return Response({
+                'user': UserSerializer(user, context={'request': request}).data,
+                'message': 'Account created successfully. Please check your email for the verification code.',
+                'email_sent': email_sent,
+                'requires_verification': True
+            }, status=status.HTTP_201_CREATED)
                 
         except Exception as e:
-            # Better error detail
             error_data = getattr(e, 'detail', str(e))
             return Response(
                 {'error': 'Registration failed', 'details': error_data},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class VerifyRegistrationOTPView(views.APIView):
+    """Verify registration OTP code."""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        serializer = VerifyRegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        email = serializer.validated_data['email']
+        code = serializer.validated_data['code']
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            otp = OTPToken.objects.get(
+                user=user, code=code, purpose='registration',
+                used=False, expires_at__gt=timezone.now()
+            )
+        except OTPToken.DoesNotExist:
+            return Response({'error': 'Invalid or expired verification code'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mark as verified
+        otp.used = True
+        otp.save()
+        
+        user.email_verified = True
+        
+        # Logic for activation
+        # Patients become active immediately after email verification
+        # Doctors and providers remain inactive until admin approval
+        if user.role == 'patient':
+            user.is_active = True
+            user.save()
+            
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'message': 'Email verified successfully. Your account is now active.',
+                'user': UserSerializer(user, context={'request': request}).data,
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            })
+        else:
+            # Doctor/Provider - Still inactive, pending admin
+            user.save()
+            return Response({
+                'message': 'Email verified successfully. Your account is now pending administrative approval.',
+                'pending_approval': True
+            })
 
 
 class LoginView(views.APIView):
@@ -185,16 +242,10 @@ class TwoFASendView(views.APIView):
             expires_at=timezone.now() + timedelta(minutes=5)
         )
         
-        # Real Email Sending
-        send_mail(
-            'Your 2FA Code',
-            f'Your PhD Nexus security code is: {code}',
-            settings.DEFAULT_FROM_EMAIL or 'noreply@phdnexus.com',
-            [user.email],
-            fail_silently=False,
-        )
+        # Real Email Sending via helper
+        email_sent = send_2fa_otp(user, code)
         
-        return Response({'message': 'OTP sent'})
+        return Response({'message': 'OTP sent', 'email_sent': email_sent})
 
 
 class TwoFAVerifyView(views.APIView):
@@ -329,15 +380,10 @@ class EmailChangeRequestView(views.APIView):
             expires_at=timezone.now() + timedelta(minutes=15)
         )
         
-        send_mail(
-            'Confirm your new email',
-            f'Your email change confirmation code is: {code}',
-            settings.DEFAULT_FROM_EMAIL or 'noreply@phdnexus.com',
-            [new_email],
-            fail_silently=False,
-        )
+        # Real Email Sending via helper
+        email_sent = send_email_change_otp(new_email, code)
         
-        return Response({'message': f'Verification code sent to {new_email}'})
+        return Response({'message': f'Verification code sent to {new_email}', 'email_sent': email_sent})
 
 
 class EmailChangeVerifyView(views.APIView):
@@ -446,3 +492,68 @@ class MeView(views.APIView):
     def get(self, request):
         serializer = UserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
+
+from apps.notifications.utils import send_password_reset_otp
+
+class PasswordResetRequestView(views.APIView):
+    """Initiate password reset by sending OTP to the user's email."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # For security, we return 200 even if user doesn't exist
+            return Response({'message': 'If an account exists with this email, a reset code has been sent.'})
+            
+        code = ''.join(random.choices(string.digits, k=6))
+        
+        OTPToken.objects.create(
+            user=user, code=code, purpose='password_reset',
+            expires_at=timezone.now() + timedelta(minutes=15)
+        )
+        
+        email_sent = send_password_reset_otp(user, code)
+        
+        return Response({
+            'message': 'If an account exists with this email, a reset code has been sent.',
+            'email_sent': email_sent
+        })
+
+
+class PasswordResetVerifyView(views.APIView):
+    """Verify OTP and reset the user's password."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        email = serializer.validated_data['email']
+        code = serializer.validated_data['code']
+        new_password = serializer.validated_data['new_password']
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid request'}, status=400)
+            
+        try:
+            otp = OTPToken.objects.get(
+                user=user, code=code, purpose='password_reset',
+                used=False, expires_at__gt=timezone.now()
+            )
+            
+            user.set_password(new_password)
+            user.save()
+            
+            otp.used = True
+            otp.save()
+            
+            return Response({'message': 'Password reset successfully. You can now login with your new password.'})
+        except OTPToken.DoesNotExist:
+            return Response({'error': 'Invalid or expired reset code'}, status=400)

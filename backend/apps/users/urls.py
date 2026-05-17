@@ -4,13 +4,15 @@ URL routing for user authentication.
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
-    RegisterView, LoginView, TwoFASendView, TwoFAVerifyView, MeView,
+    RegisterView, VerifyRegistrationOTPView, LoginView, TwoFASendView, TwoFAVerifyView, MeView,
     UserSettingsView, ProfileUpdateView, ChangePasswordView, TwoFAToggleView,
-    EmailChangeRequestView, EmailChangeVerifyView, TwoFASetupView
+    EmailChangeRequestView, EmailChangeVerifyView, TwoFASetupView,
+    PasswordResetRequestView, PasswordResetVerifyView
 )
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
+    path('verify-registration/', VerifyRegistrationOTPView.as_view(), name='verify_registration'),
     path('login/', LoginView.as_view(), name='login'),
     path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
@@ -29,4 +31,8 @@ urlpatterns = [
     # Email Change
     path('email/change-request/', EmailChangeRequestView.as_view(), name='email_change_request'),
     path('email/change-verify/', EmailChangeVerifyView.as_view(), name='email_change_verify'),
+
+    # Password Reset
+    path('password/reset-request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('password/reset-verify/', PasswordResetVerifyView.as_view(), name='password_reset_verify'),
 ]

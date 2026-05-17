@@ -1,5 +1,12 @@
 import { api, apiClient } from '@/lib/api/axios';
-import { LoginInput, LoginResponse, RegisterInput } from './schemas';
+import { 
+  LoginInput, 
+  LoginResponse, 
+  RegisterInput, 
+  PasswordResetRequestInput, 
+  PasswordResetInput,
+  VerifyRegistrationInput
+} from './schemas';
 import type { User } from '@/types/api';
 
 /**
@@ -24,6 +31,27 @@ export const authApi = {
       return response.data;
     }
     return api.post<LoginResponse>('/api/auth/register/', data);
+  },
+
+  /**
+   * Verify registration OTP
+   */
+  verifyRegistration: async (data: VerifyRegistrationInput): Promise<LoginResponse> => {
+    return api.post<LoginResponse>('/api/auth/verify-registration/', data);
+  },
+
+  /**
+   * Request password reset OTP
+   */
+  requestPasswordReset: async (data: PasswordResetRequestInput): Promise<{ message: string; email_sent: boolean }> => {
+    return api.post('/api/auth/password/reset-request/', data);
+  },
+
+  /**
+   * Verify password reset OTP and set new password
+   */
+  resetPassword: async (data: PasswordResetInput): Promise<{ message: string }> => {
+    return api.post('/api/auth/password/reset-verify/', data);
   },
 
   /**

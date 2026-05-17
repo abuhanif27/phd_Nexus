@@ -84,17 +84,104 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: authApi.register,
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       toast({
         title: 'Account created!',
-        description: 'Please login with your credentials.',
+        description: 'Please verify your email with the code sent to you.',
+      });
+      // Redirect to verification page with email in query param
+      router.push(`/verify-registration?email=${encodeURIComponent(typeof variables === 'object' && 'email' in variables ? variables.email : '')}`);
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Registration failed',
+        description: getErrorMessage(error),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for verifying registration OTP
+ */
+export function useVerifyRegistration() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { setAuth } = useAuthStore();
+
+  return useMutation({
+    mutationFn: authApi.verifyRegistration,
+    onSuccess: (data) => {
+      if (data.access && data.refresh) {
+        setTokens(data.access, data.refresh, true);
+        setAuth(data.user, data.access, data.refresh);
+        queryClient.setQueryData(authKeys.currentUser(), data.user);
+        
+        toast({
+          title: 'Email verified!',
+          description: 'Your account is now active and you are logged in.',
+        });
+        router.push('/dashboard');
+      } else {
+        toast({
+          title: 'Email verified!',
+          description: data.message || 'Your account is now pending admin approval.',
+        });
+        router.push('/login');
+      }
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Verification failed',
+        description: getErrorMessage(error),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for requesting password reset
+ */
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: authApi.requestPasswordReset,
+    onSuccess: (data) => {
+      toast({
+        title: 'Reset code sent!',
+        description: data.message,
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Request failed',
+        description: getErrorMessage(error),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for resetting password
+ */
+export function useResetPassword() {
+  const router = useRouter();
+
+  return useMutation({
+    mutationFn: authApi.resetPassword,
+    onSuccess: (data) => {
+      toast({
+        title: 'Password reset!',
+        description: data.message,
       });
       router.push('/login');
     },
     onError: (error) => {
       toast({
         variant: 'destructive',
-        title: 'Registration failed',
+        title: 'Reset failed',
         description: getErrorMessage(error),
       });
     },

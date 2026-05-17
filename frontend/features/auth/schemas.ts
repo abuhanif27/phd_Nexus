@@ -114,3 +114,37 @@ export const userSchema = z.object({
 });
 
 export type User = z.infer<typeof userSchema>;
+
+/**
+ * Password Reset Request schema
+ */
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
+
+/**
+ * Password Reset schema
+ */
+export const passwordResetSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  code: z.string().length(6, 'Code must be 6 digits'),
+  new_password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirm_password: z.string(),
+}).refine((data) => data.new_password === data.confirm_password, {
+  message: 'Passwords do not match',
+  path: ['confirm_password'],
+});
+
+export type PasswordResetInput = z.infer<typeof passwordResetSchema>;
+
+/**
+ * Registration Verification schema
+ */
+export const verifyRegistrationSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  code: z.string().length(6, 'Code must be 6 digits'),
+});
+
+export type VerifyRegistrationInput = z.infer<typeof verifyRegistrationSchema>;

@@ -159,22 +159,21 @@ export function RegisterForm() {
       // Submit to API
       const response = await authService.register(payload);
 
-      if (response.pending_approval) {
-        setSuccess(response.message || 'Account created successfully! Please wait for admin approval.');
-        setIsLoading(false);
-        // Don't redirect automatically for doctors, they can't login yet
+      if (response.requires_verification) {
+        setSuccess('Account created! Please check your email for the verification code.');
+        setTimeout(() => {
+          router.push(`/verify-registration?email=${encodeURIComponent(formData.email)}`);
+        }, 1500);
         return;
       }
 
-      // Save tokens
-      if (response.access && response.refresh) {
-        localStorage.setItem('access_token', response.access);
-        localStorage.setItem('refresh_token', response.refresh);
+      if (response.pending_approval) {
+        setSuccess(response.message || 'Account created successfully! Please wait for admin approval.');
+        setIsLoading(false);
+        return;
       }
 
       setSuccess('Account created successfully! Redirecting...');
-
-      // Redirect after a short delay
       setTimeout(() => {
         router.push('/dashboard');
       }, 1000);

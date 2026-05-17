@@ -199,8 +199,14 @@ if additional_origins:
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Email backend (console for dev)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_APP_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', f"NexusCare <{os.getenv('EMAIL_HOST_USER')}>")
 
 # Celery Configuration
 USE_CELERY = os.getenv('USE_CELERY', '0') == '1'
