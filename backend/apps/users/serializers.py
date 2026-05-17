@@ -7,12 +7,14 @@ from datetime import datetime
 from .models import User, OTPToken
 from apps.patients.models import Patient
 from apps.doctors.models import Doctor
+from apps.service_providers.models import ServiceProviderOrganization
 
 
 class UserSerializer(serializers.ModelSerializer):
     # Nested serializers for related profiles
     patient_profile = serializers.SerializerMethodField()
     doctor_profile = serializers.SerializerMethodField()
+    provider_profile = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -25,6 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
             'created_at',
             'patient_profile',
             'doctor_profile',
+            'provider_profile',
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -66,16 +69,58 @@ class UserSerializer(serializers.ModelSerializer):
         except Doctor.DoesNotExist:
             return None
 
+    def get_provider_profile(self, obj):
+        try:
+            p = obj.service_provider_profile
+            logo_url = None
+            if p.logo:
+                request = self.context.get('request')
+                logo_url = request.build_absolute_uri(p.logo.url) if request else p.logo.url
+
+            return {
+                'id': p.id,
+                'organization_name': p.organization_name,
+                'legal_name': p.legal_name,
+                'organization_type': p.organization_type,
+                'registration_number': p.registration_number,
+                'contact_person': p.contact_person,
+                'phone': p.phone,
+                'website': p.website,
+                'address': p.address,
+                'district': p.district,
+                'logo': logo_url,
+                'description': p.description,
+                'is_verified': p.is_verified,
+                'verification_status': p.verification_status,
+                'admin_notes': p.admin_notes,
+            }
+        except ServiceProviderOrganization.DoesNotExist:
+            return None
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
     patient_profile = serializers.DictField(write_only=True, required=False, allow_empty=True)
     doctor_profile = serializers.DictField(write_only=True, required=False, allow_empty=True)
+    provider_profile = serializers.DictField(write_only=True, required=False, allow_empty=True)
+    organization_logo = serializers.ImageField(write_only=True, required=False, allow_null=True)
     
     class Meta:
         model = User
-        fields = ['email', 'phone', 'password', 'password_confirm', 'role', 'patient_profile', 'doctor_profile']
+        fields = ['email', 'phone', 'password', 'password_confirm', 'role', 'patient_profile', 'doctor_profile', 'provider_profile', 'organization_logo']
+
+    def _provider_profile_from_attrs(self, attrs):
+        provider_profile = attrs.get('provider_profile') or {}
+        if provider_profile.get('phone'):
+            return provider_profile
+
+        account_phone = attrs.get('phone')
+        if account_phone:
+            provider_profile = {**provider_profile, 'phone': account_phone}
+            attrs['provider_profile'] = provider_profile
+
+        return provider_profile
     
     def validate(self, attrs):
         # Validate password match
@@ -107,6 +152,14 @@ class RegisterSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"doctor_profile": "Doctor specialty is required"}
                 )
+        elif role == 'provider':
+            provider_profile = self._provider_profile_from_attrs(attrs)
+            required_fields = ['organization_name', 'contact_person', 'phone', 'address', 'district']
+            missing_fields = [field for field in required_fields if not provider_profile.get(field)]
+            if missing_fields:
+                raise serializers.ValidationError(
+                    {"provider_profile": f"Missing required organization fields: {', '.join(missing_fields)}"}
+                )
         
         return attrs
     
@@ -115,6 +168,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         validated_data.pop('password_confirm', None)
         patient_profile_data = validated_data.pop('patient_profile', None)
         doctor_profile_data = validated_data.pop('doctor_profile', None)
+        provider_profile_data = validated_data.pop('provider_profile', None)
+        organization_logo = validated_data.pop('organization_logo', None)
         
         # Create user
         user = User.objects.create_user(**validated_data)
@@ -129,6 +184,11 @@ class RegisterSerializer(serializers.ModelSerializer):
                 # Clean doctor profile data - remove empty/null values
                 clean_data = {k: v for k, v in doctor_profile_data.items() if v}
                 Doctor.objects.create(user=user, **clean_data)
+            elif user.role == 'provider' and provider_profile_data:
+                clean_data = {k: v for k, v in provider_profile_data.items() if v}
+                if organization_logo:
+                    clean_data['logo'] = organization_logo
+                ServiceProviderOrganization.objects.create(user=user, **clean_data)
         except Exception as e:
             # Clean up user if profile creation fails
             user.delete()

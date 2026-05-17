@@ -13,6 +13,7 @@ import {
   Stethoscope,
   Settings,
   Sparkles,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useAuthStore } from '@/features/auth/store';
@@ -47,6 +48,12 @@ const patientNavigation = [
     href: '/doctors',
     icon: Users,
     description: 'Find specialists',
+  },
+  {
+    name: 'Service Offers',
+    href: '/services',
+    icon: Building2,
+    description: 'Compare lab tests & packages',
   },
   {
     name: 'Appointments',
@@ -100,6 +107,17 @@ const doctorNavigation = [
   { name: 'Settings', href: '/settings', icon: Settings, description: 'Profile & availability' },
 ];
 
+const providerNavigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'Service pricing' },
+  {
+    name: 'Public Offers',
+    href: '/services',
+    icon: Building2,
+    description: 'Patient-facing listings',
+  },
+  { name: 'Settings', href: '/settings', icon: Settings, description: 'Account preferences' },
+];
+
 export function AppSidebar({ isOpen, onNavigate }: AppSidebarProps) {
   const pathname = usePathname();
   const { user } = useAuthStore();
@@ -110,7 +128,12 @@ export function AppSidebar({ isOpen, onNavigate }: AppSidebarProps) {
   }, []);
 
   // Select navigation based on user role
-  const navigation = user?.role === 'doctor' ? doctorNavigation : patientNavigation;
+  const navigation =
+    user?.role === 'doctor'
+      ? doctorNavigation
+      : user?.role === 'provider'
+        ? providerNavigation
+        : patientNavigation;
 
   // Compute a stable aside class so server/client markup match during hydration
   const asideClass = cn(

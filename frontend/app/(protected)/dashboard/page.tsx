@@ -3,6 +3,7 @@
 import { useCurrentUser } from '@/features/auth/hooks';
 import { PatientDashboard } from '@/features/patients/components/PatientDashboard';
 import { DoctorDashboard } from '@/features/doctors/components/DoctorDashboard';
+import { ProviderDashboard } from '@/features/service-providers/components/ProviderDashboard';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
@@ -29,6 +30,10 @@ export default function DashboardPage() {
 
   if (user?.role === 'doctor') {
     return <DoctorDashboard />;
+  }
+
+  if (user?.role === 'provider') {
+    return <ProviderDashboard />;
   }
 
   // TODO: Implement AdminDashboard

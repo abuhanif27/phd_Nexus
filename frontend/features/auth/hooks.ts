@@ -44,6 +44,10 @@ export function useLogin() {
   return useMutation({
     mutationFn: authApi.login,
     onSuccess: (data, variables) => {
+      if (!data.access || !data.refresh) {
+        throw new Error('Login requires additional verification before a session can be created.');
+      }
+
       // Store tokens
       setTokens(data.access, data.refresh, variables.rememberMe);
 

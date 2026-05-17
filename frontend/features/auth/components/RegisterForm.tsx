@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UserPlus, Mail, Lock, Phone, User, Stethoscope, MapPin } from 'lucide-react';
+import { UserPlus, Mail, Lock, Phone, User, Stethoscope, MapPin, Building2, Upload } from 'lucide-react';
 import { authService } from '../api';
 
 export function RegisterForm() {
@@ -13,22 +13,32 @@ export function RegisterForm() {
   const [success, setSuccess] = useState<string | null>(null);
 
   // Form state
-  const [role, setRole] = useState<'patient' | 'doctor'>('patient');
+  const [role, setRole] = useState<'patient' | 'doctor' | 'provider'>('patient');
+  const [organizationLogo, setOrganizationLogo] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     password_confirm: '',
     name: '',
     phone: '',
+    provider_phone: '',
     specialty: '',
     qualifications: '',
     location: '',
     bio: '',
+    description: '',
     dob: '',
     gender: '',
     blood_group: '',
     address: '',
     emergency_contact: '',
+    district: '',
+    organization_name: '',
+    legal_name: '',
+    organization_type: 'diagnostic_center',
+    registration_number: '',
+    contact_person: '',
+    website: '',
   });
 
   // Handle input changes
@@ -46,12 +56,19 @@ export function RegisterForm() {
     if (!formData.password) return 'Password is required';
     if (formData.password.length < 8) return 'Password must be at least 8 characters';
     if (formData.password !== formData.password_confirm) return 'Passwords do not match';
-    if (!formData.name) return 'Full name is required';
-    if (formData.name.length < 2) return 'Name must be at least 2 characters';
+    if (role !== 'provider' && !formData.name) return 'Full name is required';
+    if (role !== 'provider' && formData.name.length < 2) return 'Name must be at least 2 characters';
 
     // Check role-specific requirements
     if (role === 'doctor' && !formData.specialty) {
       return 'Specialty is required for doctors';
+    }
+    if (role === 'provider') {
+      if (!formData.organization_name) return 'Organization name is required';
+      if (!formData.contact_person) return 'Contact person is required';
+      if (!formData.provider_phone && !formData.phone) return 'Organization phone number is required';
+      if (!formData.address) return 'Organization address is required';
+      if (!formData.district) return 'District is required';
     }
 
     return null;
@@ -74,8 +91,7 @@ export function RegisterForm() {
         return;
       }
 
-      // Build payload
-      const payload: any = {
+      let payload: any = {
         email: formData.email,
         password: formData.password,
         password_confirm: formData.password_confirm,
@@ -109,6 +125,35 @@ export function RegisterForm() {
         if (formData.bio) doctorProfile.bio = formData.bio;
         if (formData.location) doctorProfile.location = formData.location;
         payload.doctor_profile = doctorProfile;
+      } else if (role === 'provider') {
+        const providerProfile: any = {
+          organization_name: formData.organization_name,
+          organization_type: formData.organization_type,
+          contact_person: formData.contact_person,
+          phone: formData.provider_phone || formData.phone,
+          address: formData.address,
+          district: formData.district,
+        };
+        if (formData.legal_name) providerProfile.legal_name = formData.legal_name;
+        if (formData.registration_number)
+          providerProfile.registration_number = formData.registration_number;
+        if (formData.website) providerProfile.website = formData.website;
+        if (formData.description) providerProfile.description = formData.description;
+
+        if (organizationLogo) {
+          const formPayload = new FormData();
+          formPayload.append('email', formData.email);
+          formPayload.append('password', formData.password);
+          formPayload.append('password_confirm', formData.password_confirm);
+          formPayload.append('role', role);
+          if (formData.phone || formData.provider_phone)
+            formPayload.append('phone', formData.phone || formData.provider_phone);
+          formPayload.append('provider_profile', JSON.stringify(providerProfile));
+          formPayload.append('organization_logo', organizationLogo);
+          payload = formPayload;
+        } else {
+          payload.provider_profile = providerProfile;
+        }
       }
 
       // Submit to API
@@ -218,7 +263,7 @@ export function RegisterForm() {
             <label className="mb-3 block text-sm font-semibold text-gray-900 dark:text-gray-200">
               I am a <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <button
                 type="button"
                 onClick={() => setRole('patient')}
@@ -243,31 +288,44 @@ export function RegisterForm() {
                 <Stethoscope className="h-5 w-5" />
                 <span>Doctor</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setRole('provider')}
+                className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 p-4 font-medium transition-all duration-200 ${
+                  role === 'provider'
+                    ? 'border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-200'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200'
+                }`}
+              >
+                <Building2 className="h-5 w-5" />
+                <span>Provider</span>
+              </button>
             </div>
           </div>
 
-          {/* Full Name - MANDATORY */}
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-            >
-              Full Name <span className="text-red-500">*</span>
-            </label>
-            <div className="relative mt-2">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <User className="h-5 w-5 text-gray-400" />
+          {role !== 'provider' && (
+            <div>
+              <label
+                htmlFor="name"
+                className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+              >
+                Full Name <span className="text-red-500">*</span>
+              </label>
+              <div className="relative mt-2">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <User className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                  placeholder="John Doe"
+                />
               </div>
-              <input
-                id="name"
-                type="text"
-                value={formData.name}
-                onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                placeholder="John Doe"
-              />
             </div>
-          </div>
+          )}
 
           {/* Email - MANDATORY */}
           <div>
@@ -573,6 +631,216 @@ export function RegisterForm() {
                   className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
                   placeholder="Tell us about yourself..."
                 />
+              </div>
+            </>
+          )}
+
+          {role === 'provider' && (
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="organization_name"
+                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                  >
+                    Organization Name <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative mt-2">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <Building2 className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="organization_name"
+                      type="text"
+                      value={formData.organization_name}
+                      onChange={handleInputChange}
+                      className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                      placeholder="Dhaka Diagnostic Center"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    htmlFor="legal_name"
+                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                  >
+                    Legal Name
+                  </label>
+                  <input
+                    id="legal_name"
+                    type="text"
+                    value={formData.legal_name}
+                    onChange={handleInputChange}
+                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                    placeholder="Registered company name"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="organization_type"
+                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                  >
+                    Organization Type
+                  </label>
+                  <select
+                    id="organization_type"
+                    value={formData.organization_type}
+                    onChange={handleInputChange}
+                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                  >
+                    <option value="hospital">Hospital</option>
+                    <option value="diagnostic_center">Diagnostic Center</option>
+                    <option value="clinic">Clinic</option>
+                    <option value="lab">Laboratory</option>
+                    <option value="imaging_center">Imaging Center</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="registration_number"
+                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                  >
+                    Trade License / Registration No.
+                  </label>
+                  <input
+                    id="registration_number"
+                    type="text"
+                    value={formData.registration_number}
+                    onChange={handleInputChange}
+                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                    placeholder="Optional but recommended"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="contact_person"
+                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                  >
+                    Contact Person <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="contact_person"
+                    type="text"
+                    value={formData.contact_person}
+                    onChange={handleInputChange}
+                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                    placeholder="Operations manager"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="provider_phone"
+                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                  >
+                    Organization Phone <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative mt-2">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <Phone className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="provider_phone"
+                      type="tel"
+                      value={formData.provider_phone}
+                      onChange={handleInputChange}
+                      className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                      placeholder="+880 1XXX XXXXXX"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="district"
+                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                  >
+                    District <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="district"
+                    type="text"
+                    value={formData.district}
+                    onChange={handleInputChange}
+                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                    placeholder="Dhaka"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="website"
+                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                >
+                  Website
+                </label>
+                <input
+                  id="website"
+                  type="url"
+                  value={formData.website}
+                  onChange={handleInputChange}
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                  placeholder="https://example.com"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="address"
+                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                >
+                  Organization Address <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  rows={2}
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                  placeholder="House, road, area, city"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+                >
+                  Organization Description
+                </label>
+                <textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                  placeholder="Diagnostic services, branches, support hours..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
+                  Organization Logo
+                </label>
+                <label className="mt-2 flex cursor-pointer items-center justify-center gap-3 rounded-lg border border-dashed border-gray-300 bg-white px-4 py-4 text-sm text-gray-700 transition hover:border-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200">
+                  <Upload className="h-5 w-5 text-gray-400" />
+                  <span>{organizationLogo ? organizationLogo.name : 'Upload logo image'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(event) => setOrganizationLogo(event.target.files?.[0] ?? null)}
+                  />
+                </label>
               </div>
             </>
           )}

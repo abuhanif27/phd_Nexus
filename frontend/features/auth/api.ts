@@ -1,4 +1,4 @@
-import { api } from '@/lib/api/axios';
+import { api, apiClient } from '@/lib/api/axios';
 import { LoginInput, LoginResponse, RegisterInput } from './schemas';
 import type { User } from '@/types/api';
 
@@ -16,7 +16,13 @@ export const authApi = {
   /**
    * Register a new user
    */
-  register: async (data: RegisterInput): Promise<LoginResponse> => {
+  register: async (data: RegisterInput | FormData): Promise<LoginResponse> => {
+    if (data instanceof FormData) {
+      const response = await apiClient.post<LoginResponse>('/api/auth/register/', data, {
+        headers: { 'Content-Type': undefined },
+      });
+      return response.data;
+    }
     return api.post<LoginResponse>('/api/auth/register/', data);
   },
 

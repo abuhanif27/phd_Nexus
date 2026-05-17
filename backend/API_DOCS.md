@@ -22,13 +22,13 @@ Base: `http://localhost:8000/api`. Auth: `Authorization: Bearer <access_token>` 
 | POST | `/revoke/<id>/` | Revoke consent |
 | GET | `/audits/` | Audit logs |
 
-## Patients, Doctors, Records, Scheduling, Billing
+## Patients, Doctors, Service Providers, Records, Scheduling
 
-REST resources under `/api/patients/`, `/api/doctors/`, `/api/records/`, `/api/scheduling/`, `/api/billing/` (list, create, retrieve, update, delete by id). Extra:
+REST resources under `/api/patients/`, `/api/doctors/`, `/api/service-providers/`, `/api/records/`, `/api/scheduling/` (list, create, retrieve, update, delete by id where supported). Extra:
 
+- **Service Providers:** GET `/api/service-providers/services/`, POST `/api/service-providers/services/` for approved providers, admin approval under `/api/service-providers/approvals/`
 - **Records:** POST `/api/records/files/upload/`, GET `/api/records/files/<id>/link/`, GET `/api/records/summary/`
 - **Scheduling:** GET `/api/scheduling/doctors/<id>/slots/`
-- **Billing:** POST `/api/billing/payments/checkout/`, POST `/api/billing/webhooks/payment/`
 
 ## AI (`/api/`)
 

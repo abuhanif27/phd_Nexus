@@ -1,0 +1,37 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}    % For professional lines
+\usepackage{tabularx}   % For adjustable width columns
+\usepackage{amssymb}    % For checkmarks
+\usepackage{xcolor}     % For subtle coloring
+\usepackage{caption}
+
+\begin{document}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Project Objectives and Implementation Results}
+    \label{tab:objectives_refined}
+    \small
+    \begin{tabularx}{\textwidth}{@{} l p{3.5cm} X @{}}
+        \toprule
+        \textbf{Category} & \textbf{Objective} & \textbf{Technical Accomplishment} \\
+        \midrule
+        \textbf{Infrastructure} & Cloud Data Centralization & Implemented a PostgreSQL-backed relational schema with 7 core entities ensuring ACID compliance and longitudinal history tracking. \\
+        \addlinespace
+        \textbf{Security} & RBAC \& Authentication & Deployed JWT-based stateless authentication with strict role separation for Patients and Practitioners. \\
+        \addlinespace
+        \textbf{Privacy} & Patient-Centric Access & Developed an 8-digit unique UUID system enabling granular consent; doctors access records only via explicit patient-granted permissions. \\
+        \addlinespace
+        \textbf{Integrity} & Immutable Audit Trails & System-wide logging of all PHI (Protected Health Information) access, capturing timestamps, IP addresses, and actor identities. \\
+        \addlinespace
+        \textbf{Intelligence} & NLP Diagnostic Engine & Integrated spaCy-based pipeline for NER and symptom analysis; achieved 85\% accuracy in medical specialty prediction. \\
+        \addlinespace
+        \textbf{Safety} & Clinical Decision Support & Real-time drug-drug interaction checking via OpenFDA API integration during the prescription workflow. \\
+        \addlinespace
+        \textbf{Summarization} & AI Health Insights & Automated generation of clinical summaries from diverse medical records using NLP text-rank algorithms. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\end{document}

@@ -30,6 +30,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = [
         ('patient', 'Patient'),
         ('doctor', 'Doctor'),
+        ('provider', 'Hospital Service Provider'),
         ('admin', 'Admin'),
     ]
     

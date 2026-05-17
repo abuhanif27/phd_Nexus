@@ -17,9 +17,9 @@ urlpatterns = [
     path('api/consent/', include('apps.consent.urls')),
     path('api/patients/', include('apps.patients.urls')),
     path('api/doctors/', include('apps.doctors.urls')),
+    path('api/service-providers/', include('apps.service_providers.urls')),
     path('api/records/', include('apps.records.urls')),
     path('api/scheduling/', include('apps.scheduling.urls')),
-    path('api/billing/', include('apps.billing.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
     path('api/', include('apps.ai.urls')),
 ]

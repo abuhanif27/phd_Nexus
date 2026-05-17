@@ -246,7 +246,8 @@ function StatCard({
 // ========================================
 function AppointmentCard({ appointment }: { appointment: Appointment }) {
   const appointmentDate = parseISO(appointment.date);
-  const doctor = appointment.doctor_details;
+  const doctorName = appointment.doctor_name;
+  const specialty = appointment.specialty;
 
   return (
     <Link href={`/dashboard/appointments/${appointment.id}`}>
@@ -257,8 +258,8 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
           </div>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold">{doctor ? `Dr. ${doctor.name}` : 'Doctor Appointment'}</p>
-          <p className="text-sm text-muted-foreground">{doctor?.specialty}</p>
+          <p className="font-semibold">{doctorName ? `Dr. ${doctorName}` : 'Doctor Appointment'}</p>
+          <p className="text-sm text-muted-foreground">{specialty}</p>
           <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-3 w-3" />
             {format(appointmentDate, 'MMM d, yyyy')} at {appointment.start_time}

@@ -6,7 +6,7 @@
 // USER & AUTHENTICATION
 // ========================================
 
-export type UserRole = 'patient' | 'doctor' | 'admin';
+export type UserRole = 'patient' | 'doctor' | 'provider' | 'admin';
 
 export interface User {
   id: number;
@@ -19,6 +19,7 @@ export interface User {
   created_at: string;
   patient_profile?: Patient;
   doctor_profile?: Doctor;
+  provider_profile?: ServiceProviderOrganization;
 }
 
 export interface LoginRequest {
@@ -38,6 +39,60 @@ export interface RegisterRequest {
   password: string;
   role: UserRole;
   phone?: string;
+}
+
+// ========================================
+// SERVICE PROVIDERS
+// ========================================
+
+export type ProviderVerificationStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
+export type ProviderServiceCategory =
+  | 'lab_test'
+  | 'imaging'
+  | 'health_package'
+  | 'consultation'
+  | 'procedure'
+  | 'other';
+
+export interface ServiceProviderOrganization {
+  id: number;
+  email?: string;
+  organization_name: string;
+  legal_name: string;
+  organization_type: string;
+  registration_number: string;
+  contact_person: string;
+  phone: string;
+  website: string;
+  address: string;
+  district: string;
+  logo: string | null;
+  description: string;
+  is_verified: boolean;
+  verification_status: ProviderVerificationStatus;
+  admin_notes: string;
+  approved_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  services?: ProviderService[];
+}
+
+export interface ProviderService {
+  id: number;
+  organization: number;
+  organization_name?: string;
+  district?: string;
+  logo?: string | null;
+  name: string;
+  category: ProviderServiceCategory;
+  description: string;
+  price: string;
+  discounted_price: string | null;
+  turnaround_time: string;
+  sample_required: string;
+  is_available: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface TwoFARequest {

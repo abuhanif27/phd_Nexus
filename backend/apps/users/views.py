@@ -4,6 +4,7 @@ Authentication views with JWT and 2FA support.
 import random
 import string
 import pyotp
+import json
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth import authenticate
@@ -26,6 +27,37 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
+
+    def get_serializer(self, *args, **kwargs):
+        data = kwargs.get('data')
+        if data is not None:
+            data = data.copy()
+            provider_profile = data.get('provider_profile')
+            if isinstance(provider_profile, str):
+                try:
+                    data['provider_profile'] = json.loads(provider_profile)
+                except json.JSONDecodeError:
+                    data['provider_profile'] = {}
+            elif not provider_profile and data.get('role') == 'provider':
+                provider_fields = [
+                    'organization_name',
+                    'legal_name',
+                    'organization_type',
+                    'registration_number',
+                    'contact_person',
+                    'provider_phone',
+                    'phone',
+                    'website',
+                    'address',
+                    'district',
+                    'description',
+                ]
+                profile = {field: data.get(field) for field in provider_fields if data.get(field)}
+                if profile.get('provider_phone'):
+                    profile['phone'] = profile.pop('provider_phone')
+                data['provider_profile'] = profile
+            kwargs['data'] = data
+        return super().get_serializer(*args, **kwargs)
     
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -36,9 +68,9 @@ class RegisterView(generics.CreateAPIView):
             # Create default UserSettings
             UserSettings.objects.get_or_create(user=user)
             
-            # If user is a doctor, they are initially INACTIVE and require admin approval
-            is_doctor = user.role == 'doctor'
-            if is_doctor:
+            # Doctors and service providers require admin approval before login.
+            requires_approval = user.role in ['doctor', 'provider']
+            if requires_approval:
                 user.is_active = False
                 user.save()
             
@@ -46,13 +78,13 @@ class RegisterView(generics.CreateAPIView):
             if user.is_active:
                 refresh = RefreshToken.for_user(user)
                 return Response({
-                    'user': UserSerializer(user).data,
+                    'user': UserSerializer(user, context={'request': request}).data,
                     'access': str(refresh.access_token),
                     'refresh': str(refresh),
                 }, status=status.HTTP_201_CREATED)
             else:
                 return Response({
-                    'user': UserSerializer(user).data,
+                    'user': UserSerializer(user, context={'request': request}).data,
                     'message': 'Account created successfully. Please wait for admin approval before you can sign in.',
                     'pending_approval': True
                 }, status=status.HTTP_201_CREATED)
@@ -104,6 +136,21 @@ class LoginView(views.APIView):
                         )
                 except Exception:
                     pass
+            elif user.role == 'provider':
+                try:
+                    profile = user.service_provider_profile
+                    if profile.verification_status == 'pending':
+                        return Response(
+                            {'error': 'Your service provider account is pending admin approval.'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                    elif profile.verification_status == 'rejected':
+                        return Response(
+                            {'error': f'Your service provider registration was rejected. Reason: {profile.admin_notes}'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Exception:
+                    pass
             
             return Response({'error': 'Account is inactive. Please contact support.'}, status=status.HTTP_403_FORBIDDEN)
         
@@ -117,7 +164,7 @@ class LoginView(views.APIView):
         
         refresh = RefreshToken.for_user(user)
         return Response({
-            'user': UserSerializer(user).data,
+            'user': UserSerializer(user, context={'request': request}).data,
             'access': str(refresh.access_token),
             'refresh': str(refresh),
         })
@@ -186,7 +233,7 @@ class TwoFAVerifyView(views.APIView):
         if is_valid:
             refresh = RefreshToken.for_user(user)
             return Response({
-                'user': UserSerializer(user).data,
+                'user': UserSerializer(user, context={'request': request}).data,
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
             })
@@ -240,7 +287,7 @@ class ProfileUpdateView(views.APIView):
                 profile.save()
             except Exception: pass
 
-        return Response(UserSerializer(user).data)
+        return Response(UserSerializer(user, context={'request': request}).data)
 
 
 class ChangePasswordView(views.APIView):
@@ -397,5 +444,5 @@ class MeView(views.APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        serializer = UserSerializer(request.user)
+        serializer = UserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
