@@ -20,6 +20,7 @@ import {
   Briefcase,
 } from 'lucide-react';
 import Link from 'next/link';
+import { ReviewSection } from '@/features/reviews/components/ReviewSection';
 
 export default function DoctorProfilePage() {
   const params = useParams();
@@ -61,7 +62,7 @@ export default function DoctorProfilePage() {
             <CardContent className="pt-6">
               <p className="text-red-600">Failed to load doctor profile.</p>
             </CardContent>
-          </Card>
+          </div>
         </div>
       </div>
     );
@@ -235,7 +236,7 @@ export default function DoctorProfilePage() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-green-50 p-2 dark:bg-green-950">
+                <div className="rounded-lg bg-green-50 p-2 dark:bg-blue-950">
                   <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
@@ -251,6 +252,9 @@ export default function DoctorProfilePage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Reviews Section */}
+        <ReviewSection doctorId={Number(id)} />
 
         {/* Practice Information Card */}
         <Card className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">

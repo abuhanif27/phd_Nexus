@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserPlus, Mail, Lock, Phone, User, Stethoscope, MapPin, Building2, Upload } from 'lucide-react';
 import { authService } from '../api';
+import { LocationPicker } from '@/components/ui/LocationPicker';
 
 export function RegisterForm() {
   const router = useRouter();
@@ -39,6 +40,9 @@ export function RegisterForm() {
     registration_number: '',
     contact_person: '',
     website: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
+    google_place_id: '',
   });
 
   // Handle input changes
@@ -47,6 +51,17 @@ export function RegisterForm() {
   ) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleLocationSelect = (loc: { address: string; latitude: number; longitude: number; google_place_id: string }) => {
+    setFormData((prev) => ({
+      ...prev,
+      address: loc.address,
+      location: loc.address, // For doctors
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      google_place_id: loc.google_place_id,
+    }));
   };
 
   // Validate form
@@ -112,6 +127,9 @@ export function RegisterForm() {
         if (formData.gender) patientProfile.gender = formData.gender;
         if (formData.blood_group) patientProfile.blood_group = formData.blood_group;
         if (formData.address) patientProfile.address = formData.address;
+        if (formData.latitude) patientProfile.latitude = formData.latitude;
+        if (formData.longitude) patientProfile.longitude = formData.longitude;
+        if (formData.google_place_id) patientProfile.google_place_id = formData.google_place_id;
         if (formData.emergency_contact)
           patientProfile.emergency_contact = formData.emergency_contact;
         payload.patient_profile = patientProfile;
@@ -124,6 +142,9 @@ export function RegisterForm() {
         if (formData.qualifications) doctorProfile.qualifications = formData.qualifications;
         if (formData.bio) doctorProfile.bio = formData.bio;
         if (formData.location) doctorProfile.location = formData.location;
+        if (formData.latitude) doctorProfile.latitude = formData.latitude;
+        if (formData.longitude) doctorProfile.longitude = formData.longitude;
+        if (formData.google_place_id) doctorProfile.google_place_id = formData.google_place_id;
         payload.doctor_profile = doctorProfile;
       } else if (role === 'provider') {
         const providerProfile: any = {
@@ -139,6 +160,9 @@ export function RegisterForm() {
           providerProfile.registration_number = formData.registration_number;
         if (formData.website) providerProfile.website = formData.website;
         if (formData.description) providerProfile.description = formData.description;
+        if (formData.latitude) providerProfile.latitude = formData.latitude;
+        if (formData.longitude) providerProfile.longitude = formData.longitude;
+        if (formData.google_place_id) providerProfile.google_place_id = formData.google_place_id;
 
         if (organizationLogo) {
           const formPayload = new FormData();
@@ -519,14 +543,7 @@ export function RegisterForm() {
                 >
                   Address
                 </label>
-                <textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  rows={2}
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                  placeholder="Street address, city, state, zip code"
-                />
+                <LocationPicker onLocationSelect={handleLocationSelect} defaultAddress={formData.address} />
               </div>
             </>
           )}
@@ -599,19 +616,7 @@ export function RegisterForm() {
                 >
                   Location
                 </label>
-                <div className="relative mt-2">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <MapPin className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="location"
-                    type="text"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                    placeholder="City, State"
-                  />
-                </div>
+                <LocationPicker onLocationSelect={handleLocationSelect} defaultAddress={formData.location} />
               </div>
 
               {/* Bio - OPTIONAL */}
@@ -799,14 +804,7 @@ export function RegisterForm() {
                 >
                   Organization Address <span className="text-red-500">*</span>
                 </label>
-                <textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  rows={2}
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                  placeholder="House, road, area, city"
-                />
+                <LocationPicker onLocationSelect={handleLocationSelect} defaultAddress={formData.address} />
               </div>
 
               <div>

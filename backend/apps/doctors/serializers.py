@@ -13,7 +13,8 @@ class DoctorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Doctor
         fields = ['id', 'email', 'name', 'user_name', 'specialty', 'qualifications', 
-                  'bio', 'location', 'rating', 'license_number', 'is_verified', 'verification_status']
+                  'bio', 'location', 'latitude', 'longitude', 'google_place_id', 
+                  'rating', 'license_number', 'is_verified', 'verification_status']
     
     def get_license_number(self, obj):
         """Return qualification as license for frontend compatibility."""

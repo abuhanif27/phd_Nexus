@@ -50,6 +50,9 @@ class UserSerializer(serializers.ModelSerializer):
                 'gender': p.gender,
                 'blood_group': p.blood_group,
                 'address': p.address,
+                'latitude': p.latitude,
+                'longitude': p.longitude,
+                'google_place_id': p.google_place_id,
                 'emergency_contact': p.emergency_contact,
             }
         except Patient.DoesNotExist:
@@ -64,6 +67,9 @@ class UserSerializer(serializers.ModelSerializer):
                 'qualifications': d.qualifications,
                 'bio': d.bio,
                 'location': d.location,
+                'latitude': d.latitude,
+                'longitude': d.longitude,
+                'google_place_id': d.google_place_id,
                 'rating': d.rating,
             }
         except Doctor.DoesNotExist:
@@ -87,9 +93,13 @@ class UserSerializer(serializers.ModelSerializer):
                 'phone': p.phone,
                 'website': p.website,
                 'address': p.address,
+                'latitude': p.latitude,
+                'longitude': p.longitude,
+                'google_place_id': p.google_place_id,
                 'district': p.district,
                 'logo': logo_url,
                 'description': p.description,
+                'rating': p.rating,
                 'is_verified': p.is_verified,
                 'verification_status': p.verification_status,
                 'admin_notes': p.admin_notes,

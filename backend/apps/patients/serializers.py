@@ -23,6 +23,9 @@ class PatientSerializer(serializers.ModelSerializer):
             'gender', 
             'blood_group', 
             'address',
+            'latitude',
+            'longitude',
+            'google_place_id',
             'emergency_contact',
             'created_at',
             'updated_at'

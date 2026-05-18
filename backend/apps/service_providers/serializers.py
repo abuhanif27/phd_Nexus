@@ -7,6 +7,7 @@ class ProviderServiceSerializer(serializers.ModelSerializer):
     organization_name = serializers.CharField(source='organization.organization_name', read_only=True)
     district = serializers.CharField(source='organization.district', read_only=True)
     logo = serializers.ImageField(source='organization.logo', read_only=True)
+    organization_rating = serializers.FloatField(source='organization.rating', read_only=True)
 
     class Meta:
         model = ProviderService
@@ -14,6 +15,7 @@ class ProviderServiceSerializer(serializers.ModelSerializer):
             'id',
             'organization',
             'organization_name',
+            'organization_rating',
             'district',
             'logo',
             'name',
@@ -47,9 +49,13 @@ class ServiceProviderOrganizationSerializer(serializers.ModelSerializer):
             'phone',
             'website',
             'address',
+            'latitude',
+            'longitude',
+            'google_place_id',
             'district',
             'logo',
             'description',
+            'rating',
             'is_verified',
             'verification_status',
             'admin_notes',
@@ -61,6 +67,7 @@ class ServiceProviderOrganizationSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'email',
+            'rating',
             'is_verified',
             'verification_status',
             'admin_notes',

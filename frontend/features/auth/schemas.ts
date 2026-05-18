@@ -65,6 +65,9 @@ export interface RegisterInput {
     gender?: 'M' | 'F' | 'O' | 'N';
     blood_group?: string;
     address?: string;
+    latitude?: number;
+    longitude?: number;
+    google_place_id?: string;
     emergency_contact?: string;
   };
   doctor_profile?: {
@@ -73,6 +76,9 @@ export interface RegisterInput {
     qualifications?: string;
     bio?: string;
     location?: string;
+    latitude?: number;
+    longitude?: number;
+    google_place_id?: string;
   };
   provider_profile?: {
     organization_name: string;
@@ -85,6 +91,9 @@ export interface RegisterInput {
     address: string;
     district: string;
     description?: string;
+    latitude?: number;
+    longitude?: number;
+    google_place_id?: string;
   };
 }
 

@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, FlaskConical, MapPin, Search } from 'lucide-react';
+import { Building2, FlaskConical, MapPin, Search, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { ProviderService, ProviderServiceCategory } from '@/types/api';
 import { serviceProvidersApi } from '../api';
+import { ReviewSection } from '@/features/reviews/components/ReviewSection';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const categories: Array<{ value: ProviderServiceCategory | ''; label: string }> = [
   { value: '', label: 'All categories' },
@@ -105,13 +107,31 @@ export function PatientServiceMarketplace() {
             <Card key={service.id}>
               <CardHeader className="space-y-3">
                 <div className="flex items-start justify-between gap-4">
-                  <div>
+                  <div className="space-y-1">
                     <CardTitle className="text-xl">{service.name}</CardTitle>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                       <Building2 className="h-4 w-4" />
                       <span>{service.organization_name}</span>
                       <MapPin className="ml-2 h-4 w-4" />
                       <span>{service.district}</span>
+                    </div>
+                    {/* Organization Rating */}
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <div className="flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                        <span className="text-xs font-bold">{(service as any).organization_rating?.toFixed(1) || '0.0'}</span>
+                      </div>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <button className="text-xs text-blue-600 hover:underline">View Reviews</button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Reviews for {service.organization_name}</DialogTitle>
+                          </DialogHeader>
+                          <ReviewSection organizationId={service.organization} />
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
                   <Badge variant="outline">{categories.find((item) => item.value === service.category)?.label}</Badge>
@@ -135,6 +155,12 @@ export function PatientServiceMarketplace() {
                     <span>{service.sample_required || 'Sample info not specified'}</span>
                   </div>
                   <div>{service.turnaround_time || 'Turnaround time not specified'}</div>
+                </div>
+                
+                <div className="flex justify-end pt-2">
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                    Details & Booking
+                  </Button>
                 </div>
               </CardContent>
             </Card>

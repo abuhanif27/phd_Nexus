@@ -22,6 +22,9 @@ class Doctor(models.Model):
     qualifications = models.TextField(blank=True)
     bio = models.TextField(blank=True)
     location = models.CharField(max_length=200, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    google_place_id = models.CharField(max_length=255, blank=True)
     rating = models.FloatField(default=0.0)
     calendar_connected = models.BooleanField(default=False)
     
