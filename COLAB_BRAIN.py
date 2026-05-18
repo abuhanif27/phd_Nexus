@@ -108,16 +108,20 @@ def load_all_models():
         MODELS["ner_pipeline"] = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english", aggregation_strategy="simple", device=0 if gpu_available else -1)
         print("✓ Loaded Clinical NER Pipeline")
 
-        # Load Sentence Transformer for Symptom Mapping
-        print("Loading Symptom Transformer (BERT)...")
+        # Load Sentence Transformer for Symptom Mapping (using a medical-aware model)
+        print("Loading Medical-Aware Symptom Transformer...")
         from sentence_transformers import SentenceTransformer, util
-        MODELS["symptom_transformer"] = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+        # Using a model that is better for medical/scientific text
+        # 'sentence-transformers/all-mpnet-base-v2' is better than MiniLM, 
+        # or we can use a specific medical one if available on HF that fits in memory
+        MODELS["symptom_transformer"] = SentenceTransformer('sentence-transformers/all-mpnet-base-v2', device=device)
         
         # Pre-compute embeddings for standard symptoms
         readable_symptoms = [s.replace('_', ' ').title() for s in ALL_SYMPTOMS]
         MODELS["symptom_embeddings"] = MODELS["symptom_transformer"].encode(readable_symptoms, convert_to_tensor=True)
         MODELS["all_symptoms"] = ALL_SYMPTOMS
-        print(f"✓ Loaded Symptom Transformer and pre-computed {len(ALL_SYMPTOMS)} embeddings")
+        print(f"✓ Loaded Medical-Aware Transformer and pre-computed {len(ALL_SYMPTOMS)} embeddings")
+
         
     except Exception as e:
         print(f"ERROR: Failed to load models: {e}")
@@ -147,9 +151,11 @@ async def extract_symptoms(data: Dict = Body(...)):
     from sentence_transformers import util
     import re
     
-    # Split text into descriptive phrases
-    phrases = re.split(r',|\.|\band\b| i have | i feel | i am ', text.lower())
-    phrases = [p.strip() for p in phrases if len(p.strip()) > 3]
+    # Split text into descriptive phrases more intelligently
+    # Use more delimiters including 'with', 'and', 'also', 'having'
+    delimiters = r',|\.|\band\b|\balso\b|\bwith\b|\bhaving\b|\bi have\b|\bi feel\b|\bi am\b|\bexperience\b'
+    phrases = re.split(delimiters, text.lower())
+    phrases = [p.strip() for p in phrases if len(p.strip()) > 2]
     
     if not phrases:
         return {"symptoms": []}
@@ -163,18 +169,26 @@ async def extract_symptoms(data: Dict = Body(...)):
     cosine_scores = util.cos_sim(phrase_embeddings, MODELS["symptom_embeddings"])
     
     for i in range(len(phrases)):
-        best_score_idx = torch.argmax(cosine_scores[i]).item()
-        best_score = cosine_scores[i][best_score_idx].item()
+        # Get top 2 matches for each phrase to be more inclusive
+        top_k = min(2, len(MODELS["all_symptoms"]))
+        top_results = torch.topk(cosine_scores[i], k=top_k)
         
-        # Threshold for semantic match (0.45 is usually safe for medical terms)
-        if best_score > 0.45:
-            matched_symptom = MODELS["all_symptoms"][best_score_idx]
-            detected_symptoms.add(matched_symptom)
+        for j in range(top_k):
+            score = top_results.values[j].item()
+            idx = top_results.indices[j].item()
+            
+            # Use a slightly lower threshold for the second match if the first is very strong
+            threshold = 0.45 if j == 0 else 0.60
+            
+            if score > threshold:
+                matched_symptom = MODELS["all_symptoms"][idx]
+                detected_symptoms.add(matched_symptom)
             
     return {
         "symptoms": list(detected_symptoms),
         "source": "BERT Semantic Matcher"
     }
+
 
 @app.post("/extract_prescription")
 async def extract_prescription(file: UploadFile = FastFile(...)):

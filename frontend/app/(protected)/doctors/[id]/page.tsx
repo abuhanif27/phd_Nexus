@@ -62,7 +62,7 @@ export default function DoctorProfilePage() {
             <CardContent className="pt-6">
               <p className="text-red-600">Failed to load doctor profile.</p>
             </CardContent>
-          </div>
+          </Card>
         </div>
       </div>
     );

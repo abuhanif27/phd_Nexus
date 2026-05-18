@@ -105,11 +105,26 @@ export async function checkSymptoms(request: {
   disease: string;
   specialist: string;
   confidence: number;
+  alternatives?: Array<{
+    disease: string;
+    specialist: string;
+    confidence: number;
+  }>;
   severity_score: number;
   severity_level: string;
   description: string;
   precautions: string[];
   detected_symptoms: string[];
+  recommended_doctors?: Array<{
+    id: number;
+    name: string;
+    specialty: string;
+    rating: number;
+    distance: number | null;
+    location: string;
+    profile_photo: string | null;
+    is_verified: boolean;
+  }>;
 }> {
   const { data } = await apiClient.post(`${BASE}/symptoms/check/`, request);
   return data;

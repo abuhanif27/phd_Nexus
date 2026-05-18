@@ -5,13 +5,16 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Search, Activity, AlertTriangle, AlertCircle, X, CheckCircle2, Info, User } from 'lucide-react';
+import { Loader2, Search, Activity, AlertTriangle, AlertCircle, X, CheckCircle2, Info, User, MessageSquare, MapPin, Star } from 'lucide-react';
 import { checkSymptoms, getSymptomList } from '../api';
+import Link from 'next/link';
 
 export function SymptomChecker() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [description, setDescription] = useState("");
   const [selectedSymptoms, setSelectedSymptoms] = useState<number[]>([]);
   const [selecteeSymptoms, setSelecteeSymptoms] = useState<string[]>([]);
 
@@ -28,7 +31,7 @@ export function SymptomChecker() {
 
   const filteredSymptoms = symptomData?.symptoms.map((name, index) => ({ name, index })).filter(s => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
-  ).slice(0, 5) || [];
+  ).slice(0, 10) || []; // Show more results
 
   const handleAddSymptom = (index: number) => {
     if (!selectedSymptoms.includes(index)) {
@@ -50,8 +53,11 @@ export function SymptomChecker() {
   };
 
   const handleAnalyze = () => {
-    if (selecteeSymptoms.length === 0) return;
-    analyzeMutation.mutate({ manual_symptoms: selecteeSymptoms });
+    if (selecteeSymptoms.length === 0 && !description.trim()) return;
+    analyzeMutation.mutate({ 
+      text: description,
+      manual_symptoms: selecteeSymptoms 
+    });
   };
 
   const isLoading = analyzeMutation.isPending;
@@ -77,17 +83,36 @@ export function SymptomChecker() {
                 <Search className="h-5 w-5 text-primary" />
                 Select Symptoms
               </CardTitle>
-              <CardDescription>Search and add symptoms you are experiencing</CardDescription>
+            <CardDescription>Search and add symptoms or describe them in your own words</CardDescription>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
-              <div className="relative">
-                <Input 
-                  placeholder="e.g., headache, fever, skin rash..." 
-                  className="pl-10 pb-2 h-12 text-lg rounded-xl shadow-inner border-primary/20"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+              <div className="space-y-4">
+                <h4 className="font-bold text-sm flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  Describe your symptoms
+                </h4>
+                <Textarea 
+                  placeholder="e.g., I have been feeling a sharp pain in my chest for 2 days, accompanied by a dry cough and mild fever."
+                  className="min-h-[100px] rounded-xl border-primary/20 focus-visible:ring-primary shadow-inner"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                 />
-                <Search className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+              </div>
+
+              <div className="relative space-y-4">
+                <h4 className="font-bold text-sm flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  Select Standard Symptoms
+                </h4>
+                <div className="relative">
+                  <Input 
+                    placeholder="Search symptoms..." 
+                    className="pl-10 pb-2 h-12 rounded-xl shadow-inner border-primary/20"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <Search className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
+                </div>
                 
                 {searchTerm && (
                   <div className="absolute z-10 w-full mt-2 bg-background border-2 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
@@ -189,7 +214,7 @@ export function SymptomChecker() {
                   </div>
 
                 </div>
-                <CardTitle className="text-4| font-black uppercase tracking-tighter leading-none mb-2">{result.disease}</CardTitle>
+                <CardTitle className="text-4xl font-black uppercase tracking-tighter leading-none mb-2">{result.disease}</CardTitle>
                 <CardDescription className="text-primary-foreground/90 text-xl font-bold mt-2">
                   Consult a <span className="underline underline-offset-4 decoration-2">{result.specialist}</span>
                 </CardDescription>
@@ -219,9 +244,26 @@ export function SymptomChecker() {
                   </p>
                 </div>
 
+                {result.alternatives && result.alternatives.length > 0 && (
+                  <div className="space-y-4">
+                    <h4 className="font-black text-xs uppercase tracking-[0.2em] text-primary/60 border-l-4 border-primary pl-3">Alternative Matches</h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      {result.alternatives.map((alt: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between p-3 bg-muted/10 rounded-xl border border-dashed border-primary/20">
+                          <span className="font-bold text-sm">{alt.disease}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-medium text-muted-foreground italic">Consult {alt.specialist}</span>
+                            <Badge variant="outline" className="text-[10px] font-bold bg-primary/5">{alt.confidence}%</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <h4 className="font-black text-xs uppercase tracking-[0.2em] text-primary/60 border-l-4 border-primary pl-3">Clinical Precautions</h4>
-                  <div className="grid gvid-cols-1 gap-3">
+                  <div className="grid grid-cols-1 gap-3">
                     {result.precautions.map((p, i) => (
                       <div key={i} className="flex items-center gap-4 p-4 bg-muted/20 rounded-2xl border border-border/50 group hover:border-primary/20 transition-all shadow-sm">
                         <div className="h-8 w-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center text-sm font-black shrink-0 group-hover:rotate-12 transition-transform">
@@ -230,6 +272,62 @@ export function SymptomChecker() {
                         <span className="text-sm font-bold uppercase text-muted-foreground group-hover:text-foregroun transition-colors">{p}</span>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-black text-xs uppercase tracking-[0.2em] text-primary/60 border-l-4 border-primary pl-3">Recommended Specialists</h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    {result.recommended_doctors && result.recommended_doctors.length > 0 ? (
+                      result.recommended_doctors.map((doc: any) => (
+                        <div key={doc.id} className="flex items-center gap-4 p-4 bg-background rounded-2xl border-2 border-primary/5 hover:border-primary/20 transition-all shadow-sm group">
+                          <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border-2 border-primary/20">
+                            {doc.profile_photo ? (
+                              <img src={doc.profile_photo} alt={doc.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <User className="h-8 w-8 text-primary" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start">
+                              <h5 className="font-bold text-lg truncate">Dr. {doc.name}</h5>
+                              <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg text-xs font-black">
+                                <Star className="h-3 w-3 fill-current" />
+                                {doc.rating.toFixed(1)}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{doc.specialty}</span>
+                              {doc.distance !== null && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-primary">
+                                  <MapPin className="h-3 w-3" />
+                                  {doc.distance} km away
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{doc.location || "Clinic location not specified"}</span>
+                            </div>
+                          </div>
+                          <Link href={`/doctors/${doc.id}`}>
+                            <Button size="sm" className="rounded-xl h-10 px-4 font-bold shadow-md shadow-primary/10">
+                              Book
+                            </Button>
+                          </Link>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-8 bg-muted/10 rounded-2xl border-2 border-dashed border-muted">
+                        <User className="h-10 w-10 text-muted-foreground/30 mb-2" />
+                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest text-center">
+                          No {result.specialist}s available at the moment
+                        </p>
+                        <Button variant="link" size="sm" className="mt-2 text-primary font-bold" asChild>
+                          <Link href="/doctors">Browse All Doctors</Link>
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
 

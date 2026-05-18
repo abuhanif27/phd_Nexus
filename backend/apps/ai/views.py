@@ -11,7 +11,7 @@ from .models import AISummary, HealthSummaryShare
 from .serializers import (
     SymptomAnalyzeSerializer, SpecialistPredictSerializer,
     SummaryRequestSerializer, TextSummarySerializer, AISummarySerializer,
-    HealthSummaryShareSerializer
+    HealthSummaryShareSerializer, SymptomCheckSerializer
 )
 from .services import ai_service
 from django.utils import timezone
@@ -335,7 +335,8 @@ class SymptomCheckView(views.APIView):
         text = serializer.validated_data.get('text', '')
         manual = serializer.validated_data.get('manual_symptoms', [])
         
-        result = symptom_checker_service.check_symptoms(text, manual_symptoms=manual)
+        patient = getattr(request.user, 'patient_profile', None)
+        result = symptom_checker_service.check_symptoms(text, manual_symptoms=manual, patient=patient)
         
         if 'error' in result:
             return Response(result, status=status.HTTP_400_BAD_REQUEST)
