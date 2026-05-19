@@ -3,19 +3,28 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UserPlus, Mail, Lock, User, Stethoscope, MapPin, Building2, Upload } from 'lucide-react';
+import { 
+  UserPlus, Mail, Lock, User, Stethoscope, MapPin, 
+  Building2, Upload, ArrowRight, ArrowLeft, CheckCircle2,
+  ShieldCheck, HeartPulse, Hospital, ClipboardCheck
+} from 'lucide-react';
 import { authService } from '../api';
 import { LocationPicker } from '@/components/ui/LocationPicker';
+
+type Step = 'role' | 'account' | 'profile';
 
 export function RegisterForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  // Form state
+  
+  // UI State
+  const [currentStep, setCurrentStep] = useState<Step>('role');
   const [role, setRole] = useState<'patient' | 'doctor' | 'provider'>('patient');
   const [organizationLogo, setOrganizationLogo] = useState<File | null>(null);
+  
+  // Form state
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -64,55 +73,81 @@ export function RegisterForm() {
     }));
   };
 
-  // Validate form
-  const validateForm = (): string | null => {
-    if (!formData.email) return 'Email is required';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return 'Invalid email format';
-    if (!formData.password) return 'Password is required';
-    if (formData.password.length < 8) return 'Password must be at least 8 characters';
-    if (formData.password !== formData.password_confirm) return 'Passwords do not match';
-    if (role !== 'provider' && !formData.name) return 'Full name is required';
-    if (role !== 'provider' && formData.name.length < 2) return 'Name must be at least 2 characters';
-
-    // Check role-specific requirements
-    if (role === 'doctor' && !formData.specialty) {
-      return 'Specialty is required for doctors';
-    }
-
-    const bdPhoneRegex = /^(?:\+88)?01[3-9]\d{8}$/;
-    if (formData.phone && !bdPhoneRegex.test(formData.phone)) {
-      return 'Invalid phone number. Use format: 01XXXXXXXXX (11 digits)';
-    }
-
-    if (formData.emergency_contact && !bdPhoneRegex.test(formData.emergency_contact)) {
-      return 'Invalid emergency contact number. Use format: 01XXXXXXXXX (11 digits)';
-    }
-
-    if (role === 'provider') {
-      if (!formData.organization_name) return 'Organization name is required';
-      if (!formData.contact_person) return 'Contact person is required';
-      if (!formData.provider_phone && !formData.phone) return 'Organization phone number is required';
-      if (formData.provider_phone && !bdPhoneRegex.test(formData.provider_phone)) {
-        return 'Invalid organization phone. Use format: 01XXXXXXXXX (11 digits)';
+  // Validate specific steps
+  const validateStep = (step: Step): string | null => {
+    if (step === 'account') {
+      if (!formData.email) return 'Email is required';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return 'Invalid email format';
+      if (!formData.password) return 'Password is required';
+      if (formData.password.length < 8) return 'Password must be at least 8 characters';
+      if (formData.password !== formData.password_confirm) return 'Passwords do not match';
+      
+      const bdPhoneRegex = /^(?:\+88)?01[3-9]\d{8}$/;
+      if (formData.phone && !bdPhoneRegex.test(formData.phone)) {
+        return 'Invalid phone number. Use format: 01XXXXXXXXX (11 digits)';
       }
-      if (!formData.address) return 'Organization address is required';
-      if (!formData.district) return 'District is required';
     }
+    
+    if (step === 'profile') {
+      if (role !== 'provider' && !formData.name) return 'Full name is required';
+      if (role === 'doctor' && !formData.specialty) return 'Specialty is required';
+      
+      if (role === 'provider') {
+        if (!formData.organization_name) return 'Organization name is required';
+        if (!formData.contact_person) return 'Contact person is required';
+        if (!formData.provider_phone && !formData.phone) return 'Organization phone number is required';
+        
+        const bdPhoneRegex = /^(?:\+88)?01[3-9]\d{8}$/;
+        if (formData.provider_phone && !bdPhoneRegex.test(formData.provider_phone)) {
+          return 'Invalid organization phone. Use format: 01XXXXXXXXX (11 digits)';
+        }
+        if (!formData.address) return 'Organization address is required';
+        if (!formData.district) return 'District is required';
+      }
 
+      if (role === 'patient') {
+        const bdPhoneRegex = /^(?:\+88)?01[3-9]\d{8}$/;
+        if (formData.emergency_contact && !bdPhoneRegex.test(formData.emergency_contact)) {
+          return 'Invalid emergency contact number. Use format: 01XXXXXXXXX (11 digits)';
+        }
+      }
+    }
+    
     return null;
+  };
+
+  const nextStep = () => {
+    const error = validateStep(currentStep);
+    if (error) {
+      setError(error);
+      return;
+    }
+    setError(null);
+    if (currentStep === 'role') setCurrentStep('account');
+    else if (currentStep === 'account') setCurrentStep('profile');
+  };
+
+  const prevStep = () => {
+    setError(null);
+    if (currentStep === 'profile') setCurrentStep('account');
+    else if (currentStep === 'account') setCurrentStep('role');
   };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (currentStep !== 'profile') {
+      nextStep();
+      return;
+    }
 
     try {
       setIsLoading(true);
       setError(null);
       setSuccess(null);
 
-      // Validate
-      const validationError = validateForm();
+      // Final validation
+      const validationError = validateStep('profile');
       if (validationError) {
         setError(validationError);
         setIsLoading(false);
@@ -126,16 +161,12 @@ export function RegisterForm() {
         role: role,
       };
 
-      // Only add phone if provided
       if (formData.phone) {
         payload.phone = formData.phone;
       }
 
       if (role === 'patient') {
-        const patientProfile: any = {
-          name: formData.name,
-        };
-        // Only add optional fields if they have values
+        const patientProfile: any = { name: formData.name };
         if (formData.dob) patientProfile.dob = formData.dob;
         if (formData.gender) patientProfile.gender = formData.gender;
         if (formData.blood_group) patientProfile.blood_group = formData.blood_group;
@@ -143,15 +174,10 @@ export function RegisterForm() {
         if (formData.latitude) patientProfile.latitude = formData.latitude;
         if (formData.longitude) patientProfile.longitude = formData.longitude;
         if (formData.google_place_id) patientProfile.google_place_id = formData.google_place_id;
-        if (formData.emergency_contact)
-          patientProfile.emergency_contact = formData.emergency_contact;
+        if (formData.emergency_contact) patientProfile.emergency_contact = formData.emergency_contact;
         payload.patient_profile = patientProfile;
       } else if (role === 'doctor') {
-        const doctorProfile: any = {
-          name: formData.name,
-          specialty: formData.specialty,
-        };
-        // Only add optional fields if they have values
+        const doctorProfile: any = { name: formData.name, specialty: formData.specialty };
         if (formData.qualifications) doctorProfile.qualifications = formData.qualifications;
         if (formData.bio) doctorProfile.bio = formData.bio;
         if (formData.location) doctorProfile.location = formData.location;
@@ -169,8 +195,7 @@ export function RegisterForm() {
           district: formData.district,
         };
         if (formData.legal_name) providerProfile.legal_name = formData.legal_name;
-        if (formData.registration_number)
-          providerProfile.registration_number = formData.registration_number;
+        if (formData.registration_number) providerProfile.registration_number = formData.registration_number;
         if (formData.website) providerProfile.website = formData.website;
         if (formData.description) providerProfile.description = formData.description;
         if (formData.latitude) providerProfile.latitude = formData.latitude;
@@ -193,11 +218,10 @@ export function RegisterForm() {
         }
       }
 
-      // Submit to API
       const response = await authService.register(payload);
 
       if (response.requires_verification) {
-        setSuccess('Account created! Please check your email for the verification code.');
+        setSuccess('Account created! Verification code sent.');
         setTimeout(() => {
           router.push(`/verify-registration?email=${encodeURIComponent(formData.email)}`);
         }, 1500);
@@ -205,691 +229,455 @@ export function RegisterForm() {
       }
 
       if (response.pending_approval) {
-        setSuccess(response.message || 'Account created successfully! Please wait for admin approval.');
+        setSuccess(response.message || 'Account created! Waiting for approval.');
         setIsLoading(false);
         return;
       }
 
-      setSuccess('Account created successfully! Redirecting...');
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000);
+      setSuccess('Welcome to PhD NexusCare!');
+      setTimeout(() => router.push('/dashboard'), 1000);
     } catch (err: any) {
       console.error('❌ Registration error:', err);
       let message = 'Registration failed. Please try again.';
-
-      // Helper function to extract text from HTML
-      const extractTextFromHTML = (html: string): string => {
-        if (!html) return '';
-        // Remove HTML tags
-        return html.replace(/<[^>]*>/g, '').trim();
-      };
-
       if (err?.response?.data) {
         const resp = err.response.data;
-        
-        // Handle the new 'details' field for better error reporting
         if (resp.details) {
-          const details = resp.details;
-          if (typeof details === 'object') {
-            const msgs: string[] = [];
-            for (const [key, v] of Object.entries(details)) {
-              const label = key === 'non_field_errors' ? '' : `${key}: `;
-              if (Array.isArray(v)) {
-                msgs.push(...v.map((item) => `${label}${String(item)}`).filter((x) => !!x));
-              } else if (typeof v === 'string') {
-                msgs.push(`${label}${extractTextFromHTML(v)}`);
-              } else if (typeof v === 'object' && v !== null) {
-                msgs.push(`${label}${JSON.stringify(v)}`);
-              }
-            }
-            if (msgs.length > 0) message = msgs.join(', ');
-          } else {
-            message = extractTextFromHTML(String(details));
-          }
-        } else if (typeof resp === 'object') {
-          const msgs: string[] = [];
-          for (const v of Object.values(resp)) {
-            if (Array.isArray(v)) {
-              msgs.push(...v.map((item) => String(item)).filter((x) => !!x));
-            } else if (typeof v === 'string') {
-              msgs.push(extractTextFromHTML(v));
-            }
-          }
-          if (msgs.length > 0) message = msgs.join(', ');
-        } else if (typeof resp === 'string') {
-          message = extractTextFromHTML(resp);
+          if (typeof resp.details === 'object') {
+             message = Object.entries(resp.details).map(([k, v]) => `${k}: ${v}`).join(', ');
+          } else message = String(resp.details);
         }
-      } else if (err?.response?.status === 500 || err?.response?.status === 503) {
-        message = 'Server error. Please try again later or contact support.';
-      } else if (err?.message) {
-        message = extractTextFromHTML(err.message);
       }
-
-      setError(message);
+      setError(message.replace(/<[^>]*>/g, ''));
     } finally {
       setIsLoading(false);
     }
   };
 
+  const StepIndicator = () => (
+    <div className="mb-8 flex items-center justify-between px-2">
+      {[
+        { id: 'role', label: 'Identity', icon: ShieldCheck },
+        { id: 'account', label: 'Security', icon: Lock },
+        { id: 'profile', label: 'Profile', icon: ClipboardCheck },
+      ].map((s, i) => (
+        <div key={s.id} className="flex flex-1 items-center last:flex-none">
+          <div className="flex flex-col items-center gap-2">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300 ${
+              currentStep === s.id 
+                ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none' 
+                : ['account', 'profile'].includes(currentStep) && i < ['role', 'account', 'profile'].indexOf(currentStep)
+                ? 'border-green-500 bg-green-500 text-white'
+                : 'border-gray-200 bg-white text-gray-400 dark:border-slate-700 dark:bg-slate-800'
+            }`}>
+              {['account', 'profile'].includes(currentStep) && i < ['role', 'account', 'profile'].indexOf(currentStep) ? (
+                <CheckCircle2 className="h-6 w-6" />
+              ) : (
+                <s.icon className="h-5 w-5" />
+              )}
+            </div>
+            <span className={`text-xs font-bold uppercase tracking-wider ${
+              currentStep === s.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'
+            }`}>
+              {s.label}
+            </span>
+          </div>
+          {i < 2 && (
+            <div className={`mx-4 h-0.5 flex-1 rounded-full transition-all duration-500 ${
+              (['account', 'profile'].includes(currentStep) && i === 0) || (currentStep === 'profile' && i === 1)
+                ? 'bg-green-500' 
+                : 'bg-gray-200 dark:bg-slate-700'
+            }`} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-6 sm:mt-8">
-      <div className="rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-900 sm:p-8">
-        {error && (
-          <div className="mb-6 rounded-lg border-2 border-red-500 bg-red-50 p-4 text-sm text-red-900 dark:border-red-500 dark:bg-red-950 dark:text-red-200">
-            <p className="flex items-center gap-2 font-bold">
-              <span>⚠️</span> Error
-            </p>
-            <p className="mt-2 whitespace-pre-wrap break-words">{error}</p>
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 rounded-lg border-2 border-green-500 bg-green-50 p-4 text-sm text-green-900 dark:border-green-500 dark:bg-green-950 dark:text-green-200">
-            <p className="flex items-center gap-2 font-bold">
-              <span>✅</span> Success
-            </p>
-            <p className="mt-2">{success}</p>
-          </div>
-        )}
-
-        <div className="space-y-6">
-          {/* Role Selection - MANDATORY */}
-          <div>
-            <label className="mb-3 block text-sm font-semibold text-gray-900 dark:text-gray-200">
-              I am a <span className="text-red-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => setRole('patient')}
-                className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 p-4 font-medium transition-all duration-200 ${
-                  role === 'patient'
-                    ? 'border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-200'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200'
-                }`}
-              >
-                <User className="h-5 w-5" />
-                <span>Patient</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole('doctor')}
-                className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 p-4 font-medium transition-all duration-200 ${
-                  role === 'doctor'
-                    ? 'border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-200'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200'
-                }`}
-              >
-                <Stethoscope className="h-5 w-5" />
-                <span>Doctor</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole('provider')}
-                className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 p-4 font-medium transition-all duration-200 ${
-                  role === 'provider'
-                    ? 'border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-200'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200'
-                }`}
-              >
-                <Building2 className="h-5 w-5" />
-                <span>Provider</span>
-              </button>
-            </div>
-          </div>
-
-          {role !== 'provider' && (
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-              >
-                Full Name <span className="text-red-500">*</span>
-              </label>
-              <div className="relative mt-2">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                  placeholder="John Doe"
-                />
+    <div className="w-full max-w-2xl mx-auto">
+      <StepIndicator />
+      
+      <form onSubmit={handleSubmit} className="relative transition-all duration-300">
+        <div className="rounded-3xl bg-white/80 backdrop-blur-xl p-6 shadow-2xl shadow-blue-100 dark:bg-slate-900/80 dark:shadow-none sm:p-10 border border-white/20 dark:border-slate-800">
+          
+          {error && (
+            <div className="mb-6 animate-in fade-in slide-in-from-top-2 rounded-2xl border-l-4 border-red-500 bg-red-50 p-4 text-sm text-red-900 dark:bg-red-950/30 dark:text-red-200">
+              <div className="flex items-center gap-2 font-bold">
+                <span className="text-lg">⚠️</span>
+                <span>Wait a second...</span>
               </div>
+              <p className="mt-2 ml-7 opacity-90">{error}</p>
             </div>
           )}
 
-          {/* Email - MANDATORY */}
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-            >
-              Email Address <span className="text-red-500">*</span>
-            </label>
-            <div className="relative mt-2">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Mail className="h-5 w-5 text-gray-400" />
+          {success && (
+            <div className="mb-6 animate-in fade-in slide-in-from-top-2 rounded-2xl border-l-4 border-green-500 bg-green-50 p-4 text-sm text-green-900 dark:bg-green-950/30 dark:text-green-200">
+              <div className="flex items-center gap-2 font-bold">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <span>Excellent!</span>
               </div>
-              <input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                placeholder="john@example.com"
-              />
+              <p className="mt-2 ml-7 opacity-90">{success}</p>
             </div>
-          </div>
-
-          {/* Phone - OPTIONAL */}
-          <div>
-            <label
-              htmlFor="phone"
-              className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-            >
-              Phone Number
-            </label>
-            <div className="relative mt-2">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <span className="flex items-center space-x-1 border-r border-gray-300 pr-2 mr-2 dark:border-slate-600">
-                  <span className="text-lg">🇧🇩</span>
-                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">+88</span>
-                </span>
-              </div>
-              <input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-24 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                placeholder="01712345678"
-              />
-            </div>
-          </div>
-
-          {/* Password - MANDATORY */}
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-            >
-              Password <span className="text-red-500">*</span>
-            </label>
-            <div className="relative mt-2">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Lock className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
-
-          {/* Confirm Password - MANDATORY */}
-          <div>
-            <label
-              htmlFor="password_confirm"
-              className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-            >
-              Confirm Password <span className="text-red-500">*</span>
-            </label>
-            <div className="relative mt-2">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Lock className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                id="password_confirm"
-                type="password"
-                value={formData.password_confirm}
-                onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
-
-          {/* Patient-specific fields */}
-          {role === 'patient' && (
-            <>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* Date of Birth - OPTIONAL */}
-                <div>
-                  <label
-                    htmlFor="dob"
-                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                  >
-                    Date of Birth
-                  </label>
-                  <input
-                    id="dob"
-                    type="date"
-                    value={formData.dob}
-                    onChange={handleInputChange}
-                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                  />
-                </div>
-
-                {/* Gender - OPTIONAL */}
-                <div>
-                  <label
-                    htmlFor="gender"
-                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                  >
-                    Gender
-                  </label>
-                  <select
-                    id="gender"
-                    value={formData.gender}
-                    onChange={handleInputChange}
-                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                  >
-                    <option value="">Select...</option>
-                    <option value="M">Male</option>
-                    <option value="F">Female</option>
-                    <option value="O">Other</option>
-                    <option value="N">Prefer not to say</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Blood Group - OPTIONAL */}
-              <div>
-                <label
-                  htmlFor="blood_group"
-                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                >
-                  Blood Group
-                </label>
-                <select
-                  id="blood_group"
-                  value={formData.blood_group}
-                  onChange={handleInputChange}
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                >
-                  <option value="">Select...</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
-                </select>
-              </div>
-
-              {/* Emergency Contact - OPTIONAL */}
-              <div>
-                <label
-                  htmlFor="emergency_contact"
-                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                >
-                  Emergency Contact
-                </label>
-                <div className="relative mt-2">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <span className="flex items-center space-x-1 border-r border-gray-300 pr-2 mr-2 dark:border-slate-600">
-                      <span className="text-lg">🇧🇩</span>
-                      <span className="text-sm font-medium text-gray-500 dark:text-gray-400">+88</span>
-                    </span>
-                  </div>
-                  <input
-                    id="emergency_contact"
-                    type="tel"
-                    value={formData.emergency_contact}
-                    onChange={handleInputChange}
-                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-24 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                    placeholder="01712345678"
-                  />
-                </div>
-              </div>
-
-              {/* Address - OPTIONAL */}
-              <div>
-                <label
-                  htmlFor="address"
-                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                >
-                  Address
-                </label>
-                <LocationPicker onLocationSelect={handleLocationSelect} defaultAddress={formData.address} />
-              </div>
-            </>
           )}
 
-          {/* Doctor-specific fields */}
-          {role === 'doctor' && (
-            <>
-              {/* Specialty - MANDATORY */}
-              <div>
-                <label
-                  htmlFor="specialty"
-                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                >
-                  Specialty <span className="text-red-500">*</span>
-                </label>
-                <div className="relative mt-2">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Stethoscope className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <select
-                    id="specialty"
-                    value={formData.specialty}
-                    onChange={handleInputChange}
-                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+          {/* STEP 1: ROLE SELECTION */}
+          {currentStep === 'role' && (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">How will you use PhD NexusCare?</h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-8">Choose the identity that best describes you to tailor your experience.</p>
+              
+              <div className="grid grid-cols-1 gap-4">
+                {[
+                  { id: 'patient', title: 'Patient', desc: 'Manage your health records & book appointments', icon: HeartPulse, color: 'blue' },
+                  { id: 'doctor', title: 'Doctor', desc: 'Provide care, manage slots & track patients', icon: Stethoscope, color: 'indigo' },
+                  { id: 'provider', title: 'Organization', desc: 'Offer diagnostic & hospital services', icon: Hospital, color: 'violet' },
+                ].map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => { setRole(r.id as any); nextStep(); }}
+                    className={`group relative flex items-center gap-6 rounded-2xl border-2 p-6 text-left transition-all duration-300 hover:shadow-xl ${
+                      role === r.id
+                        ? 'border-blue-500 bg-blue-50/50 ring-4 ring-blue-500/10 dark:bg-blue-900/20'
+                        : 'border-gray-100 bg-white hover:border-blue-200 dark:border-slate-800 dark:bg-slate-800/50'
+                    }`}
                   >
-                    <option value="">Select Specialty...</option>
-                    <option value="Cardiology">Cardiology</option>
-                    <option value="Neurology">Neurology</option>
-                    <option value="Pulmonology">Pulmonology</option>
-                    <option value="Gastroenterology">Gastroenterology</option>
-                    <option value="ENT">ENT (Ear, Nose & Throat)</option>
-                    <option value="Dermatology">Dermatology</option>
-                    <option value="Orthopedics">Orthopedics</option>
-                    <option value="Ophthalmology">Ophthalmology</option>
-                    <option value="Psychiatry">Psychiatry</option>
-                    <option value="Gynecology">Gynecology</option>
-                    <option value="Urology">Urology</option>
-                    <option value="Rheumatology">Rheumatology</option>
-                    <option value="General Physician">General Physician</option>
-                    <option value="Pediatrics">Pediatrics</option>
-                    <option value="Oncology">Oncology</option>
-                    <option value="Endocrinology">Endocrinology</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Qualifications - OPTIONAL */}
-              <div>
-                <label
-                  htmlFor="qualifications"
-                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                >
-                  Qualifications
-                </label>
-                <textarea
-                  id="qualifications"
-                  value={formData.qualifications}
-                  onChange={handleInputChange}
-                  rows={2}
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                  placeholder="MD, MBBS, etc."
-                />
-              </div>
-
-              {/* Location - OPTIONAL */}
-              <div>
-                <label
-                  htmlFor="location"
-                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                >
-                  Location
-                </label>
-                <LocationPicker onLocationSelect={handleLocationSelect} defaultAddress={formData.location} />
-              </div>
-
-              {/* Bio - OPTIONAL */}
-              <div>
-                <label
-                  htmlFor="bio"
-                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                >
-                  Bio
-                </label>
-                <textarea
-                  id="bio"
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                  placeholder="Tell us about yourself..."
-                />
-              </div>
-            </>
-          )}
-
-          {role === 'provider' && (
-            <>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="organization_name"
-                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                  >
-                    Organization Name <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative mt-2">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <Building2 className="h-5 w-5 text-gray-400" />
+                    <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl transition-colors duration-300 ${
+                      role === r.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-500'
+                    }`}>
+                      <r.icon className="h-7 w-7" />
                     </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg text-gray-900 dark:text-white">{r.title}</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{r.desc}</p>
+                    </div>
+                    <ArrowRight className={`h-5 w-5 transition-transform duration-300 ${
+                      role === r.id ? 'translate-x-0 text-blue-500 opacity-100' : '-translate-x-4 text-gray-300 opacity-0 group-hover:translate-x-0 group-hover:opacity-100'
+                    }`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: ACCOUNT SECURITY */}
+          {currentStep === 'account' && (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Secure your account</h2>
+                <p className="text-gray-500 dark:text-gray-400">Let's set up your credentials for {role} access.</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="group">
+                  <label htmlFor="email" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 transition-colors group-focus-within:text-blue-600">
+                    Email Address <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-colors group-focus-within:text-blue-500" />
                     <input
-                      id="organization_name"
-                      type="text"
-                      value={formData.organization_name}
+                      id="email"
+                      type="email"
+                      required
+                      value={formData.email}
                       onChange={handleInputChange}
-                      className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                      placeholder="Dhaka Diagnostic Center"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-900"
+                      placeholder="john@example.com"
                     />
                   </div>
                 </div>
-                <div>
-                  <label
-                    htmlFor="legal_name"
-                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                  >
-                    Legal Name
-                  </label>
-                  <input
-                    id="legal_name"
-                    type="text"
-                    value={formData.legal_name}
-                    onChange={handleInputChange}
-                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                    placeholder="Registered company name"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="organization_type"
-                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                  >
-                    Organization Type
+                <div className="group">
+                  <label htmlFor="phone" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 transition-colors group-focus-within:text-blue-600">
+                    Phone Number
                   </label>
-                  <select
-                    id="organization_type"
-                    value={formData.organization_type}
-                    onChange={handleInputChange}
-                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                  >
-                    <option value="hospital">Hospital</option>
-                    <option value="diagnostic_center">Diagnostic Center</option>
-                    <option value="clinic">Clinic</option>
-                    <option value="lab">Laboratory</option>
-                    <option value="imaging_center">Imaging Center</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label
-                    htmlFor="registration_number"
-                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                  >
-                    Trade License / Registration No.
-                  </label>
-                  <input
-                    id="registration_number"
-                    type="text"
-                    value={formData.registration_number}
-                    onChange={handleInputChange}
-                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                    placeholder="Optional but recommended"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="contact_person"
-                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                  >
-                    Contact Person <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="contact_person"
-                    type="text"
-                    value={formData.contact_person}
-                    onChange={handleInputChange}
-                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                    placeholder="Operations manager"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="provider_phone"
-                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                  >
-                    Organization Phone <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative mt-2">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <span className="flex items-center space-x-1 border-r border-gray-300 pr-2 mr-2 dark:border-slate-600">
-                        <span className="text-lg">🇧🇩</span>
-                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">+88</span>
-                      </span>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center space-x-1 border-r border-gray-200 pr-2 dark:border-slate-700">
+                      <span className="text-lg">🇧🇩</span>
+                      <span className="text-xs font-bold text-gray-400">+88</span>
                     </div>
                     <input
-                      id="provider_phone"
+                      id="phone"
                       type="tel"
-                      value={formData.provider_phone}
+                      value={formData.phone}
                       onChange={handleInputChange}
-                      className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-24 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-24 pr-4 text-gray-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-900"
                       placeholder="01712345678"
                     />
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="district"
-                    className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                  >
-                    District <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="district"
-                    type="text"
-                    value={formData.district}
-                    onChange={handleInputChange}
-                    className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                    placeholder="Dhaka"
-                  />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="group">
+                    <label htmlFor="password" title="At least 8 characters" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 transition-colors group-focus-within:text-blue-600">
+                      Password <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+                      <input
+                        id="password"
+                        type="password"
+                        required
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-900"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+                  <div className="group">
+                    <label htmlFor="password_confirm" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 transition-colors group-focus-within:text-blue-600">
+                      Confirm <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+                      <input
+                        id="password_confirm"
+                        type="password"
+                        required
+                        value={formData.password_confirm}
+                        onChange={handleInputChange}
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-900"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label
-                  htmlFor="website"
-                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                >
-                  Website
-                </label>
-                <input
-                  id="website"
-                  type="url"
-                  value={formData.website}
-                  onChange={handleInputChange}
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                  placeholder="https://example.com"
-                />
+              <div className="flex gap-4 pt-4">
+                <button type="button" onClick={prevStep} className="flex-1 rounded-xl border-2 border-gray-100 py-3 font-bold text-gray-600 transition-all hover:bg-gray-50 active:scale-95 dark:border-slate-800 dark:text-gray-400 dark:hover:bg-slate-800">
+                  Go Back
+                </button>
+                <button type="button" onClick={nextStep} className="flex-[2] rounded-xl bg-blue-600 py-3 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 active:scale-95 dark:shadow-none">
+                  Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: PROFESSIONAL PROFILE */}
+          {currentStep === 'profile' && (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Complete your profile</h2>
+                <p className="text-gray-500 dark:text-gray-400">Tell us more about yourself to finalize registration.</p>
               </div>
 
-              <div>
-                <label
-                  htmlFor="address"
-                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
-                >
-                  Organization Address <span className="text-red-500">*</span>
-                </label>
-                <LocationPicker onLocationSelect={handleLocationSelect} defaultAddress={formData.address} />
+              <div className="max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar space-y-6 pb-4">
+                {role !== 'provider' && (
+                  <div className="group">
+                    <label htmlFor="name" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 transition-colors group-focus-within:text-blue-600">
+                      Full Name <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-colors group-focus-within:text-blue-500" />
+                      <input
+                        id="name"
+                        type="text"
+                        required
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-900"
+                        placeholder="John Doe"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {role === 'patient' && (
+                  <div className="space-y-6 animate-in fade-in duration-700">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="group">
+                        <label htmlFor="dob" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Date of Birth</label>
+                        <input id="dob" type="date" value={formData.dob} onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 outline-none focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white" />
+                      </div>
+                      <div className="group">
+                        <label htmlFor="gender" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Gender</label>
+                        <select id="gender" value={formData.gender} onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 outline-none focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                          <option value="">Select...</option>
+                          <option value="M">Male</option>
+                          <option value="F">Female</option>
+                          <option value="O">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div className="group">
+                      <label htmlFor="blood_group" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Blood Group</label>
+                      <select id="blood_group" value={formData.blood_group} onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 outline-none focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                        <option value="">Select...</option>
+                        {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="group">
+                      <label htmlFor="emergency_contact" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 transition-colors group-focus-within:text-blue-600">
+                        Emergency Contact
+                      </label>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center space-x-1 border-r border-gray-200 pr-2 dark:border-slate-700">
+                          <span className="text-lg">🇧🇩</span>
+                          <span className="text-xs font-bold text-gray-400">+88</span>
+                        </div>
+                        <input
+                          id="emergency_contact"
+                          type="tel"
+                          value={formData.emergency_contact}
+                          onChange={handleInputChange}
+                          className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-24 pr-4 text-gray-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-900"
+                          placeholder="01712345678"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="group">
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Current Address</label>
+                      <LocationPicker onLocationSelect={handleLocationSelect} defaultAddress={formData.address} />
+                    </div>
+                  </div>
+                )}
+
+                {role === 'doctor' && (
+                  <div className="space-y-6 animate-in fade-in duration-700">
+                    <div className="group">
+                      <label htmlFor="specialty" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 transition-colors group-focus-within:text-blue-600">
+                        Primary Specialty <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-blue-500" />
+                        <select id="specialty" required value={formData.specialty} onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 outline-none focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                          <option value="">Select Specialty...</option>
+                          {['Cardiology', 'Neurology', 'Pulmonology', 'Gastroenterology', 'Dermatology', 'Psychiatry', 'General Physician'].map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="group">
+                      <label htmlFor="qualifications" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Academic Qualifications</label>
+                      <textarea id="qualifications" value={formData.qualifications} onChange={handleInputChange} rows={2} className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 outline-none focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="MD, MBBS, etc." />
+                    </div>
+                    <div className="group">
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Chamber/Clinic Location</label>
+                      <LocationPicker onLocationSelect={handleLocationSelect} defaultAddress={formData.location} />
+                    </div>
+                  </div>
+                )}
+
+                {role === 'provider' && (
+                  <div className="space-y-6 animate-in fade-in duration-700">
+                    <div className="group">
+                      <label htmlFor="organization_name" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Organization Name <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input id="organization_name" type="text" required value={formData.organization_name} onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 outline-none focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="Dhaka Medical College" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="group">
+                        <label htmlFor="organization_type" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Type</label>
+                        <select id="organization_type" value={formData.organization_type} onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 outline-none focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                          <option value="hospital">Hospital</option>
+                          <option value="diagnostic_center">Diagnostic</option>
+                          <option value="clinic">Clinic</option>
+                        </select>
+                      </div>
+                      <div className="group">
+                        <label htmlFor="contact_person" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Contact Person <span className="text-red-500">*</span></label>
+                        <input id="contact_person" type="text" required value={formData.contact_person} onChange={handleInputChange} className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 outline-none focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="Manager Name" />
+                      </div>
+                    </div>
+                    <div className="group">
+                      <label htmlFor="provider_phone" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 transition-colors group-focus-within:text-blue-600">
+                        Organization Phone <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center space-x-1 border-r border-gray-200 pr-2 dark:border-slate-700">
+                          <span className="text-lg">🇧🇩</span>
+                          <span className="text-xs font-bold text-gray-400">+88</span>
+                        </div>
+                        <input
+                          id="provider_phone"
+                          type="tel"
+                          required
+                          value={formData.provider_phone}
+                          onChange={handleInputChange}
+                          className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-24 pr-4 text-gray-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-900"
+                          placeholder="01712345678"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="group">
+                      <label htmlFor="logo-upload" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Organization Logo</label>
+                      <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 py-6 transition-all hover:border-blue-500 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-900">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                          <Upload className="h-6 w-6" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{organizationLogo ? organizationLogo.name : 'Click to upload logo'}</span>
+                        <input id="logo-upload" type="file" accept="image/*" className="sr-only" onChange={(e) => setOrganizationLogo(e.target.files?.[0] ?? null)} />
+                      </label>
+                    </div>
+
+                    <div className="group">
+                      <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Organization Address <span className="text-red-500">*</span></label>
+                      <LocationPicker onLocationSelect={handleLocationSelect} defaultAddress={formData.address} />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label
-                  htmlFor="description"
-                  className="block text-sm font-semibold text-gray-900 dark:text-gray-200"
+              <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-slate-800">
+                <button type="button" onClick={prevStep} className="flex-1 rounded-xl border-2 border-gray-100 py-3 font-bold text-gray-600 transition-all hover:bg-gray-50 active:scale-95 dark:border-slate-800 dark:text-gray-400 dark:hover:bg-slate-800">
+                  Go Back
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isLoading} 
+                  className="flex-[2] relative group overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 font-bold text-white shadow-xl shadow-blue-200 transition-all hover:shadow-2xl hover:scale-[1.02] active:scale-95 disabled:opacity-50 dark:shadow-none"
                 >
-                  Organization Description
-                </label>
-                <textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                  placeholder="Diagnostic services, branches, support hours..."
-                />
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {isLoading ? (
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <>
+                        <UserPlus className="h-5 w-5" />
+                        Create Account
+                      </>
+                    )}
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-blue-600 opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-200">
-                  Organization Logo
-                </label>
-                <label className="mt-2 flex cursor-pointer items-center justify-center gap-3 rounded-lg border border-dashed border-gray-300 bg-white px-4 py-4 text-sm text-gray-700 transition hover:border-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-200">
-                  <Upload className="h-5 w-5 text-gray-400" />
-                  <span>{organizationLogo ? organizationLogo.name : 'Upload logo image'}</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(event) => setOrganizationLogo(event.target.files?.[0] ?? null)}
-                  />
-                </label>
-              </div>
-            </>
+            </div>
           )}
         </div>
 
-        {/* Submit Button */}
-        <div className="mt-8">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="group relative flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 font-semibold text-white shadow-lg transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:from-blue-600 disabled:hover:to-indigo-600"
-          >
-            <UserPlus className="h-5 w-5" />
-            {isLoading ? 'Creating account...' : 'Create Account'}
-          </button>
-        </div>
-
         {/* Login Link */}
-        <div className="mt-6 text-center text-sm">
-          <span className="text-gray-600 dark:text-gray-300">Already have an account? </span>
-          <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-500">
-            Sign in
-          </Link>
+        <div className="mt-8 text-center animate-in fade-in duration-1000">
+          <p className="text-gray-500 dark:text-gray-400">
+            Already have an account?{' '}
+            <Link href="/login" className="font-bold text-blue-600 hover:text-blue-500 underline-offset-4 hover:underline">
+              Sign in now
+            </Link>
+          </p>
         </div>
+      </form>
 
-        {/* Required Fields Note */}
-        <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
-          <span className="text-red-500">*</span> Required fields
-        </p>
-      </div>
-    </form>
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #e2e8f0;
+          border-radius: 10px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #334155;
+        }
+      `}</style>
+    </div>
   );
 }
