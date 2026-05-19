@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { reviewsApi, type Review } from '../api';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuthStore } from '@/features/auth/store';
 
 interface ReviewSectionProps {
   doctorId?: number;
@@ -15,6 +16,7 @@ interface ReviewSectionProps {
 }
 
 export function ReviewSection({ doctorId, organizationId }: ReviewSectionProps) {
+  const { user } = useAuthStore();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [rating, setRating] = useState(0);
@@ -92,47 +94,64 @@ export function ReviewSection({ doctorId, organizationId }: ReviewSectionProps) 
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Review Form */}
-          <form onSubmit={handleSubmitReview} className="space-y-4 rounded-lg border p-4 bg-gray-50 dark:bg-slate-900">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Your Rating</label>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setRating(star)}
-                    onMouseEnter={() => setHoveredRating(star)}
-                    onMouseLeave={() => setHoveredRating(0)}
-                    className="focus:outline-none"
-                  >
-                    <Star
-                      className={`h-6 w-6 ${
-                        star <= (hoveredRating || rating)
-                          ? 'fill-amber-500 text-amber-500'
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  </button>
-                ))}
+          {/* Review Form - Only for Patients */}
+          {user?.role === 'patient' ? (
+            <form onSubmit={handleSubmitReview} className="space-y-4 rounded-lg border p-4 bg-gray-50 dark:bg-slate-900">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Your Rating</label>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      onMouseEnter={() => setHoveredRating(star)}
+                      onMouseLeave={() => setHoveredRating(0)}
+                      className="focus:outline-none"
+                    >
+                      <Star
+                        className={`h-6 w-6 ${
+                          star <= (hoveredRating || rating)
+                            ? 'fill-amber-500 text-amber-500'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Your Comment</label>
-              <Textarea
-                placeholder="Share your experience..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                className="min-h-[100px]"
-              />
-            </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Your Comment</label>
+                <Textarea
+                  placeholder="Share your experience..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  className="min-h-[100px]"
+                />
+              </div>
 
-            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-              {isSubmitting ? 'Submitting...' : 'Submit Review'}
-              <Send className="ml-2 h-4 w-4" />
-            </Button>
-          </form>
+              <div className="flex flex-col gap-2">
+                <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+                  {isSubmitting ? 'Submitting...' : 'Submit Review'}
+                  <Send className="ml-2 h-4 w-4" />
+                </Button>
+                <p className="text-[10px] text-muted-foreground italic">
+                  * Only patients with a completed appointment or medical records can leave reviews.
+                </p>
+              </div>
+            </form>
+          ) : (
+            <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4 text-sm text-blue-700">
+              <div className="flex items-center gap-2 font-medium">
+                <CheckCircle2 className="h-4 w-4" />
+                Verified Reviews Policy
+              </div>
+              <p className="mt-1 text-xs opacity-90">
+                To ensure authentic feedback, only patients who have received services can leave a review.
+              </p>
+            </div>
+          )}
 
           {/* Reviews List */}
           <div className="space-y-4">
