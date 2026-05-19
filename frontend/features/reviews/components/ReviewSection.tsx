@@ -79,13 +79,16 @@ export function ReviewSection({ doctorId, organizationId }: ReviewSectionProps) 
     }
   };
 
+  // Reviews List
+  const reviewList = Array.isArray(reviews) ? reviews : [];
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-blue-600" />
-            Patient Reviews ({reviews.length})
+            Patient Reviews ({reviewList.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -135,10 +138,10 @@ export function ReviewSection({ doctorId, organizationId }: ReviewSectionProps) 
           <div className="space-y-4">
             {isLoading ? (
               <p className="text-center py-4 text-muted-foreground">Loading reviews...</p>
-            ) : reviews.length === 0 ? (
+            ) : reviewList.length === 0 ? (
               <p className="text-center py-4 text-muted-foreground">No reviews yet. Be the first to review!</p>
             ) : (
-              reviews.map((review) => (
+              reviewList.map((review) => (
                 <div key={review.id} className="border-b last:border-0 pb-4 space-y-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">

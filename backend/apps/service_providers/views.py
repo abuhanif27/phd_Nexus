@@ -1,3 +1,4 @@
+from django.db import models
 from django.utils import timezone
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -43,7 +44,7 @@ class ServiceProviderOrganizationViewSet(viewsets.ReadOnlyModelViewSet):
 
         return queryset.distinct()
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['get', 'patch'], permission_classes=[IsAuthenticated])
     def me(self, request):
         if request.user.role != 'provider':
             return Response({'error': 'Only service providers can access this endpoint.'}, status=403)
@@ -52,6 +53,12 @@ class ServiceProviderOrganizationViewSet(viewsets.ReadOnlyModelViewSet):
             organization = request.user.service_provider_profile
         except ServiceProviderOrganization.DoesNotExist:
             return Response({'error': 'Service provider profile not found.'}, status=404)
+
+        if request.method == 'PATCH':
+            serializer = self.get_serializer(organization, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
 
         serializer = self.get_serializer(organization)
         return Response(serializer.data)
@@ -68,16 +75,48 @@ class ProviderServiceViewSet(viewsets.ModelViewSet):
         return [IsProviderOwner()]
 
     def get_queryset(self):
-        if self.request.user.is_authenticated and self.request.user.role == 'provider':
-            return ProviderService.objects.filter(
-                organization=self.request.user.service_provider_profile,
-            ).select_related('organization')
+        queryset = ProviderService.objects.all().select_related('organization')
 
-        queryset = ProviderService.objects.filter(
-            is_available=True,
-            organization__verification_status='approved',
-            organization__is_verified=True,
-        ).select_related('organization')
+        # Role-based filtering
+        user = self.request.user
+        is_provider = user.is_authenticated and user.role == 'provider'
+        
+        if self.request.query_params.get('mine') == 'true':
+            if is_provider and hasattr(user, 'service_provider_profile'):
+                queryset = queryset.filter(organization=user.service_provider_profile)
+            else:
+                return ProviderService.objects.none()
+        elif self.request.query_params.get('competitors') == 'true':
+            if is_provider and hasattr(user, 'service_provider_profile'):
+                queryset = queryset.filter(
+                    is_available=True,
+                    approval_status='approved',
+                    organization__verification_status='approved',
+                    organization__is_verified=True
+                ).exclude(organization=user.service_provider_profile)
+            else:
+                return ProviderService.objects.none()
+        else:
+            # Default public view: only approved services from approved organizations
+            queryset = queryset.filter(
+                is_available=True,
+                approval_status='approved',
+                organization__verification_status='approved',
+                organization__is_verified=True
+            )
+
+        # Additional filters
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                models.Q(name__icontains=search) | 
+                models.Q(description__icontains=search) |
+                models.Q(organization__organization_name__icontains=search)
+            )
+
+        approval_status = self.request.query_params.get('approval_status')
+        if approval_status:
+            queryset = queryset.filter(approval_status=approval_status)
 
         category = self.request.query_params.get('category')
         if category:

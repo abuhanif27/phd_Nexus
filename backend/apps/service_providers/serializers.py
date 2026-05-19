@@ -25,6 +25,8 @@ class ProviderServiceSerializer(serializers.ModelSerializer):
             'discounted_price',
             'turnaround_time',
             'sample_required',
+            'approval_status',
+            'admin_feedback',
             'is_available',
             'created_at',
             'updated_at',

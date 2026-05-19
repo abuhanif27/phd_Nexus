@@ -90,6 +90,8 @@ export interface ProviderService {
   discounted_price: string | null;
   turnaround_time: string;
   sample_required: string;
+  approval_status: 'pending' | 'approved' | 'rejected';
+  admin_feedback?: string;
   is_available: boolean;
   created_at: string;
   updated_at: string;

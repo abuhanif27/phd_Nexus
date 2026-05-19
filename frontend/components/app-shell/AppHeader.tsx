@@ -98,7 +98,9 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
                       ? user.patient_profile?.name || 'User'
                       : user.role === 'doctor'
                         ? user.doctor_profile?.name || 'User'
-                        : 'User'}
+                        : user.role === 'provider'
+                          ? user.provider_profile?.organization_name || 'User'
+                          : 'User'}
                   </p>
                   <p className="text-xs capitalize text-gray-500 dark:text-gray-400">{user.role}</p>
                 </div>
@@ -113,7 +115,9 @@ export function AppHeader({ onToggleSidebar }: AppHeaderProps) {
                     ? user?.patient_profile?.name || 'User'
                     : user?.role === 'doctor'
                       ? user?.doctor_profile?.name || 'User'
-                      : 'User'}
+                      : user?.role === 'provider'
+                        ? user?.provider_profile?.organization_name || 'User'
+                        : 'User'}
                 </p>
                 <p className="text-xs capitalize text-gray-500 dark:text-gray-400">
                   {user?.role} Portal

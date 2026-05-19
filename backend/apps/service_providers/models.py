@@ -57,6 +57,12 @@ class ServiceProviderOrganization(models.Model):
 
 
 class ProviderService(models.Model):
+    SERVICE_STATUS_CHOICES = [
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
     CATEGORY_CHOICES = [
         ('lab_test', 'Lab Test'),
         ('imaging', 'Imaging'),
@@ -78,6 +84,8 @@ class ProviderService(models.Model):
     discounted_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     turnaround_time = models.CharField(max_length=100, blank=True, help_text='Example: Same day, 24 hours')
     sample_required = models.CharField(max_length=120, blank=True, help_text='Example: Blood, urine, fasting')
+    approval_status = models.CharField(max_length=20, choices=SERVICE_STATUS_CHOICES, default='pending')
+    admin_feedback = models.TextField(blank=True)
     is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
