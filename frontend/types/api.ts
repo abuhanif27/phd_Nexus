@@ -66,6 +66,9 @@ export interface ServiceProviderOrganization {
   website: string;
   address: string;
   district: string;
+  latitude: number | null;
+  longitude: number | null;
+  google_place_id: string;
   logo: string | null;
   description: string;
   is_verified: boolean;

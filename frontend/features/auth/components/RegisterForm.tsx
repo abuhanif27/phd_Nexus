@@ -62,7 +62,18 @@ export function RegisterForm() {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleLocationSelect = (loc: { address: string; latitude: number; longitude: number; google_place_id: string }) => {
+  const handleLocationSelect = (loc: { address: string; latitude: number; longitude: number; google_place_id: string } | null) => {
+    if (!loc) {
+      setFormData((prev) => ({
+        ...prev,
+        address: '',
+        location: '',
+        latitude: null,
+        longitude: null,
+        google_place_id: '',
+      }));
+      return;
+    }
     setFormData((prev) => ({
       ...prev,
       address: loc.address,

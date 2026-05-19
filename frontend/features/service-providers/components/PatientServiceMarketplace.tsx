@@ -1,18 +1,29 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, FlaskConical, MapPin, Search, Star } from 'lucide-react';
+import { Building2, Calendar, Clock, FlaskConical, MapPin, Search, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import type { ProviderService, ProviderServiceCategory } from '@/types/api';
 import { serviceProvidersApi } from '../api';
 import { ReviewSection } from '@/features/reviews/components/ReviewSection';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
+import { LocationPicker } from '@/components/ui/LocationPicker';
 
-const categories: Array<{ value: ProviderServiceCategory | ''; label: string }> = [
-  { value: '', label: 'All categories' },
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+const categories: Array<{ value: string; label: string }> = [
+  { value: 'all', label: 'All Categories' },
   { value: 'lab_test', label: 'Lab tests' },
   { value: 'imaging', label: 'Imaging' },
   { value: 'health_package', label: 'Packages' },
@@ -24,19 +35,28 @@ const categories: Array<{ value: ProviderServiceCategory | ''; label: string }> 
 export function PatientServiceMarketplace() {
   const [services, setServices] = useState<ProviderService[]>([]);
   const [search, setSearch] = useState('');
-  const [district, setDistrict] = useState('');
-  const [category, setCategory] = useState<ProviderServiceCategory | ''>('');
+  const [category, setCategory] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const { toast } = useToast();
 
-  const loadServices = async () => {
+  // Booking Form State
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingTime, setBookingTime] = useState('');
+  const [bookingNotes, setBookingNotes] = useState('');
+  const [isBooking, setIsBooking] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState<number | null>(null);
+
+  const loadServices = async (userLoc?: { lat: number; lng: number }) => {
     try {
       setIsLoading(true);
       setError(null);
       const data = await serviceProvidersApi.listServices({
         search: search || undefined,
-        district: district || undefined,
-        category: category || undefined,
+        category: category === 'all' ? undefined : (category as ProviderServiceCategory),
+        user_lat: userLoc?.lat || location?.lat,
+        user_lng: userLoc?.lng || location?.lng,
       });
       setServices(data);
     } catch (err: any) {
@@ -47,8 +67,56 @@ export function PatientServiceMarketplace() {
   };
 
   useEffect(() => {
-    loadServices();
+    // Attempt to get user location for proximity sorting
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const loc = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setLocation(loc);
+          loadServices(loc);
+        },
+        () => {
+          // Fallback if location denied or failed
+          loadServices();
+        }
+      );
+    } else {
+      loadServices();
+    }
   }, []);
+
+  const handleBooking = async (serviceId: number) => {
+    if (!bookingDate) {
+      toast({ title: 'Error', description: 'Please select a date for the service.', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      setIsBooking(true);
+      await serviceProvidersApi.createBooking({
+        service: serviceId,
+        date: bookingDate,
+        preferred_time: bookingTime || undefined,
+        notes: bookingNotes,
+      });
+      toast({ title: 'Success', description: 'Your booking request has been submitted.' });
+      setIsDialogOpen(null);
+      setBookingDate('');
+      setBookingTime('');
+      setBookingNotes('');
+    } catch (err: any) {
+      toast({ 
+        title: 'Booking Failed', 
+        description: err?.response?.data?.error || 'Could not process booking.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsBooking(false);
+    }
+  };
 
   const resultCount = useMemo(() => services.length, [services]);
 
@@ -66,33 +134,50 @@ export function PatientServiceMarketplace() {
         </Badge>
       </div>
 
-      <div className="grid gap-3 rounded-lg border bg-white p-4 dark:border-slate-800 dark:bg-slate-900 md:grid-cols-[1fr_180px_180px_auto]">
-        <div className="relative">
+      <div className="flex flex-col gap-3 p-4 bg-white dark:bg-slate-900 border rounded-xl shadow-sm md:flex-row md:items-center">
+        <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search CBC, X-ray, health package..."
-            className="pl-9"
+            className="pl-9 h-10"
           />
         </div>
-        <Input
-          value={district}
-          onChange={(event) => setDistrict(event.target.value)}
-          placeholder="District"
-        />
-        <select
-          value={category}
-          onChange={(event) => setCategory(event.target.value as ProviderServiceCategory | '')}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+        <div className="w-full md:w-72">
+          <LocationPicker 
+            placeholder="Location (optional)" 
+            onLocationSelect={(loc) => {
+              if (loc) {
+                const newLoc = { lat: loc.latitude, lng: loc.longitude };
+                setLocation(newLoc);
+                loadServices(newLoc);
+              } else {
+                setLocation(null);
+                loadServices();
+              }
+            }}
+          />
+        </div>
+        <div className="w-full md:w-48">
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="h-10">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button 
+          type="button" 
+          onClick={() => loadServices()}
+          className="h-10 px-6"
         >
-          {categories.map((item) => (
-            <option key={item.value || 'all'} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-        <Button type="button" onClick={loadServices}>
           Search
         </Button>
       </div>
@@ -158,9 +243,46 @@ export function PatientServiceMarketplace() {
                 </div>
                 
                 <div className="flex justify-end pt-2">
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                    Details & Booking
-                  </Button>
+                  <Dialog open={isDialogOpen === service.id} onOpenChange={(open) => setIsDialogOpen(open ? service.id : null)}>
+                    <DialogTrigger asChild>
+                      <Button variant="default" className="w-full sm:w-auto">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        Book Service
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Book {service.name}</DialogTitle>
+                        <DialogDescription>
+                          Request a booking for this service at {service.organization_name}.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Preferred Date</label>
+                          <Input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Preferred Time (Optional)</label>
+                          <Input type="time" value={bookingTime} onChange={(e) => setBookingTime(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Notes for the hospital</label>
+                          <Textarea 
+                            placeholder="Symptoms, special requests, etc." 
+                            value={bookingNotes} 
+                            onChange={(e) => setBookingNotes(e.target.value)} 
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(null)}>Cancel</Button>
+                        <Button onClick={() => handleBooking(service.id)} disabled={isBooking}>
+                          {isBooking ? 'Processing...' : 'Confirm Booking'}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </CardContent>
             </Card>

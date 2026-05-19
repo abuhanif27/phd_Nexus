@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { MapPin, Navigation, Search, Loader2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { MapPin, Navigation, Search, Loader2, X } from 'lucide-react';
 import { Button } from './button';
 import { Input } from './input';
 
@@ -10,8 +10,8 @@ interface LocationPickerProps {
     address: string;
     latitude: number;
     longitude: number;
-    google_place_id: string; // Keeping field name for compatibility, will store OSM ID
-  }) => void;
+    google_place_id: string;
+  } | null) => void;
   defaultAddress?: string;
   placeholder?: string;
 }
@@ -31,6 +31,10 @@ export function LocationPicker({ onLocationSelect, defaultAddress = '', placehol
   const [isLocating, setIsLocating] = useState(false);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
+  useEffect(() => {
+    setQuery(defaultAddress || '');
+  }, [defaultAddress]);
+
   const fetchSuggestions = async (searchQuery: string) => {
     if (searchQuery.length < 3) {
       setSuggestions([]);
@@ -39,8 +43,6 @@ export function LocationPicker({ onLocationSelect, defaultAddress = '', placehol
 
     try {
       setIsLoading(true);
-      // Using OpenStreetMap's Nominatim API (Free)
-      // Restricting to Bangladesh (countrycodes=bd)
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           searchQuery
@@ -48,7 +50,7 @@ export function LocationPicker({ onLocationSelect, defaultAddress = '', placehol
         {
           headers: {
             'Accept-Language': 'en-US,en;q=0.9',
-            'User-Agent': 'NexusCare-App', // Important for Nominatim policy
+            'User-Agent': 'NexusCare-App',
           },
         }
       );
@@ -77,13 +79,20 @@ export function LocationPicker({ onLocationSelect, defaultAddress = '', placehol
       address: suggestion.display_name,
       latitude: parseFloat(suggestion.lat),
       longitude: parseFloat(suggestion.lon),
-      google_place_id: `osm-${suggestion.place_id}`, // Prefix with osm to distinguish
+      google_place_id: `osm-${suggestion.place_id}`,
     };
 
     setQuery(newLocation.address);
     setSuggestions([]);
     setShowSuggestions(false);
     onLocationSelect(newLocation);
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    setSuggestions([]);
+    setShowSuggestions(false);
+    onLocationSelect(null);
   };
 
   const handleGetCurrentLocation = () => {
@@ -98,7 +107,6 @@ export function LocationPicker({ onLocationSelect, defaultAddress = '', placehol
         const { latitude, longitude } = position.coords;
         
         try {
-          // Reverse geocoding using Nominatim (Free)
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
             {
@@ -140,10 +148,10 @@ export function LocationPicker({ onLocationSelect, defaultAddress = '', placehol
   }, []);
 
   return (
-    <div className="relative space-y-2">
+    <div className="relative">
       <div className="relative">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-          <MapPin className="h-5 w-5 text-gray-400" />
+          <MapPin className="h-4 w-4 text-slate-400" />
         </div>
         <Input
           type="text"
@@ -151,44 +159,49 @@ export function LocationPicker({ onLocationSelect, defaultAddress = '', placehol
           onChange={handleInputChange}
           onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
           placeholder={placeholder}
-          className="pl-10 pr-20"
+          className="pl-9 pr-24 h-10 text-sm"
           autoComplete="off"
         />
-        <div className="absolute inset-y-0 right-0 flex items-center pr-1">
-          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-gray-400 mr-2" />}
+        <div className="absolute inset-y-0 right-0 flex items-center pr-1.5 gap-0.5">
+          {isLoading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400 mr-1" />
+          ) : query ? (
+            <button
+              onClick={handleClear}
+              className="p-1 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={handleGetCurrentLocation}
             disabled={isLocating}
-            title="Use current location"
+            className="h-7 w-7 p-0"
           >
-            <Navigation className={`h-4 w-4 ${isLocating ? 'animate-pulse' : ''}`} />
+            <Navigation className={`h-3.5 w-3.5 ${isLocating ? 'animate-pulse text-blue-500' : 'text-slate-400'}`} />
           </Button>
         </div>
       </div>
 
       {showSuggestions && suggestions.length > 0 && (
-        <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+        <ul className="absolute z-[60] mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-800 dark:bg-slate-900">
           {suggestions.map((s) => (
             <li
               key={s.place_id}
-              className="cursor-pointer px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-50 last:border-0"
               onClick={() => handleSelectSuggestion(s)}
             >
               <div className="flex items-start gap-2">
-                <Search className="mt-1 h-3 w-3 text-gray-400" />
-                <span>{s.display_name}</span>
+                <Search className="mt-0.5 h-3 w-3 text-slate-400 shrink-0" />
+                <span className="line-clamp-2">{s.display_name}</span>
               </div>
             </li>
           ))}
         </ul>
       )}
-      
-      <p className="text-xs text-gray-500">
-        Start typing your address and select from the suggestions to verify your location. (Powered by OpenStreetMap)
-      </p>
     </div>
   );
 }

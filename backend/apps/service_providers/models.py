@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 
 
+from .scheduling_models import ServiceAvailability, ServiceBooking
+
 class ServiceProviderOrganization(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending Approval'),

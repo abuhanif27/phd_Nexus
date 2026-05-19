@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, FileText, Activity, Pill, TrendingUp, Clock, AlertCircle, Search } from 'lucide-react';
 import { getDashboardStats, getMyAppointments } from '../api';
+import { serviceProvidersApi, type ServiceBooking } from '@/features/service-providers/api';
 import { getHealthInsights } from '@/features/health-summary/api';
 import type { Appointment } from '@/types/api';
 import { format, parseISO, isAfter, isSameDay } from 'date-fns';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 /**
  * Patient Dashboard - Shows overview of appointments, records, and health stats
@@ -34,6 +36,12 @@ export function PatientDashboard() {
     queryFn: getHealthInsights,
   });
 
+  // Fetch Service Bookings
+  const { data: serviceBookings, isLoading: serviceBookingsLoading } = useQuery({
+    queryKey: ['patient', 'service-bookings'],
+    queryFn: () => serviceProvidersApi.listBookings(),
+  });
+
   // Filter for truly upcoming appointments (today or future)
   const upcomingAppointments = React.useMemo(() => {
     const results = appointmentsData?.results || [];
@@ -47,6 +55,13 @@ export function PatientDashboard() {
   }, [appointmentsData]);
 
   const insights = insightsData?.insights || [];
+
+  const upcomingServiceBookings = React.useMemo(() => {
+    const results = serviceBookings || [];
+    return results
+      .filter(b => b.status !== 'completed' && b.status !== 'canceled')
+      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+  }, [serviceBookings]);
 
   return (
     <div className="space-y-8">
@@ -127,6 +142,40 @@ export function PatientDashboard() {
               <div className="space-y-3">
                 {upcomingAppointments.slice(0, 3).map((appointment) => (
                   <AppointmentCard key={appointment.id} appointment={appointment} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Hospital Service Bookings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Hospital Service Bookings</span>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/services">Book New</Link>
+              </Button>
+            </CardTitle>
+            <CardDescription>Diagnostic tests and medical packages</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {serviceBookingsLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : upcomingServiceBookings.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <Building2 className="mx-auto mb-2 h-12 w-12 opacity-50" />
+                <p>No service bookings found</p>
+                <Button variant="link" asChild className="mt-2">
+                  <Link href="/services">Browse Medical Services</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {upcomingServiceBookings.slice(0, 3).map((booking) => (
+                  <ServiceBookingCard key={booking.id} booking={booking} />
                 ))}
               </div>
             )}
@@ -267,6 +316,36 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+// ========================================
+// Component: ServiceBookingCard
+// ========================================
+function ServiceBookingCard({ booking }: { booking: ServiceBooking }) {
+  const bookingDate = parseISO(booking.date);
+
+  return (
+    <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-accent">
+      <div className="flex-shrink-0">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 text-blue-600">
+          <Activity className="h-6 w-6" />
+        </div>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-semibold truncate">{booking.service_name}</p>
+          <Badge variant={booking.status === 'confirmed' ? 'default' : 'outline'} className="text-[10px] uppercase">
+            {booking.status}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground truncate">{booking.organization_name}</p>
+        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          {format(bookingDate, 'MMM d, yyyy')} {booking.preferred_time ? `at ${booking.preferred_time.substring(0, 5)}` : ''}
+        </div>
+      </div>
+    </div>
   );
 }
 

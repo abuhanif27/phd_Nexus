@@ -8,8 +8,13 @@ from rest_framework.views import APIView
 
 from apps.consent.permissions import IsAdmin
 
-from .models import ProviderService, ServiceProviderOrganization
-from .serializers import ProviderServiceSerializer, ServiceProviderOrganizationSerializer
+from .models import ProviderService, ServiceProviderOrganization, ServiceAvailability, ServiceBooking
+from .serializers import (
+    ProviderServiceSerializer, 
+    ServiceProviderOrganizationSerializer,
+    ServiceAvailabilitySerializer,
+    ServiceBookingSerializer
+)
 
 
 class IsProviderOwner(IsAuthenticated):
@@ -20,6 +25,39 @@ class IsProviderOwner(IsAuthenticated):
             and hasattr(request.user, 'service_provider_profile')
             and request.user.service_provider_profile.verification_status == 'approved'
         )
+
+
+class ServiceAvailabilityViewSet(viewsets.ModelViewSet):
+    serializer_class = ServiceAvailabilitySerializer
+    permission_classes = [IsProviderOwner]
+
+    def get_queryset(self):
+        return ServiceAvailability.objects.filter(
+            organization=self.request.user.service_provider_profile
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(organization=self.request.user.service_provider_profile)
+
+
+class ServiceBookingViewSet(viewsets.ModelViewSet):
+    serializer_class = ServiceBookingSerializer
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [IsAuthenticated()]
+        return [IsAuthenticated()] # refine as needed
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'provider' and hasattr(user, 'service_provider_profile'):
+            return ServiceBooking.objects.filter(service__organization=user.service_provider_profile)
+        if user.role == 'patient' and hasattr(user, 'patient_profile'):
+            return ServiceBooking.objects.filter(patient=user.patient_profile)
+        return ServiceBooking.objects.none()
+
+    def perform_create(self, serializer):
+        serializer.save(patient=self.request.user.patient_profile)
 
 
 class ServiceProviderOrganizationViewSet(viewsets.ReadOnlyModelViewSet):
@@ -79,7 +117,8 @@ class ProviderServiceViewSet(viewsets.ModelViewSet):
 
         # Role-based filtering
         user = self.request.user
-        is_provider = user.is_authenticated and user.role == 'provider'
+        user_role = getattr(user, 'role', None)
+        is_provider = user.is_authenticated and user_role == 'provider'
         
         if self.request.query_params.get('mine') == 'true':
             if is_provider and hasattr(user, 'service_provider_profile'):
@@ -129,6 +168,39 @@ class ProviderServiceViewSet(viewsets.ModelViewSet):
         max_price = self.request.query_params.get('max_price')
         if max_price:
             queryset = queryset.filter(price__lte=max_price)
+
+        # Location-based sorting
+        user_lat = self.request.query_params.get('user_lat')
+        user_lng = self.request.query_params.get('user_lng')
+
+        if user_lat and user_lng:
+            try:
+                from django.db.models import ExpressionWrapper, F, FloatField
+                from django.db.models.functions import Cast
+
+                u_lat = float(user_lat)
+                u_lng = float(user_lng)
+
+                # Simplified Euclidean distance for SQLite (works well for local search)
+                # Distance^2 = (lat1 - lat2)^2 + (lng1 - lng2)^2
+                queryset = queryset.annotate(
+                    lat_diff=ExpressionWrapper(
+                        F('organization__latitude') - u_lat,
+                        output_field=FloatField()
+                    ),
+                    lng_diff=ExpressionWrapper(
+                        F('organization__longitude') - u_lng,
+                        output_field=FloatField()
+                    )
+                ).annotate(
+                    distance_sq=ExpressionWrapper(
+                        F('lat_diff') * F('lat_diff') + F('lng_diff') * F('lng_diff'),
+                        output_field=FloatField()
+                    )
+                ).order_by('distance_sq', 'price')
+                return queryset
+            except (ValueError, TypeError):
+                pass
 
         return queryset.order_by('price', 'name')
 
