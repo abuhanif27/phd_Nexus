@@ -120,6 +120,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ['email', 'phone', 'password', 'password_confirm', 'role', 'patient_profile', 'doctor_profile', 'provider_profile', 'organization_logo']
 
+    def validate_phone(self, value):
+        if not value:
+            return value
+        import re
+        pattern = r'^(?:\+88)?01[3-9]\d{8}$'
+        if not re.match(pattern, value):
+            raise serializers.ValidationError("Invalid Bangladeshi phone number. Must be 11 digits starting with 01 (e.g., 01712345678)")
+        return value
+
     def _provider_profile_from_attrs(self, attrs):
         provider_profile = attrs.get('provider_profile') or {}
         if provider_profile.get('phone'):
@@ -152,6 +161,15 @@ class RegisterSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"patient_profile": "Patient profile with name is required"}
                 )
+            # Validate emergency contact
+            emergency_contact = patient_profile.get('emergency_contact')
+            if emergency_contact:
+                import re
+                pattern = r'^(?:\+88)?01[3-9]\d{8}$'
+                if not re.match(pattern, emergency_contact):
+                    raise serializers.ValidationError(
+                        {"patient_profile": {"emergency_contact": "Invalid emergency contact number. Must be 11 digits starting with 01."}}
+                    )
         elif role == 'doctor':
             doctor_profile = attrs.get('doctor_profile', {})
             if not doctor_profile or not doctor_profile.get('name'):
@@ -170,6 +188,15 @@ class RegisterSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"provider_profile": f"Missing required organization fields: {', '.join(missing_fields)}"}
                 )
+            # Validate organization phone
+            phone = provider_profile.get('phone')
+            if phone:
+                import re
+                pattern = r'^(?:\+88)?01[3-9]\d{8}$'
+                if not re.match(pattern, phone):
+                    raise serializers.ValidationError(
+                        {"provider_profile": {"phone": "Invalid Bangladeshi phone number. Must be 11 digits starting with 01."}}
+                    )
         
         return attrs
     
@@ -240,6 +267,24 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class ProfileUpdateSerializer(serializers.Serializer):
     phone = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_phone(self, value):
+        if not value:
+            return value
+        import re
+        pattern = r'^(?:\+88)?01[3-9]\d{8}$'
+        if not re.match(pattern, value):
+            raise serializers.ValidationError("Invalid Bangladeshi phone number. Must be 11 digits starting with 01 (e.g., 01712345678)")
+        return value
+
+    def validate_emergency_contact(self, value):
+        if not value:
+            return value
+        import re
+        pattern = r'^(?:\+88)?01[3-9]\d{8}$'
+        if not re.match(pattern, value):
+            raise serializers.ValidationError("Invalid emergency contact number. Must be 11 digits starting with 01.")
+        return value
     
     # Patient fields
     name = serializers.CharField(required=False)

@@ -9,6 +9,24 @@ class PatientSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     profile_photo_url = serializers.SerializerMethodField()
     
+    def validate_phone(self, value):
+        if not value:
+            return value
+        import re
+        pattern = r'^(?:\+88)?01[3-9]\d{8}$'
+        if not re.match(pattern, value):
+            raise serializers.ValidationError("Invalid Bangladeshi phone number. Must be 11 digits starting with 01.")
+        return value
+
+    def validate_emergency_contact(self, value):
+        if not value:
+            return value
+        import re
+        pattern = r'^(?:\+88)?01[3-9]\d{8}$'
+        if not re.match(pattern, value):
+            raise serializers.ValidationError("Invalid emergency contact number. Must be 11 digits starting with 01.")
+        return value
+
     class Meta:
         model = Patient
         fields = [

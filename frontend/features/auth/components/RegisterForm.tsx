@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UserPlus, Mail, Lock, Phone, User, Stethoscope, MapPin, Building2, Upload } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Stethoscope, MapPin, Building2, Upload } from 'lucide-react';
 import { authService } from '../api';
 import { LocationPicker } from '@/components/ui/LocationPicker';
 
@@ -78,10 +78,23 @@ export function RegisterForm() {
     if (role === 'doctor' && !formData.specialty) {
       return 'Specialty is required for doctors';
     }
+
+    const bdPhoneRegex = /^(?:\+88)?01[3-9]\d{8}$/;
+    if (formData.phone && !bdPhoneRegex.test(formData.phone)) {
+      return 'Invalid phone number. Use format: 01XXXXXXXXX (11 digits)';
+    }
+
+    if (formData.emergency_contact && !bdPhoneRegex.test(formData.emergency_contact)) {
+      return 'Invalid emergency contact number. Use format: 01XXXXXXXXX (11 digits)';
+    }
+
     if (role === 'provider') {
       if (!formData.organization_name) return 'Organization name is required';
       if (!formData.contact_person) return 'Contact person is required';
       if (!formData.provider_phone && !formData.phone) return 'Organization phone number is required';
+      if (formData.provider_phone && !bdPhoneRegex.test(formData.provider_phone)) {
+        return 'Invalid organization phone. Use format: 01XXXXXXXXX (11 digits)';
+      }
       if (!formData.address) return 'Organization address is required';
       if (!formData.district) return 'District is required';
     }
@@ -383,15 +396,18 @@ export function RegisterForm() {
             </label>
             <div className="relative mt-2">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Phone className="h-5 w-5 text-gray-400" />
+                <span className="flex items-center space-x-1 border-r border-gray-300 pr-2 mr-2 dark:border-slate-600">
+                  <span className="text-lg">🇧🇩</span>
+                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">+88</span>
+                </span>
               </div>
               <input
                 id="phone"
                 type="tel"
                 value={formData.phone}
                 onChange={handleInputChange}
-                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                placeholder="+1 234 567 8900"
+                className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-24 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                placeholder="01712345678"
               />
             </div>
           </div>
@@ -522,15 +538,18 @@ export function RegisterForm() {
                 </label>
                 <div className="relative mt-2">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Phone className="h-5 w-5 text-gray-400" />
+                    <span className="flex items-center space-x-1 border-r border-gray-300 pr-2 mr-2 dark:border-slate-600">
+                      <span className="text-lg">🇧🇩</span>
+                      <span className="text-sm font-medium text-gray-500 dark:text-gray-400">+88</span>
+                    </span>
                   </div>
                   <input
                     id="emergency_contact"
                     type="tel"
                     value={formData.emergency_contact}
                     onChange={handleInputChange}
-                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                    placeholder="+1 234 567 8900"
+                    className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-24 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                    placeholder="01712345678"
                   />
                 </div>
               </div>
@@ -747,15 +766,18 @@ export function RegisterForm() {
                   </label>
                   <div className="relative mt-2">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <Phone className="h-5 w-5 text-gray-400" />
+                      <span className="flex items-center space-x-1 border-r border-gray-300 pr-2 mr-2 dark:border-slate-600">
+                        <span className="text-lg">🇧🇩</span>
+                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">+88</span>
+                      </span>
                     </div>
                     <input
                       id="provider_phone"
                       type="tel"
                       value={formData.provider_phone}
                       onChange={handleInputChange}
-                      className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
-                      placeholder="+880 1XXX XXXXXX"
+                      className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-24 pr-3 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                      placeholder="01712345678"
                     />
                   </div>
                 </div>

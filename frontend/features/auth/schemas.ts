@@ -45,7 +45,10 @@ export const registerSchema = z
     role: z.enum(['patient', 'doctor', 'provider'], {
       required_error: 'Please select a role',
     }),
-    phone: z.string().optional(),
+    phone: z.string()
+      .regex(/^(?:\+88)?01[3-9]\d{8}$/, 'Invalid Bangladeshi phone number. Must be 11 digits starting with 01 (e.g., 01712345678)')
+      .optional()
+      .or(z.literal('')),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
