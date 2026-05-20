@@ -82,7 +82,7 @@ class SymptomCheckerService:
         return doc_list[:5] # Return top 5
 
     def _load_resources(self):
-        """Load datasets and model."""
+        """Load datasets and model (Cloud Priority -> Local Fallback)."""
         try:
             # Load basic info from CSVs
             df_specialist = pd.read_csv(os.path.join(self.DATA_DIR, 'Disease Specialist.csv'))
@@ -120,15 +120,38 @@ class SymptomCheckerService:
             # Severity lookup
             self.severity_map = {standardize_symptom(k): v for k, v in zip(df_severity['Symptom'], df_severity['weight'])}
 
-            # Load or train model
+            # 1. TRY HUGGING FACE FIRST
+            from huggingface_hub import hf_hub_download
+            if getattr(settings, 'USE_HF_MODELS', False):
+                try:
+                    repo_id = getattr(settings, 'HF_REPO_ID', None)
+                    token = getattr(settings, 'HF_TOKEN', None)
+                    if repo_id:
+                        print(f"☁️ Loading Symptom Checker from HF: {repo_id}")
+                        rf_path = hf_hub_download(repo_id=repo_id, filename="symptom_checker_rf.joblib", token=token)
+                        meta_path = hf_hub_download(repo_id=repo_id, filename="symptom_checker_meta.joblib", token=token)
+                        
+                        self.model = joblib.load(rf_path)
+                        meta = joblib.load(meta_path)
+                        self.all_symptoms = meta['all_symptoms']
+                        self.symptom_idx = meta['symptom_idx']
+                        self.model_source = 'hf'
+                        print(f"✓ Successfully loaded Symptom Checker from Hugging Face Hub")
+                        return
+                except Exception as e:
+                    print(f"Warning: HF load failed for Symptom Checker: {e}")
+
+            # 2. LOCAL FALLBACK
             if os.path.exists(self.MODEL_PATH) and os.path.exists(self.METADATA_PATH):
                 self.model = joblib.load(self.MODEL_PATH)
                 meta = joblib.load(self.METADATA_PATH)
                 self.all_symptoms = meta['all_symptoms']
                 self.symptom_idx = meta['symptom_idx']
-                print(f"✓ Loaded Symptom Checker model with {len(self.all_symptoms)} symptoms")
+                self.model_source = 'local'
+                print(f"✓ Loaded Symptom Checker model (LOCAL) with {len(self.all_symptoms)} symptoms")
             else:
                 self.train_model()
+                self.model_source = 'trained'
 
         except Exception as e:
             print(f"Error loading Symptom Checker resources: {e}")

@@ -15,19 +15,31 @@ try:
     import spacy
     import joblib
     import faiss
+    from huggingface_hub import hf_hub_download
     from sentence_transformers import SentenceTransformer
     from sumy.parsers.plaintext import PlaintextParser
     from sumy.nlp.tokenizers import Tokenizer
     from sumy.summarizers.text_rank import TextRankSummarizer
+    import pytesseract
+    from PIL import Image
+    import easyocr
+    from transformers import pipeline, AutoTokenizer, AutoModelForTokenClassification
 except Exception:
     # Dependencies not yet installed
     spacy = None
     joblib = None
     faiss = None
+    hf_hub_download = None
     SentenceTransformer = None
     PlaintextParser = None
     Tokenizer = None
     TextRankSummarizer = None
+    pytesseract = None
+    Image = None
+    easyocr = None
+    pipeline = None
+    AutoTokenizer = None
+    AutoModelForTokenClassification = None
 
 from django.db import models
 from django.conf import settings
@@ -83,6 +95,8 @@ class AIService:
         self.specialist_classifier_type = None
         self.distilbert_classifier = None
         self.faiss_index = None
+        self._ocr_reader = None
+        self.ner_pipeline = None
         
         # If we have a remote URL, we don't load heavy local models
         if self.remote_url:
@@ -120,6 +134,11 @@ class AIService:
         
         # Load specialist classifier with intelligent model selection
         self._load_specialist_classifier()
+
+        # Load clinical NER pipeline if HF models enabled
+        if getattr(settings, 'USE_HF_MODELS', False):
+            self._load_ner_pipeline()
+            self._load_ocr_reader()
         
         # Load FAISS index if it exists
         if os.path.exists(settings.FAISS_INDEX_PATH):
@@ -129,8 +148,53 @@ class AIService:
                 print(f"Warning: Could not load FAISS index: {e}")
     
     def _load_specialist_classifier(self):
-        """Load specialist classifier (Enhanced versions with fallback)."""
-        # Enhanced model paths (PRIORITY)
+        """Load specialist classifier (HF Hub -> Local Enhanced -> Pytorch -> Local Sklearn)."""
+        # 1. Try Hugging Face Hub (Cloud Priority)
+        if getattr(settings, 'USE_HF_MODELS', False) and hf_hub_download:
+            try:
+                repo_id = getattr(settings, 'HF_REPO_ID', None)
+                token = getattr(settings, 'HF_TOKEN', None)
+                
+                if repo_id:
+                    print(f"☁️ Loading models from Hugging Face Hub: {repo_id}")
+                    
+                    # Try to load ENHANCED sklearn from HF
+                    try:
+                        model_path = hf_hub_download(repo_id=repo_id, filename="specialist_clf_sklearn_enhanced.joblib", token=token)
+                        labels_path = hf_hub_download(repo_id=repo_id, filename="specialist_clf_sklearn_enhanced_labels.joblib", token=token)
+                        
+                        from apps.ai.sklearn_classifier_enhanced import EnhancedSklearnSpecialistClassifier
+                        self.specialist_classifier = EnhancedSklearnSpecialistClassifier.load(model_path, labels_path)
+                        self.specialist_classifier_type = 'hf_enhanced_sklearn'
+                        print(f"✓ Successfully loaded ENHANCED specialist classifier from HF Hub")
+                    except Exception as e:
+                        print(f"  Note: Could not load enhanced sklearn from HF: {e}")
+                        # Fallback to basic sklearn on HF
+                        model_path = hf_hub_download(repo_id=repo_id, filename="specialist_clf_sklearn.joblib", token=token)
+                        labels_path = hf_hub_download(repo_id=repo_id, filename="specialist_clf_sklearn_labels.joblib", token=token)
+                        self.specialist_classifier = joblib.load(model_path)
+                        self.specialist_classifier_type = 'hf_sklearn'
+                        print(f"✓ Successfully loaded BASIC specialist classifier from HF Hub")
+
+                    # Try to load FREE DistilBERT from HF
+                    try:
+                        dist_pt = hf_hub_download(repo_id=repo_id, filename="specialist_clf_distilbert_cpu.pt", token=token)
+                        # The labels are usually downloaded with the .pt or as a separate file
+                        # labels_path is already loaded if it matches, but DistilBERT has its own
+                        dist_labels = hf_hub_download(repo_id=repo_id, filename="specialist_clf_distilbert_cpu_labels.joblib", token=token)
+                        
+                        from apps.ai.distilbert_cpu_classifier import FreeDistilBERTClassifier
+                        self.distilbert_classifier = FreeDistilBERTClassifier(dist_pt)
+                        print(f"✓ Deep mode available (HF DistilBERT)")
+                    except Exception as e:
+                        print(f"  Note: Deep mode (DistilBERT) not found on HF: {e}")
+
+                    if self.specialist_classifier:
+                        return
+            except Exception as e:
+                print(f"Warning: Could not load from HF Hub, falling back to local: {e}")
+
+        # 2. Enhanced model paths (LOCAL PRIORITY)
         enhanced_sklearn_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn_enhanced.joblib')
         enhanced_sklearn_labels = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn_enhanced_labels.joblib')
         
@@ -148,7 +212,7 @@ class AIService:
                     enhanced_sklearn_path, enhanced_sklearn_labels
                 )
                 self.specialist_classifier_type = 'enhanced_sklearn'
-                print(f"✓ Loaded ENHANCED sklearn specialist classifier (HIGH ACCURACY)")
+                print(f"✓ Loaded ENHANCED sklearn specialist classifier (LOCAL)")
                 
                 # Try to load FREE DistilBERT for deep mode
                 distilbert_path = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_distilbert_cpu.pt')
@@ -202,6 +266,50 @@ class AIService:
                 print(f"✓ Loaded legacy specialist classifier")
             except Exception as e:
                 print(f"Warning: Could not load legacy classifier: {e}")
+
+    def _load_ner_pipeline(self):
+        """Load clinical NER pipeline locally."""
+        if pipeline is None:
+            return
+        try:
+            print("☁️ Loading Clinical NER pipeline locally...")
+            # We use the same model as in Remote Brain for consistency
+            model_id = "samrawal/bert-base-uncased_clinical-ner"
+            self.ner_pipeline = pipeline("ner", model=model_id, tokenizer=model_id, aggregation_strategy="simple")
+            print("✓ Local Clinical NER pipeline loaded")
+        except Exception as e:
+            print(f"Warning: Could not load local NER pipeline: {e}")
+
+    def _load_ocr_reader(self):
+        """Load EasyOCR reader as a singleton."""
+        if easyocr is None:
+            return
+        try:
+            print("👁️ Initializing Local OCR Reader...")
+            self._ocr_reader = easyocr.Reader(['en'], gpu=False)
+            print("✓ Local OCR Reader ready")
+        except Exception as e:
+            print(f"Warning: Could not initialize local OCR reader: {e}")
+
+    def extract_entities_hf(self, text: str) -> List[Dict]:
+        """Extract entities using local Hugging Face pipeline."""
+        if not self.ner_pipeline or not text.strip():
+            return []
+        try:
+            entities = self.ner_pipeline(text)
+            serialized = []
+            for ent in entities:
+                serialized.append({
+                    "entity_group": str(ent.get('entity_group', 'unknown')),
+                    "score": float(ent.get('score', 0)),
+                    "word": str(ent.get('word', '')),
+                    "start": int(ent.get('start', 0)),
+                    "end": int(ent.get('end', 0))
+                })
+            return serialized
+        except Exception as e:
+            print(f"Local NER Error: {e}")
+            return []
     
     def clean_text(self, text: str) -> str:
         """Clean and normalize text."""
@@ -275,7 +383,7 @@ class AIService:
                 return result
             
             # Use new classifiers (sklearn, enhanced_sklearn) with predict_single method
-            if self.specialist_classifier_type in ['sklearn', 'pytorch', 'enhanced_sklearn']:
+            if self.specialist_classifier_type in ['sklearn', 'pytorch', 'enhanced_sklearn', 'hf_enhanced_sklearn', 'hf_sklearn']:
                 result = self.specialist_classifier.predict_single(text, top_k=3)
                 result['model_type'] = self.specialist_classifier_type
                 return result
@@ -499,13 +607,36 @@ class AIService:
             parser = PlaintextParser.from_string(text, Tokenizer("english"))
             summarizer = TextRankSummarizer()
             summary_sentences = summarizer(parser.document, sentence_count)
-            
             return [str(sent) for sent in summary_sentences]
         except Exception as e:
             print(f"TextRank error: {e}")
             # Fallback: return first few sentences
             sentences = text.split('.')[:sentence_count]
             return [s.strip() + '.' for s in sentences if s.strip()]
+
+    def classify_document(self, text: str) -> str:
+        """Classify document type (lab, prescription, other) based on text content."""
+        if not text:
+            return 'other'
+        
+        text = text.lower()
+        
+        # 1. Lab keywords
+        lab_keywords = ['report', 'result', 'test', 'laboratory', 'blood', 'urine', 'analysis', 'serum', 'plasma', 'clinical pathology', 'hb', 'hba1c']
+        if any(kw in text for kw in lab_keywords):
+            return 'lab'
+            
+        # 2. Prescription keywords
+        rx_keywords = ['rx', 'prescription', 'take', 'tablet', 'capsule', 'dosage', 'daily', 'medication', 'sig:', 'pharmacy', 'tab.', 'cap.', 'bd', 'tds', 'od']
+        if any(kw in text for kw in rx_keywords):
+            return 'prescription'
+            
+        # 3. Encounter/Notes
+        note_keywords = ['encounter', 'visit', 'physical examination', 'patient complained', 'assessment', 'plan:', 'chief complaint']
+        if any(kw in text for kw in note_keywords):
+            return 'encounter'
+            
+        return 'other'
 
     def _is_noise(self, text: str) -> bool:
         """Strictly verify if a piece of text is OCR noise or non-medical info."""
@@ -1165,261 +1296,276 @@ class AIService:
         if sc.get('file'):
             insights.append(f"Based on {sc['file']} uploaded document(s).")
             
-        # Add filtered findings to insights
-        if professional_findings:
-            insights.extend(professional_findings[:4])
-        else:
-            insights.extend([b for b in bullets if not self._is_noise(b)][:4])
+            # Add filtered findings to insights
+            if professional_findings:
+                insights.extend(professional_findings[:4])
+            else:
+                insights.extend([b for b in bullets if not self._is_noise(b)][:4])
 
-        # Medications as objects WITH INTELLIGENT CLINICAL INFERENCE
-        final_medications = []
-        # Attempt to find the most recent record date for a better inference
-        # The corpus is sorted descending, so the first date marker is the newest.
-        ref_date = timezone.now()
-        first_date_match = re.search(r'\[(\d{4}-\d{2}-\d{2})\]', corpus)
-        if first_date_match:
-            try:
-                ref_date = timezone.make_aware(datetime.strptime(first_date_match.group(1), '%Y-%m-%d'))
-            except Exception:
-                pass
+            # Medications as objects WITH INTELLIGENT CLINICAL INFERENCE
+            final_medications = []
+            # Attempt to find the most recent record date for a better inference
+            ref_date = timezone.now()
+            first_date_match = re.search(r'\[(\d{4}-\d{2}-\d{2})\]', corpus)
+            if first_date_match:
+                try:
+                    ref_date = timezone.make_aware(datetime.strptime(first_date_match.group(1), '%Y-%m-%d'))
+                except Exception:
+                    pass
 
-        for med in list(dict.fromkeys(manual_medications))[:12]:
-            final_medications.append(self._analyze_medication(med, record_date=ref_date))
+            for med in list(dict.fromkeys(manual_medications))[:12]:
+                final_medications.append(self._analyze_medication(med, record_date=ref_date))
 
-        return {
-            'summary': summary,
-            'bullets': bullets,
-            'professional_summary': professional_narrative or summary,
-            'professional_findings': professional_findings,
-            'record_highlights': record_highlights,
-            'insights': insights[:10],
-            'conditions': conditions_list,
-            'medications': final_medications,
-            'entities': entities_map,
-            'source_counts': meta['source_counts'],
-            'date_range': meta['date_range'],
-            'record_count': meta['record_count'],
-            'extracted_vitals': vitals,
-            'selected_source_ids': meta.get('selected_source_ids', []),
+            return {
+                'summary': summary,
+                'bullets': bullets,
+                'professional_summary': professional_narrative or summary,
+                'professional_findings': professional_findings,
+                'record_highlights': record_highlights,
+                'insights': insights[:10],
+                'conditions': conditions_list,
+                'medications': final_medications,
+                'entities': entities_map,
+                'source_counts': meta['source_counts'],
+                'date_range': meta['date_range'],
+                'record_count': meta['record_count'],
+                'extracted_vitals': vitals,
+                'selected_source_ids': meta.get('selected_source_ids', []),
+            }
+
+    def extract_prescription_items(self, text: str) -> List[Dict]:
+        """
+        Extract structured prescription items from raw text.
+        Returns a list of {drug, dosage, duration, instructions}.
+        """
+        items = []
+        if not text:
+            return items
+
+        # Pattern for common medicine lines
+        med_pattern = r'(?i)(?:Tab|Cap|Syr|Inj|T\.|C\.)?[\.\s]*([A-Z][a-z0-9\s\-]{2,})\s+(\d+(?:\.\d+)?\s*(?:mg|mcg|ml|gm|g|IU))\b.*?(\b(?:BD|TDS|QD|QID|OD|HS|twice daily|once daily|three times a day|at bedtime|every \d+ hours)\b)?.*?(?:for\s+(\d+)\s+(?:days|day|weeks|week))?'
+        simple_pattern = r'(?i)([A-Z][a-z0-9\s\-]{2,})\s+(\d+(?:\.\d+)?\s*(?:mg|mcg|ml|gm|g|IU))\b'
+        freq_pattern = r'\b(BD|TDS|QD|QID|OD|HS|twice daily|once daily|three times a day|at bedtime|every \d+ hours)\b'
+        dur_pattern = r'\bfor\s+(\d+)\s+(?:days|day|weeks|week)\b'
+
+        lines = text.split('\n')
+        seen_drugs = set()
+
+        for line in lines:
+            line = line.strip()
+            if not line or len(line) < 5: continue
+            match = re.search(med_pattern, line)
+            if match:
+                drug = match.group(1).strip()
+                dosage = match.group(2).strip()
+                frequency = match.group(3).strip().upper() if match.group(3) else ""
+                duration = match.group(4).strip() if match.group(4) else ""
+            else:
+                match_simple = re.search(simple_pattern, line)
+                if match_simple:
+                    drug = match_simple.group(1).strip()
+                    dosage = match_simple.group(2).strip()
+                    freq_match = re.search(freq_pattern, line, re.I)
+                    frequency = freq_match.group(1).upper() if freq_match else ""
+                    dur_match = re.search(dur_pattern, line, re.I)
+                    duration = dur_match.group(1) if dur_match else ""
+                else:
+                    continue
+
+            drug = re.sub(r'[\s\-,.]{2,}.*$', '', drug).strip()
+            if len(drug) < 3: continue
+            if drug.lower() in seen_drugs: continue
+            seen_drugs.add(drug.lower())
+
+            if not frequency:
+                l_lower = line.lower()
+                if 'bd' in l_lower or 'twice daily' in l_lower: frequency = 'BD'
+                elif 'tds' in l_lower or 'three times' in l_lower: frequency = 'TDS'
+                elif 'qd' in l_lower or 'od' in l_lower or 'once daily' in l_lower: frequency = 'QD'
+                elif 'qid' in l_lower or 'four times' in l_lower: frequency = 'QID'
+                elif 'hs' in l_lower or 'at bedtime' in l_lower: frequency = 'HS'
+
+            items.append({
+                'drug': drug.capitalize(),
+                'dosage': dosage,
+                'duration': f"{duration} days" if duration else "30 days",
+                'instructions': frequency or 'As directed'
+            })
+        return items
+
+    def get_medication_info(self, drug_name: str) -> Dict:
+        """Provide detailed info about a medication."""
+        drug_name = drug_name.lower()
+        drug_info_db = {
+            'paracetamol': 'Used to treat pain and fever.',
+            'amoxicillin': 'Penicillin-type antibiotic used to treat bacterial infections.',
+            'metformin': 'Medication used to treat type 2 diabetes.',
+            'atorvastatin': 'Statin medication used to lower cholesterol.',
+            'amlodipine': 'Used to treat high blood pressure.',
         }
-
-
-# Global service instance
-ai_service = AIService()
-
-# ==========================================
-# New Prescription Parser - RL and TrOCR 
-# ==========================================
-from datetime import timedelta
-from django.utils import timezone
-import io
-import re
-
-try:
-    from apps.reminders.models import MedicationReminder
-except ImportError:
-    MedicationReminder = None
+        for key, info in drug_info_db.items():
+            if key in drug_name:
+                return {'name': drug_name.capitalize(), 'purpose': info, 'category': 'Prescription'}
+        return {'name': drug_name.capitalize(), 'purpose': 'Medical prescription.', 'category': 'Unknown'}
 
 class PrescriptionParser:
     @staticmethod
     def parse_image(file_obj, patient):
-        import requests
-        import os
-        import ast
-        import re
+        import requests, os, ast, re, io
         from datetime import timedelta
         from django.utils import timezone
         import dateutil.parser
         from django.conf import settings
+        from apps.ai.services import ai_service
         
-        ngrok_url = getattr(settings, 'REMOTE_BRAIN_URL', None)
-        if not ngrok_url:
-            ngrok_url = os.environ.get("REMOTE_BRAIN_URL", "")
-        
+        ngrok_url = getattr(settings, 'REMOTE_BRAIN_URL', None) or os.environ.get("REMOTE_BRAIN_URL", "")
         ngrok_url = ngrok_url.rstrip('/') if ngrok_url else ""
-        if ngrok_url:
-            print(f"[AI Service] Using Remote Brain URL: {ngrok_url}")
         
-        # ... (File sending and Colab execution)
         file_name = getattr(file_obj, 'name', 'prescription.jpg').lower()
-        upload_file_obj = file_obj
-        filename_to_send = 'prescription.jpg'
-
+        raw_ocr = ""
+        entities = []
         remote_data = None
+
         if ngrok_url:
             print(f"[AI Service] Calling Remote Brain at: {ngrok_url}")
-            if file_name.endswith('.pdf'):
-                try:
-                    import pypdfium2 as pdfium
-                    import io
-                    file_obj.seek(0)
-                    pdf = pdfium.PdfDocument(file_obj)
-                    page = pdf.get_page(0)  # Get first page
-                    pil_image = page.render(scale=2).to_pil()
-                    img_byte_arr = io.BytesIO()
-                    pil_image.save(img_byte_arr, format='JPEG')
-                    img_byte_arr.seek(0)
-                    upload_file_obj = img_byte_arr
-                except Exception as e:
-                    print("PDF conversion failed:", str(e))
-            else:
-                file_obj.seek(0)
-
             try:
-                files = {'file': (filename_to_send, upload_file_obj, 'application/octet-stream')}
+                file_obj.seek(0)
+                files = {'file': ('prescription.jpg', file_obj, 'application/octet-stream')}
                 response = requests.post(f"{ngrok_url}/extract_prescription", files=files, timeout=60)
                 if response.status_code == 200:
                     remote_data = response.json()
-                else:
-                    print(f"Colab Error {response.status_code}: {response.text}")
+                    raw_ocr = remote_data.get('raw_ocr', '')
+                    entities = ast.literal_eval(remote_data.get('clinical_entities', '[]'))
             except Exception as e:
-                print("Failed to reach Colab:", str(e))
-                pass
-        else:
-            print("[AI Service] REMOTE_BRAIN_URL not configured. Skipping remote processing.")
+                print(f"Failed to reach Colab: {e}")
 
-        raw_ocr = remote_data.get('raw_ocr', '') if remote_data else ""
-        entities_str = remote_data.get('clinical_entities', '[]') if remote_data else "[]"
-        
-        try:
-            entities = ast.literal_eval(entities_str)
-        except:
-            entities = []
-            
-        # VERY AGGRESSIVE DATE EXTRACTION
-        extracted_date = None
-        # Try finding standard numerical dates: DD-MM-YYYY, YYYY/MM/DD, DD.MM.YY etc
-        date_pattern = r'(\d{1,2}[\./-]\d{1,2}[\./-]\d{2,4})'
-        date_matches = re.findall(date_pattern, raw_ocr)
-        if date_matches:
-            for d in date_matches:
-                try:
-                    extracted_date = dateutil.parser.parse(d, fuzzy=True).date()
-                    if extracted_date.year > 2000 and extracted_date.year < 2030:
-                        break # Found a valid real date
-                except:
-                    pass
-                
-        # Try explicit worded dates 
-        if not extracted_date:
-            text_date_pattern = r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}(?:st|nd|rd|th|,)?[ 	]+\d{4}'
-            text_matches = re.findall(text_date_pattern, raw_ocr, re.IGNORECASE)
-            if text_matches:
-                try:
-                    extracted_date = dateutil.parser.parse(text_matches[0], fuzzy=True).date()
-                except:
-                    pass
+        if not raw_ocr:
+            print("[AI Service] Running local OCR...")
+            try:
+                # 1. Handle PDF conversion locally
+                if file_name.endswith('.pdf'):
+                    try:
+                        import pypdfium2 as pdfium
+                        file_obj.seek(0)
+                        pdf = pdfium.PdfDocument(file_obj)
+                        ocr_parts = []
+                        
+                        reader = ai_service._ocr_reader
+                        if not reader and easyocr:
+                            ai_service._load_ocr_reader()
+                            reader = ai_service._ocr_reader
+                            
+                        for i in range(len(pdf)):
+                            page = pdf.get_page(i)
+                            pil_image = page.render(scale=2).to_pil()
+                            
+                            page_text = ""
+                            if reader:
+                                img_np = np.array(pil_image)
+                                result = reader.readtext(img_np)
+                                page_text = '\n'.join([text[1] for text in result]).strip()
+                            
+                            if not page_text and pytesseract:
+                                page_text = pytesseract.image_to_string(pil_image).strip()
+                                
+                            if page_text:
+                                ocr_parts.append(page_text)
+                        
+                        raw_ocr = "\n\n".join(ocr_parts).strip()
+                    except Exception as pdf_err:
+                        print(f"Local PDF OCR failed: {pdf_err}")
 
-        # If everything failed, only then use fallback
-        if not extracted_date:
-            extracted_date = timezone.now().date()
-            
-        # DOCTOR'S ADVICE EXTRACTION
-        doctor_advice = None
-        advice_match = re.search(r'(?:advise|advice|instruction(?:s)?|note|rx|c/o)\\s*[:\\-]*\\s*(.+?)(?=(?:\\n\\n|\\d+\\.|\\Z))', raw_ocr, re.IGNORECASE | re.DOTALL)
-        if advice_match:
-            doctor_advice = advice_match.group(1).strip()
-            if len(doctor_advice) < 5 or len(doctor_advice) > 200:
-                doctor_advice = None # Filtering noise
-
-        # MEDICINES AND PURPOSES Dictionary
-        med_dict = {
-            "amoxicillin": "Antibiotic used to treat a wide variety of bacterial infections.",
-            "ibuprofen": "NSAID used for reducing pain, swelling, and fever.",
-            "paracetamol": "Used to treat mild to moderate pain and reduce fever.",
-            "napa": "Used to treat mild to moderate pain and reduce fever.",
-            "azithromycin": "Macrolide antibiotic used to treat bacterial infections.",
-            "omeprazole": "Proton pump inhibitor that decreases stomach acid (GERD, Ulcers).",
-            "pantoprazole": "Proton pump inhibitor used to treat stomach and esophagus problems.",
-            "metformin": "Improves blood sugar levels in people with Type 2 diabetes.",
-            "cetirizine": "Antihistamine used to relieve allergy symptoms.",
-            "fexofenadine": "Antihistamine used to relieve allergy symptoms without causing sleepiness."
-        }
-
-        medicines = []
-        current_med = {}
-        
-        for ent in entities:
-            if isinstance(ent, dict):
-                entity_group = ent.get('entity_group', '')
-                word = ent.get('word', '').replace('##', '')
-                
-                if 'treatment' in entity_group.lower() or 'problem' in entity_group.lower():
-                    if current_med.get('drug_name'):
-                        medicines.append(current_med)
+                # 2. Handle Image OCR locally
+                else:
+                    file_obj.seek(0)
+                    image_data = file_obj.read()
                     
-                    found_purpose = "Prescribed for symptomatic relief and treatment as per doctor's clinical assessment."
-                    for key, val in med_dict.items():
-                        if key.lower() in word.lower():
-                            found_purpose = val
-                            break
+                    reader = ai_service._ocr_reader
+                    if not reader and easyocr:
+                        ai_service._load_ocr_reader()
+                        reader = ai_service._ocr_reader
 
-                    current_med = {"drug_name": word, "dosage": "?", "frequency": "?", "duration_days": 15, "purpose": found_purpose}
-                elif 'test' in entity_group.lower() and current_med.get('drug_name'):
-                    current_med['dosage'] = current_med.get('dosage', '') + ' ' + word
+                    if reader:
+                        try:
+                            # Better to use PIL and then numpy
+                            from PIL import Image
+                            pil_img = Image.open(io.BytesIO(image_data))
+                            img_np = np.array(pil_img)
+                            result = reader.readtext(img_np)
+                            raw_ocr = '\n'.join([text[1] for text in result]).strip()
+                        except Exception as e:
+                            print(f"EasyOCR image error: {e}")
+                    
+                    if not raw_ocr and pytesseract:
+                        try:
+                            from PIL import Image
+                            pil_img = Image.open(io.BytesIO(image_data))
+                            raw_ocr = pytesseract.image_to_string(pil_img).strip()
+                        except Exception as e:
+                            print(f"Tesseract image error: {e}")
 
-        if current_med.get('drug_name'):
-            medicines.append(current_med)
-            
-        if not medicines and raw_ocr:
-            words = raw_ocr.split()
-            for i, w in enumerate(words):
-                if w.lower() in ['tab', 'cap', 'syp', 'inj', 'mg', 'tablet']:
-                    drug = words[i-1] if i > 0 else "Unknown"
-                    if len(drug) > 2:
-                        found_purpose = "Prescribed for symptomatic relief and treatment as per doctor's clinical assessment."
-                        for key, val in med_dict.items():
-                            if key.lower() in drug.lower():
-                                found_purpose = val
-                                break
+            except Exception as ocr_err:
+                print(f"Local OCR critical error: {ocr_err}")
 
-                        medicines.append({
-                            "drug_name": f"{drug} {w}", 
-                            "dosage": "1 unit", 
-                            "frequency": "BD", 
-                            "duration_days": 15,
-                            "purpose": found_purpose
-                        })
+        # Local HF NER Fallback
+        if not entities and raw_ocr and getattr(settings, 'USE_HF_MODELS', False):
+            print("[AI Service] Running local Hugging Face NER...")
+            entities = ai_service.extract_entities_hf(raw_ocr)
 
-        expires_at = extracted_date + timedelta(days=15)
-        
+        # Date extraction
+        extracted_date = None
+        date_match = re.search(r'(\d{1,2}[\./-]\d{1,2}[\./-]\d{2,4})', raw_ocr)
+        if date_match:
+            try: extracted_date = dateutil.parser.parse(date_match.group(1), fuzzy=True).date()
+            except: pass
+        if not extracted_date: extracted_date = timezone.now().date()
+
+        # Medicines
+        medicines = []
+        if entities:
+            # Handle remote entities (same logic as before)
+            current_med = {}
+            for ent in entities:
+                if isinstance(ent, dict):
+                    word = ent.get('word', '').replace('##', '')
+                    if 'treatment' in ent.get('entity_group', '').lower():
+                        if current_med.get('drug_name'): medicines.append(current_med)
+                        current_med = {"drug_name": word, "dosage": "?", "frequency": "?", "duration_days": 15, "purpose": "Prescribed medication."}
+            if current_med.get('drug_name'): medicines.append(current_med)
+        else:
+            # Use local structured extractor
+            items = ai_service.extract_prescription_items(raw_ocr)
+            for item in items:
+                medicines.append({
+                    "drug_name": item['drug'],
+                    "dosage": item['dosage'],
+                    "frequency": item['instructions'],
+                    "duration_days": int(re.search(r'\d+', item['duration']).group()) if re.search(r'\d+', item['duration']) else 15,
+                    "purpose": ai_service.get_medication_info(item['drug'])['purpose']
+                })
+
         return {
             "extracted_date": extracted_date.isoformat(),
-            "expires_at": expires_at.isoformat(),
+            "expires_at": (extracted_date + timedelta(days=15)).isoformat(),
             "medicines": medicines,
             "raw_ocr": raw_ocr,
-            "clinical_entities": entities_str,
-            "doctor_advice": doctor_advice
+            "doctor_advice": "Consult your doctor for specific instructions."
         }
 
     @staticmethod
     def create_reminders(prescription, medicines):
-        """
-        Creates device alarms (MedicationReminder) for 15 days (or extracted duration)
-        """
-        if not MedicationReminder:
-            return
-            
+        try: from apps.reminders.models import MedicationReminder
+        except ImportError: return
         for med in medicines:
-            duration = med.get("duration_days", 15)
-            end_date = timezone.now().date() + timedelta(days=duration)
-            
-            # Map frequency to times
-            times = ["08:00"]
             freq = med.get("frequency", "").upper()
-            if freq == "BD":
-                times = ["08:00", "20:00"]
-            elif freq == "TDS":
-                times = ["08:00", "14:00", "20:00"]
-            
+            times = ["08:00", "20:00"] if freq == "BD" else ["08:00", "14:00", "20:00"] if freq == "TDS" else ["08:00"]
             MedicationReminder.objects.create(
-                patient=prescription.patient,
-                prescription=prescription,
-                drug_name=med.get("drug_name", ""),
-                dosage=med.get("dosage", ""),
-                frequency=freq,
-                start_date=timezone.now().date(),
-                end_date=end_date,
-                scheduled_times=times,
-                is_active=True
+                patient=prescription.patient, prescription=prescription,
+                drug_name=med.get("drug_name", ""), dosage=med.get("dosage", ""),
+                frequency=freq, start_date=timezone.now().date(),
+                end_date=timezone.now().date() + timedelta(days=med.get("duration_days", 15)),
+                scheduled_times=times, is_active=True
             )
+
+# Global service instance
+ai_service = AIService()

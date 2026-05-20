@@ -87,7 +87,6 @@ class EnhancedSklearnSpecialistClassifier:
             # Ensemble of complementary classifiers
             base_lr = LogisticRegression(
                 max_iter=self.max_iter,
-                multi_class='multinomial',
                 solver='lbfgs',
                 class_weight='balanced',
                 C=1.0,
@@ -117,7 +116,6 @@ class EnhancedSklearnSpecialistClassifier:
             # Single powerful logistic regression
             classifier = LogisticRegression(
                 max_iter=self.max_iter,
-                multi_class='multinomial',
                 solver='lbfgs',
                 class_weight='balanced',
                 C=1.0,

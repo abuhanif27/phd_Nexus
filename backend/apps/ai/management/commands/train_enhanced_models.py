@@ -21,12 +21,14 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('='*70 + '\n'))
 
         # Load augmented data
-        data_path = Path(__file__).parent.parent.parent.parent / 'data' / 'symptoms_train_augmented.csv'
+        from django.conf import settings
+        data_dir = Path(settings.BASE_DIR) / 'data'
+        data_path = data_dir / 'symptoms_train_augmented.csv'
         
         if not data_path.exists():
             self.stdout.write(self.style.WARNING(f'Augmented data not found at {data_path}'))
             self.stdout.write(self.style.WARNING('Using original dataset...'))
-            data_path = data_path.parent / 'symptoms_train.csv'
+            data_path = data_dir / 'symptoms_train.csv'
         
         self.stdout.write(f'Loading data from: {data_path}')
         df = pd.read_csv(data_path)

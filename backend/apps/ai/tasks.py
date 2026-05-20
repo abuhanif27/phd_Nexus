@@ -94,7 +94,11 @@ def extract_pdf_text(file_path: str) -> str:
             reader = None
             if easyocr:
                 print(f"[PDF] Using EasyOCR for PDF pages...")
-                reader = easyocr.Reader(['en'], gpu=False)
+                from apps.ai.services import ai_service
+                reader = ai_service._ocr_reader
+                if not reader:
+                    ai_service._load_ocr_reader()
+                    reader = ai_service._ocr_reader
             
             for i, page_image in enumerate(pages):
                 print(f"[PDF] Processing page {i+1}/{len(pages)}")
@@ -182,11 +186,15 @@ def process_file_ocr(file_id: int) -> Dict:
             if easyocr:
                 try:
                     print(f"[OCR] Attempting EasyOCR...")
-                    reader = easyocr.Reader(['en'], gpu=False)
-                    # Convert to numpy if it's a PIL Image (opened via Pillow)
-                    # For images we usually have a path, so EasyOCR can take the path
-                    result = reader.readtext(file_obj.storage_path)
-                    raw_text = '\n'.join([text[1] for text in result]).strip()
+                    from apps.ai.services import ai_service
+                    reader = ai_service._ocr_reader
+                    if not reader:
+                        ai_service._load_ocr_reader()
+                        reader = ai_service._ocr_reader
+                    
+                    if reader:
+                        result = reader.readtext(file_obj.storage_path)
+                        raw_text = '\n'.join([text[1] for text in result]).strip()
                 except Exception as easyocr_error:
                     print(f"[OCR] EasyOCR error: {easyocr_error}")
             
@@ -386,9 +394,15 @@ def get_or_extract_file_text(file_obj: File) -> str:
         elif _is_image_file(file_obj):
             if easyocr:
                 try:
-                    reader = easyocr.Reader(['en'], gpu=False)
-                    result = reader.readtext(file_obj.storage_path)
-                    raw_text = '\n'.join([text[1] for text in result]).strip()
+                    from apps.ai.services import ai_service
+                    reader = ai_service._ocr_reader
+                    if not reader:
+                        ai_service._load_ocr_reader()
+                        reader = ai_service._ocr_reader
+                    
+                    if reader:
+                        result = reader.readtext(file_obj.storage_path)
+                        raw_text = '\n'.join([text[1] for text in result]).strip()
                 except: pass
             
             if not raw_text and Image and pytesseract:

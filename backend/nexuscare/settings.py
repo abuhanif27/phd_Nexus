@@ -255,6 +255,11 @@ FAISS_INDEX_PATH = BASE_DIR / os.getenv('FAISS_INDEX_PATH', 'ai_index/faiss.inde
 SYMPTOM_MODEL_PATH = BASE_DIR / os.getenv('SYMPTOM_MODEL_PATH', 'ai_models/specialist_clf.joblib')
 SPACY_MODEL = os.getenv('SPACY_MODEL', 'en_core_web_sm')
 
+# Hugging Face Settings
+HF_TOKEN = os.getenv('HF_TOKEN', None)
+HF_REPO_ID = os.getenv('HF_REPO_ID', 'hanifgp2500/nexuscare-medical-ai')
+USE_HF_MODELS = os.getenv('USE_HF_MODELS', 'True').lower() == 'true'
+
 # REMOTE BRAIN (Google Colab / Ngrok)
 # Set this to your Ngrok URL (e.g., 'https://xxxx-xx-xx.ngrok.io') 
 # to offload AI processing and prevent local crashes.

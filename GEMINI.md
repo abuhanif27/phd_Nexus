@@ -50,6 +50,12 @@ To prevent local crashes on low-resource hardware, use the "Remote Brain":
 1. Open `COLAB_BRAIN.py` and run it in a Google Colab GPU instance.
 2. Update `backend/.env` with: `REMOTE_BRAIN_URL=https://<your-ngrok-url>.ngrok-free.app`.
 
+### Hugging Face Integration
+The project supports hosting and running models directly from the Hugging Face Hub.
+1. **Setup:** Add `HF_TOKEN` and `HF_REPO_ID` to your `backend/.env`.
+2. **Train & Push:** Run `cd backend && python retrain_and_push.py` to train all models locally and push them to the Hub.
+3. **Run with HF Models:** Set `USE_HF_MODELS=True` in `.env`. The system will automatically download the latest models from the Hub on startup.
+
 ## Development Conventions
 
 ### Coding Standards
