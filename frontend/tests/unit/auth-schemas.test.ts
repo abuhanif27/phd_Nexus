@@ -5,7 +5,7 @@ describe('Auth Schemas', () => {
   describe('loginSchema', () => {
     it('should validate valid login data', () => {
       const validData = {
-        username: 'testuser',
+        email: 'test@example.com',
         password: 'password123',
       };
 
@@ -13,9 +13,9 @@ describe('Auth Schemas', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should reject empty username', () => {
+    it('should reject empty email', () => {
       const invalidData = {
-        username: '',
+        email: '',
         password: 'password123',
       };
 
@@ -25,7 +25,7 @@ describe('Auth Schemas', () => {
 
     it('should reject empty password', () => {
       const invalidData = {
-        username: 'testuser',
+        email: 'test@example.com',
         password: '',
       };
 
@@ -37,10 +37,10 @@ describe('Auth Schemas', () => {
   describe('registerSchema', () => {
     it('should validate valid registration data', () => {
       const validData = {
-        username: 'testuser',
         email: 'test@example.com',
-        password: 'password123',
-        confirmPassword: 'password123',
+        password: 'password123456',
+        confirmPassword: 'password123456',
+        role: 'patient',
       };
 
       const result = registerSchema.safeParse(validData);
@@ -49,10 +49,10 @@ describe('Auth Schemas', () => {
 
     it('should reject mismatched passwords', () => {
       const invalidData = {
-        username: 'testuser',
         email: 'test@example.com',
-        password: 'password123',
+        password: 'password123456',
         confirmPassword: 'different',
+        role: 'patient',
       };
 
       const result = registerSchema.safeParse(invalidData);
@@ -61,10 +61,10 @@ describe('Auth Schemas', () => {
 
     it('should reject invalid email', () => {
       const invalidData = {
-        username: 'testuser',
         email: 'not-an-email',
-        password: 'password123',
-        confirmPassword: 'password123',
+        password: 'password123456',
+        confirmPassword: 'password123456',
+        role: 'patient',
       };
 
       const result = registerSchema.safeParse(invalidData);

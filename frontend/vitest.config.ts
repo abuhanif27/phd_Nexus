@@ -13,6 +13,7 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       exclude: ['node_modules/', 'tests/', '**/*.config.*', '**/dist/**'],
     },
+    exclude: ['node_modules', 'tests/e2e/**'],
   },
   resolve: {
     alias: {

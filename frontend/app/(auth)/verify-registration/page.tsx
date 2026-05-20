@@ -17,6 +17,10 @@ function VerifyRegistrationForm() {
   
   const { mutate: verify, isPending, error, isSuccess } = useVerifyRegistration();
 
+  const onSubmit = React.useCallback((data: VerifyRegistrationInput) => {
+    verify(data);
+  }, [verify]);
+
   const {
     setValue,
     watch,
@@ -37,11 +41,7 @@ function VerifyRegistrationForm() {
     if (otpValue.length === 6 && !isPending && !isSuccess) {
       handleSubmit(onSubmit)();
     }
-  }, [otpValue]);
-
-  const onSubmit = (data: VerifyRegistrationInput) => {
-    verify(data);
-  };
+  }, [otpValue, isPending, isSuccess, handleSubmit, onSubmit]);
 
   const status = isSuccess ? 'success' : error ? 'error' : 'idle';
 

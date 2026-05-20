@@ -13,6 +13,10 @@ vi.mock('@/features/settings/api', () => ({
   updateProfile: vi.fn(),
   changePassword: vi.fn(),
   toggle2FA: vi.fn(),
+  requestEmailChange: vi.fn(),
+  verifyEmailChange: vi.fn(),
+  setup2FA: vi.fn(),
+  send2FAEmail: vi.fn(),
 }));
 
 vi.mock('@/features/auth/api', () => ({
@@ -79,7 +83,7 @@ describe('SettingsPage', () => {
 
     // Wait for data
     await waitFor(() => {
-      expect(screen.getByText('Personal Information')).toBeInTheDocument();
+      expect(screen.getByText('Identity')).toBeInTheDocument();
     });
 
     expect(screen.getByDisplayValue('John Doe')).toBeInTheDocument();
@@ -91,10 +95,10 @@ describe('SettingsPage', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByText('Personal Information')).toBeInTheDocument();
+      expect(screen.getByText('Identity')).toBeInTheDocument();
     });
 
-    const saveButton = screen.getAllByText('Save Changes')[0];
+    const saveButton = screen.getByText('Save Profile');
     fireEvent.click(saveButton);
 
     await waitFor(() => {

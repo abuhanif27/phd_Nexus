@@ -8,6 +8,8 @@ from channels.auth import AuthMiddlewareStack
 from apps.chat.routing import websocket_urlpatterns
 from apps.chat.middleware import JWTAuthMiddleware
 
+from channels.security.websocket import AllowedHostsOriginValidator, OriginValidator
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nexuscare.settings')
 
 # Initialize Django ASGI application early to ensure the AppRegistry
@@ -16,11 +18,14 @@ django_asgi_app = get_asgi_application()
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": JWTAuthMiddleware(
-        AuthMiddlewareStack(
-            URLRouter(
-                websocket_urlpatterns
-            )
+    "websocket": AllowedHostsOriginValidator(
+        OriginValidator(
+            JWTAuthMiddleware(
+                URLRouter(
+                    websocket_urlpatterns
+                )
+            ),
+            ["*"]
         )
     ),
 })

@@ -8,13 +8,14 @@ User = get_user_model()
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope["user"]
+        print(f"WS Connection Attempt: {self.user}")
         
         if self.user.is_anonymous:
-            # We'll handle JWT auth in a middleware or via query params later
-            # For now, let's close if anonymous (unless testing)
+            print("WS Connection Rejected: Anonymous")
             await self.close()
             return
 
+        print(f"WS Connection Accepted: {self.user.email}")
         # Group for this user to receive personal notifications/messages
         self.user_group_name = f"user_{self.user.id}"
         await self.channel_layer.group_add(

@@ -123,8 +123,20 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let reconnectTimer: NodeJS.Timeout;
 
       const connect = () => {
-        const rawBaseUrl = env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-        const baseUrl = rawBaseUrl.replace(/\/+$/, ''); // Strip trailing slash
+        let baseUrl = env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        baseUrl = baseUrl.replace(/\/+$/, '');
+        
+        // If we are on a network IP but API is localhost, adjust automatically
+        if (typeof window !== 'undefined') {
+          const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          const apiIsLocalhost = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
+          
+          if (!isLocalhost && apiIsLocalhost) {
+            baseUrl = `http://${window.location.hostname}:8000`;
+            console.log('Adjusted API Base URL for network access:', baseUrl);
+          }
+        }
+
         const wsUrlBase = baseUrl.replace('http', 'ws');
         const wsUrl = `${wsUrlBase}/ws/chat/?token=${token}`;
         
@@ -137,53 +149,66 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         socket.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          if (data.type === 'status_update') {
-            setOnlineUsers((prev) => {
-              const next = new Set(prev);
-              if (data.status === 'online') next.add(data.user_id);
-              else next.delete(data.user_id);
-              return next;
-            });
-          } else if (data.type === 'new_message') {
-            const newMessage = data.message;
-            
-            setActiveConversation((currentActive) => {
-              if (currentActive?.id === newMessage.conversation) {
-                setMessages((prev) => {
-                  if (prev.some(m => m.id === newMessage.id)) return prev;
-                  return [...prev, newMessage];
-                });
-              }
-              return currentActive;
-            });
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'status_update') {
+              setOnlineUsers((prev) => {
+                const next = new Set(prev);
+                if (data.status === 'online') next.add(data.user_id);
+                else next.delete(data.user_id);
+                return next;
+              });
+            } else if (data.type === 'new_message') {
+              const newMessage = data.message;
+              
+              setActiveConversation((currentActive) => {
+                if (currentActive?.id === newMessage.conversation) {
+                  setMessages((prev) => {
+                    if (prev.some(m => m.id === newMessage.id)) return prev;
+                    return [...prev, newMessage];
+                  });
+                }
+                return currentActive;
+              });
 
-            setConversations((prev) => {
-              if (!Array.isArray(prev)) return [];
-              const exists = prev.some(c => c.id === newMessage.conversation);
-              if (!exists) {
-                // If it's a new conversation from someone else, we might need to fetch it
-                fetchConversations();
-                return prev;
-              }
-              return prev.map(c => c.id === newMessage.conversation 
-                ? { ...c, last_message: newMessage, updated_at: newMessage.timestamp } 
-                : c
-              ).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-            });
+              setConversations((prev) => {
+                if (!Array.isArray(prev)) return [];
+                const exists = prev.some(c => c.id === newMessage.conversation);
+                if (!exists) {
+                  // If it's a new conversation from someone else, we might need to fetch it
+                  fetchConversations();
+                  return prev;
+                }
+                return prev.map(c => c.id === newMessage.conversation 
+                  ? { ...c, last_message: newMessage, updated_at: newMessage.timestamp } 
+                  : c
+                ).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+              });
+            }
+          } catch (e) {
+            console.error('Failed to parse WS message:', e);
           }
         };
 
         socket.onclose = (e) => {
-          console.log('WebSocket Disconnected', e.reason);
+          console.log('WebSocket Disconnected:', {
+            code: e.code,
+            reason: e.reason,
+            wasClean: e.wasClean
+          });
           socketRef.current = null;
           // Reconnect after 3 seconds
           reconnectTimer = setTimeout(connect, 3000);
         };
 
         socket.onerror = (err) => {
-          console.error('WebSocket Error:', err);
-          socket.close();
+          console.error('WebSocket Error URL:', socket?.url);
+          console.error('WebSocket Error ReadyState:', socket?.readyState);
+          console.error('WebSocket Error Event:', err);
+          
+          if (socket?.readyState !== WebSocket.CLOSED && socket?.readyState !== WebSocket.CLOSING) {
+            socket?.close();
+          }
         };
       };
 

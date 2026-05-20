@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getMedicalFiles, parsePrescriptionImage } from '@/features/records/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,19 +34,6 @@ export default function PrescriptionAnalyzerPage() {
     },
   });
 
-  // Auto-select the most likely recent prescription when files load
-  useEffect(() => {
-    if (files && files.length > 0 && !selectedExistingFile && !selectedFileObj) {
-      // Find the most recent file that is either tagged as prescription OR auto-classified as prescription
-      const likelyPrescription = files.find((f: any) => 
-        f.kind === 'prescription' || 
-        (f.classification_note && f.classification_note.toLowerCase().includes('prescription'))
-      ) || files[0]; // Fallback to absolute latest file
-      
-      handleExistingFileSelect(likelyPrescription);
-    }
-  }, [files]);
-
   const analyzeMutation = useMutation({
     mutationFn: (data: { fileObj?: File, fileId?: number }) => 
         parsePrescriptionImage(data.fileId, data.fileObj),
@@ -66,7 +54,7 @@ export default function PrescriptionAnalyzerPage() {
     }
   };
 
-  const handleExistingFileSelect = (file: any) => {
+  const handleExistingFileSelect = useCallback((file: any) => {
       setSelectedExistingFile(file);
       setSelectedFileObj(null); // Clear custom upload
       analyzeMutation.reset();
@@ -76,7 +64,20 @@ export default function PrescriptionAnalyzerPage() {
       // In NextJS env variables:
       const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
       setPreview(`${API_URL}/api/records/files/${file.id}/serve/?token=${token}`);
-  };
+  }, [analyzeMutation]);
+
+  // Auto-select the most likely recent prescription when files load
+  useEffect(() => {
+    if (files && files.length > 0 && !selectedExistingFile && !selectedFileObj) {
+      // Find the most recent file that is either tagged as prescription OR auto-classified as prescription
+      const likelyPrescription = files.find((f: any) => 
+        f.kind === 'prescription' || 
+        (f.classification_note && f.classification_note.toLowerCase().includes('prescription'))
+      ) || files[0]; // Fallback to absolute latest file
+      
+      handleExistingFileSelect(likelyPrescription);
+    }
+  }, [files, selectedExistingFile, selectedFileObj, handleExistingFileSelect]);
 
   const handleAnalyze = () => {
     if (selectedFileObj) {
@@ -165,7 +166,15 @@ export default function PrescriptionAnalyzerPage() {
                      {selectedFileObj?.name.toLowerCase().endsWith('.pdf') || selectedExistingFile?.filename.toLowerCase().endsWith('.pdf') ? (
                          <iframe src={preview} className="w-full h-full rounded border-0" title="PDF Preview" />
                      ) : (
-                         <img src={preview} alt="Preview" className="object-contain w-full h-full rounded" />
+                         <div className="relative w-full h-full">
+                           <Image 
+                             src={preview} 
+                             alt="Preview" 
+                             fill 
+                             className="object-contain rounded" 
+                             unoptimized
+                           />
+                         </div>
                      )}
                      {!selectedExistingFile && (
                          <div className="absolute top-4 right-4 bg-white/90 backdrop-blur text-xs px-2 py-1 rounded shadow text-gray-700 font-medium z-20 pointer-events-none">

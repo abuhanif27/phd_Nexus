@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, Mock } from 'vitest';
 import { LocationPicker } from './LocationPicker';
 import React from 'react';
 import '@testing-library/jest-dom';

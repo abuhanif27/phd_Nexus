@@ -29,9 +29,12 @@ class JWTAuthMiddleware:
                 access_token = AccessToken(token[0])
                 user_id = access_token.payload["user_id"]
                 scope["user"] = await get_user(user_id)
-            except Exception:
+                print(f"WS Auth Success: User {user_id}")
+            except Exception as e:
+                print(f"WS Auth Error: {str(e)}")
                 scope["user"] = AnonymousUser()
         else:
+            print("WS Auth: No token provided")
             scope["user"] = AnonymousUser()
 
         return await self.app(scope, receive, send)
