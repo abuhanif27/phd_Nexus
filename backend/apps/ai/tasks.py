@@ -4,7 +4,6 @@ OCR and document processing tasks.
 import os
 import re
 from typing import Dict, List
-import numpy as np
 
 # ML/NLP imports - Move inside functions for Zero Local Load
 pytesseract = None
@@ -13,6 +12,7 @@ easyocr = None
 pypdf = None
 convert_from_path = None
 spacy = None
+np = None
 
 from django.conf import settings
 from apps.records.models import File, LabResult, Prescription

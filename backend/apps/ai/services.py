@@ -8,9 +8,9 @@ import pickle
 from pathlib import Path
 from typing import List, Dict, Tuple
 from datetime import datetime
-import numpy as np
 
 # ML/NLP imports - Move heavy imports inside methods to reduce RAM footprint
+np = None
 spacy = None
 joblib = None
 faiss = None
@@ -30,9 +30,11 @@ AutoModelForTokenClassification = None
 def _import_heavy_deps():
     global spacy, joblib, faiss, hf_hub_download, InferenceClient, SentenceTransformer
     global PlaintextParser, Tokenizer, TextRankSummarizer, pytesseract, Image, easyocr
-    global pipeline, AutoTokenizer, AutoModelForTokenClassification
+    global pipeline, AutoTokenizer, AutoModelForTokenClassification, np
     
     try:
+        import numpy as n
+        np = n
         import spacy as sp
         spacy = sp
         import joblib as jl
