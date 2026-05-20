@@ -84,8 +84,8 @@ export function AiSummaryCard({
           AI summary from your medical records
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Generated from lab results, prescriptions, encounters, and documents (most recent by
-          date). Uses extractive summarization and medical entity extraction.
+          Synthesized insights from your longitudinal health history, including lab results,
+          prescriptions, and specialist reports.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">

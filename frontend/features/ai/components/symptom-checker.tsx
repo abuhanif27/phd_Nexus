@@ -163,7 +163,7 @@ export function SymptomChecker() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                    Consulting Med-AI...
+                    Analyzing Symptoms...
                   </>
                 ) : (
                   "GENERATE DIAGNOSTIC INSIGHTS"
@@ -193,7 +193,7 @@ export function SymptomChecker() {
                 <Loader2 className="h-12 w-12 text-primary animate-spin opacity-50" />
                 <div className="text-center space-y-2">
                   <p className="font-bold text-lg text-primary/40">Clinical Analysis in Progress</p>
-                  <p className="text-sm text-muted-foreground">Mapping symptoms to BERT embeddings...</p>
+                  <p className="text-sm text-muted-foreground">Identifying symptom patterns...</p>
                 </div>
               </Card>
             </div>

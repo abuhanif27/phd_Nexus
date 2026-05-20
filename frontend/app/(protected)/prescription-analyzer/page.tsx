@@ -61,7 +61,6 @@ export default function PrescriptionAnalyzerPage() {
       
       // We can use the serve endpoint for preview
       const token = localStorage.getItem('access_token');
-      // In NextJS env variables:
       const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
       setPreview(`${API_URL}/api/records/files/${file.id}/serve/?token=${token}`);
   }, [analyzeMutation]);
@@ -69,11 +68,10 @@ export default function PrescriptionAnalyzerPage() {
   // Auto-select the most likely recent prescription when files load
   useEffect(() => {
     if (files && files.length > 0 && !selectedExistingFile && !selectedFileObj) {
-      // Find the most recent file that is either tagged as prescription OR auto-classified as prescription
       const likelyPrescription = files.find((f: any) => 
         f.kind === 'prescription' || 
         (f.classification_note && f.classification_note.toLowerCase().includes('prescription'))
-      ) || files[0]; // Fallback to absolute latest file
+      ) || files[0];
       
       handleExistingFileSelect(likelyPrescription);
     }
@@ -88,243 +86,253 @@ export default function PrescriptionAnalyzerPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Pill className="h-8 w-8 text-blue-600" />
-          Prescription Analyzer (ClinicalBERT + TrOCR)
-        </h1>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Upload or select an existing document to automatically extract medications, dosages, and deadlines.
-        </p>
+    <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-3">
+            <div className="bg-blue-600 p-2 rounded-lg">
+              <Pill className="h-6 w-6 text-white" />
+            </div>
+            Prescription Analysis
+          </h1>
+          <p className="mt-2 text-muted-foreground max-w-lg">
+            Our AI automatically identifies medications and schedules from your documents to help you stay on track with your health.
+          </p>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-3 border-b border-gray-100 dark:border-gray-800 mb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Select Document</CardTitle>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <FileText className="h-4 w-4" />
-                    {selectedExistingFile ? 'Browse Existing' : 'Select Existing'}
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel>Your Medical Records</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <div className="max-h-64 overflow-y-auto">
-                    {filesLoading ? (
-                      <div className="p-4 text-center"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>
-                    ) : files?.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">No documents found</div>
-                    ) : (
-                      files?.map((file: any) => {
-                          const isPrescription = file.kind === 'prescription' || (file.classification_note && file.classification_note.toLowerCase().includes('prescription'));
-                          return (
-                            <DropdownMenuItem 
-                              key={file.id} 
-                              onClick={() => handleExistingFileSelect(file)}
-                              className={`flex items-center justify-between py-2 cursor-pointer ${isPrescription ? 'font-medium' : 'opacity-80'} ${selectedExistingFile?.id === file.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
-                            >
-                              <div className="min-w-0 pr-4 flex items-center gap-2">
-                                {selectedExistingFile?.id === file.id ? <Check className="h-3 w-3 text-blue-600" /> : <div className="w-3" />}
-                                <div className="truncate text-sm">{file.filename}</div>
-                              </div>
-                              <Badge variant={isPrescription ? 'default' : 'secondary'} className="text-[10px] px-1.5 h-4 capitalize shrink-0 ml-2">
-                                {file.kind}
-                              </Badge>
-                            </DropdownMenuItem>
-                          );
-                      })
-                    )}
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            {selectedExistingFile && (
-                <div className="mt-2 text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 p-2 rounded-md flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-500" />
-                    <span className="truncate">Selected: {selectedExistingFile.filename}</span>
-                </div>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors relative h-64 flex flex-col justify-center">
-              <input 
-                type="file" 
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                accept="image/*,.pdf" 
-                onChange={handleFileChange}
-              />
-              {preview ? (
-                  <div className="absolute inset-0 w-full h-full p-2 bg-gray-50 dark:bg-gray-900 rounded">
-                     {selectedFileObj?.name.toLowerCase().endsWith('.pdf') || selectedExistingFile?.filename.toLowerCase().endsWith('.pdf') ? (
-                         <iframe src={preview} className="w-full h-full rounded border-0" title="PDF Preview" />
-                     ) : (
-                         <div className="relative w-full h-full">
-                           <Image 
-                             src={preview} 
-                             alt="Preview" 
-                             fill 
-                             className="object-contain rounded" 
-                             unoptimized
-                           />
-                         </div>
-                     )}
-                     {!selectedExistingFile && (
-                         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur text-xs px-2 py-1 rounded shadow text-gray-700 font-medium z-20 pointer-events-none">
-                            New Upload
-                         </div>
-                     )}
-                  </div>
-              ) : (
-                  <div className="flex flex-col items-center pointer-events-none">
-                    <Upload className="h-10 w-10 text-gray-400 mb-3" />
-                    <p className="text-sm text-gray-600 font-medium">Click or drag prescription here</p>
-                    <p className="text-xs text-gray-400 mt-1">Or select an existing document from above</p>
-                  </div>
-              )}
-            </div>
-            
-            <Button 
-                className="w-full" 
-                onClick={handleAnalyze} 
-                disabled={analyzeMutation.isPending || (!selectedFileObj && !selectedExistingFile)}
-                >
-                {analyzeMutation.isPending ? (
-                    <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Running Colab Models...
-                    </>
-                ) : (
-                    <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    {selectedExistingFile ? 'Analyze Document' : 'Analyze New Upload'}
-                    </>
-                )}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Results Panel */}
-        <Card className="md:col-span-1 border-blue-200 dark:border-blue-900 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-            <Pill className="w-48 h-48" />
-          </div>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5 text-blue-600" />
-              Extraction Results
-            </CardTitle>
-            <CardDescription>
-              {analyzeMutation.isSuccess 
-                  ? "AI extraction completed successfully" 
-                  : "Upload or select a file to see extracted medications"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-             {analyzeMutation.isPending && (
-                <div className="py-12 flex flex-col items-center justify-center space-y-4">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20"></div>
-                    <Loader2 className="h-10 w-10 text-blue-600 animate-spin relative" />
-                  </div>
-                  <p className="text-sm font-medium animate-pulse text-blue-600 text-center">
-                    Running EasyOCR (GPU)...<br/>
-                    Applying ClinicalBERT Tokenizer...
-                  </p>
-                </div>
-             )}
-
-             {analyzeMutation.isError && (
-                 <div className="p-4 bg-red-50 text-red-700 rounded-md border border-red-200 flex items-start gap-3">
-                     <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-                     <div className="text-sm">
-                        <p className="font-medium">Extraction failed</p>
-                        <p className="opacity-90">{analyzeMutation.error instanceof Error ? analyzeMutation.error.message : 'Unknown error occurred'}</p>
-                     </div>
-                 </div>
-             )}
-
-             {analyzeMutation.isSuccess && analyzeMutation.data && (
-                 <div className="space-y-6">
-                    {/* Dates */}
-                    {(analyzeMutation.data as any).extracted_date && (
-                        <div className="flex gap-4">
-                            <div className="bg-gray-50 border rounded-lg p-3 flex-1 flex items-center gap-3">
-                                <Calendar className="h-5 w-5 text-gray-500" />
-                                <div>
-                                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Prescription Date</p>
-                                    <p className="text-sm font-bold">{(analyzeMutation.data as any).extracted_date}</p>
+      <div className="grid gap-8 lg:grid-cols-12">
+        <div className="lg:col-span-5 space-y-6">
+          <Card className="overflow-hidden shadow-md border-0 ring-1 ring-gray-200 dark:ring-gray-800">
+            <CardHeader className="bg-gray-50/50 dark:bg-gray-900/50 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Upload Document</CardTitle>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Saved Records
+                      <ChevronDown className="h-4 w-4 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                    <DropdownMenuLabel>Your Medical Records</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <div className="max-h-64 overflow-y-auto">
+                      {filesLoading ? (
+                        <div className="p-4 text-center"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>
+                      ) : files?.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">No documents found</div>
+                      ) : (
+                        files?.map((file: any) => {
+                            const isPrescription = file.kind === 'prescription' || (file.classification_note && file.classification_note.toLowerCase().includes('prescription'));
+                            return (
+                              <DropdownMenuItem 
+                                key={file.id} 
+                                onClick={() => handleExistingFileSelect(file)}
+                                className={`flex items-center justify-between py-2 cursor-pointer ${isPrescription ? 'font-medium' : 'opacity-80'} ${selectedExistingFile?.id === file.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                              >
+                                <div className="min-w-0 pr-4 flex items-center gap-2">
+                                  {selectedExistingFile?.id === file.id ? <Check className="h-3 w-3 text-blue-600" /> : <div className="w-3" />}
+                                  <div className="truncate text-sm">{file.filename}</div>
                                 </div>
-                            </div>
-                            <div className="bg-red-50 border border-red-100 rounded-lg p-3 flex-1 flex items-center gap-3">
-                                <AlertCircle className="h-5 w-5 text-red-500" />
-                                <div>
-                                    <p className="text-xs text-red-500 font-medium uppercase tracking-wider">Device Alarms Until</p>
-                                    <p className="text-sm font-bold text-red-700">{(analyzeMutation.data as any).expires_at}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Medications */}
-                    <div>
-                        <h3 className="text-sm font-semibold mb-3 tracking-tight">Extracted Medications</h3>
-                        {((analyzeMutation.data as any).medicines || []).length > 0 ? (
-                            <div className="space-y-3">
-                                {((analyzeMutation.data as any).medicines || []).map((med: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center p-3 bg-white dark:bg-gray-900 border rounded-lg shadow-sm">
-                                        <div>
-                                            <div className="font-medium flex items-center gap-2">
-                                                {med.drug_name}
-                                                <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200">
-                                                    {med.frequency}
-                                                </Badge>
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-0.5">Dosage: {med.dosage} for {med.duration_days} days</p>
-                                        </div>
-                                            {med.purpose && <p className="text-xs text-blue-600/80 bg-blue-50/50 p-1.5 rounded mt-1.5 border border-blue-50"><strong className="font-semibold">Action/Purpose:</strong> {med.purpose}</p>}
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-md text-center text-sm text-gray-500">
-                                {((analyzeMutation.data as any).raw_ocr) ? 
-                                    "No specific medicines matched, but text was successfully OCR'd." : "No text detected in image."}
-                            </div>
-                        )}
+                                <Badge variant={isPrescription ? 'default' : 'secondary'} className="text-[10px] px-1.5 h-4 capitalize shrink-0 ml-2">
+                                  {file.kind}
+                                </Badge>
+                              </DropdownMenuItem>
+                            );
+                        })
+                      )}
                     </div>
-                    
-                    
-                    {/* Doctor's Advice Highlight */}
-                    {(analyzeMutation.data as any).doctor_advice && (
-                        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg shadow-sm">
-                            <h3 className="text-sm font-bold text-amber-800 dark:text-amber-500 flex items-center gap-2 mb-1.5">
-                                💡 Doctor's Important Advice
-                            </h3>
-                            <p className="text-sm text-amber-900 dark:text-amber-400 italic">
-                                "{(analyzeMutation.data as any).doctor_advice}"
-                            </p>
-                        </div>
-                    )}
-                 </div>
-             )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl p-4 text-center hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-all relative aspect-[4/3] flex flex-col justify-center overflow-hidden">
+                <input 
+                  type="file" 
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                  accept="image/*,.pdf" 
+                  onChange={handleFileChange}
+                />
+                {preview ? (
+                    <div className="absolute inset-0 w-full h-full bg-white dark:bg-black rounded-lg overflow-hidden group">
+                       {selectedFileObj?.name.toLowerCase().endsWith('.pdf') || selectedExistingFile?.filename.toLowerCase().endsWith('.pdf') ? (
+                           <iframe src={preview} className="w-full h-full border-0" title="Document Preview" />
+                       ) : (
+                           <div className="relative w-full h-full">
+                             <Image 
+                               src={preview} 
+                               alt="Preview" 
+                               fill 
+                               className="object-contain" 
+                               unoptimized
+                             />
+                           </div>
+                       )}
+                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                         <Upload className="h-8 w-8 text-white" />
+                       </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center pointer-events-none space-y-2">
+                      <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full">
+                        <Upload className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <p className="text-sm font-semibold">Drop prescription here</p>
+                      <p className="text-xs text-muted-foreground">Supports JPG, PNG and PDF</p>
+                    </div>
+                )}
+              </div>
+              
+              <Button 
+                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20" 
+                  onClick={handleAnalyze} 
+                  disabled={analyzeMutation.isPending || (!selectedFileObj && !selectedExistingFile)}
+                  >
+                  {analyzeMutation.isPending ? (
+                      <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Analyzing...
+                      </>
+                  ) : (
+                      <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Generate Analysis
+                      </>
+                  )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
 
-             {!analyzeMutation.isPending && !analyzeMutation.isSuccess && !analyzeMutation.isError && (
-                 <div className="h-full flex flex-col items-center justify-center p-12 text-center text-gray-400 dark:text-gray-500">
-                     <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                     <p className="text-sm font-medium mb-1">Awaiting Document</p>
-                     <p className="text-xs opacity-70">Results will be streamed from the remote Google Colab GPU node once you trigger the analysis.</p>
-                 </div>
-             )}
-          </CardContent>
-        </Card>
+        <div className="lg:col-span-7 space-y-6">
+          <Card className="h-full shadow-md border-0 ring-1 ring-gray-200 dark:ring-gray-800">
+            <CardHeader className="bg-gray-50/50 dark:bg-gray-900/50 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Search className="h-5 w-5 text-blue-600" />
+                  Health Insights
+                </CardTitle>
+                {analyzeMutation.isSuccess && (
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <Check className="h-3 w-3 mr-1" />
+                    Verified
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+               {analyzeMutation.isPending && (
+                  <div className="py-20 flex flex-col items-center justify-center space-y-6">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-10"></div>
+                      <div className="bg-white dark:bg-gray-900 p-4 rounded-full relative border border-blue-100 dark:border-blue-900 shadow-xl">
+                        <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
+                      </div>
+                    </div>
+                    <div className="text-center space-y-2">
+                      <p className="text-base font-semibold text-blue-600">Deep scanning your document</p>
+                      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                        Extracting medical entities and cross-referencing with our knowledge base.
+                      </p>
+                    </div>
+                  </div>
+               )}
+
+               {analyzeMutation.isError && (
+                   <div className="p-6 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-xl border border-red-100 dark:border-red-900 flex items-start gap-4">
+                       <AlertCircle className="h-6 w-6 shrink-0" />
+                       <div className="space-y-1">
+                          <p className="font-bold">Analysis interrupted</p>
+                          <p className="text-sm opacity-90">{analyzeMutation.error instanceof Error ? analyzeMutation.error.message : 'We couldn\'t process this document. Please try again or use a clearer image.'}</p>
+                       </div>
+                   </div>
+               )}
+
+               {analyzeMutation.isSuccess && analyzeMutation.data && (
+                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                      {/* Treatment Header */}
+                      <div className="flex flex-col sm:flex-row gap-4">
+                          <div className="flex-1 p-4 rounded-xl border bg-white dark:bg-gray-950 shadow-sm flex items-center gap-4">
+                              <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-full">
+                                <Calendar className="h-6 w-6 text-blue-600" />
+                              </div>
+                              <div>
+                                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Prescribed On</p>
+                                  <p className="text-lg font-bold">{(analyzeMutation.data as any).extracted_date}</p>
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* Medications */}
+                      <div className="space-y-4">
+                          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground px-1">Prescribed Regimen</h3>
+                          {((analyzeMutation.data as any).medicines || []).length > 0 ? (
+                              <div className="grid gap-4 sm:grid-cols-2">
+                                  {((analyzeMutation.data as any).medicines || []).map((med: any, idx: number) => (
+                                      <div key={idx} className="group p-4 bg-white dark:bg-gray-950 border rounded-xl shadow-sm hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
+                                          <div className="flex justify-between items-start mb-2">
+                                              <div className="bg-blue-600/10 text-blue-600 p-2 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                                <Pill className="h-4 w-4" />
+                                              </div>
+                                              <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-800">
+                                                  {med.frequency}
+                                              </Badge>
+                                          </div>
+                                          <div className="space-y-1">
+                                              <p className="font-bold text-lg leading-tight">{med.drug_name}</p>
+                                              <p className="text-sm text-muted-foreground">{med.dosage} for {med.duration_days} days</p>
+                                          </div>
+                                          {med.purpose && (
+                                            <div className="mt-4 pt-4 border-t border-dashed">
+                                              <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">
+                                                {med.purpose}
+                                              </p>
+                                            </div>
+                                          )}
+                                      </div>
+                                  ))}
+                              </div>
+                          ) : (
+                              <div className="p-8 border-2 border-dashed rounded-xl text-center text-muted-foreground">
+                                  <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                  <p className="text-sm">No specific medications were clearly identified.</p>
+                                  <p className="text-xs mt-1">Try uploading a higher resolution photo.</p>
+                              </div>
+                          )}
+                      </div>
+                      
+                      {/* Mobile App Sync Note */}
+                      <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-100 dark:border-blue-900 rounded-xl flex items-center gap-4">
+                        <div className="bg-white dark:bg-gray-900 p-2 rounded-lg shadow-sm">
+                          <Sparkles className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-blue-900 dark:text-blue-300">Medication Reminders</p>
+                          <p className="text-xs text-blue-800/70 dark:text-blue-400/70">
+                            Automatic alarms have been synced to your PhD Nexus mobile app based on this analysis.
+                          </p>
+                        </div>
+                      </div>
+                   </div>
+               )}
+
+               {!analyzeMutation.isPending && !analyzeMutation.isSuccess && !analyzeMutation.isError && (
+                   <div className="h-full min-h-[400px] flex flex-col items-center justify-center p-8 text-center bg-gray-50/50 dark:bg-gray-900/20 rounded-xl border border-dashed">
+                       <div className="bg-white dark:bg-gray-900 p-6 rounded-full shadow-sm mb-6 border">
+                        <Search className="h-12 w-12 text-blue-600/20" />
+                       </div>
+                       <h3 className="text-lg font-semibold mb-2">Awaiting Document</h3>
+                       <p className="text-sm text-muted-foreground max-w-xs">
+                         Select a prescription to begin the clinical analysis and sync reminders to your mobile device.
+                       </p>
+                   </div>
+               )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
