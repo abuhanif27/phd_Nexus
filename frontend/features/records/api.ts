@@ -29,6 +29,7 @@ export interface DoctorPatientDocumentsSummaryResponse {
 export async function getMedicalFiles(params?: {
   kind?: string;
   patient?: number;
+  limit?: number;
 }): Promise<{ results: MedicalFile[] }> {
   const response = await apiClient.get('/api/records/files/', { params });
   return response.data;

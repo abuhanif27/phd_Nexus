@@ -228,17 +228,42 @@ class FileViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'delete']  # No PUT/PATCH for files
     
     def get_queryset(self):
+        queryset = self.queryset
         if self.request.user.role == 'patient':
-            return self.queryset.filter(patient__user=self.request.user).order_by('-created_at')
+            queryset = queryset.filter(patient__user=self.request.user)
         elif self.request.user.role == 'doctor':
-            # Doctors can only see files from patients with active consent
             patient_ids = get_patients_with_consent(self.request.user)
-            queryset = self.queryset.filter(patient_id__in=patient_ids)
+            queryset = queryset.filter(patient_id__in=patient_ids)
             patient_id = self.request.query_params.get('patient')
             if patient_id:
                 queryset = queryset.filter(patient_id=patient_id)
-            return queryset.order_by('-created_at')
-        return self.queryset.order_by('-created_at')
+        
+        # Filtering optimizations
+        kind = self.request.query_params.get('kind')
+        if kind:
+            queryset = queryset.filter(kind=kind)
+            
+        return queryset.order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        """Override list to support a custom limit parameter."""
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        limit = request.query_params.get('limit')
+        if limit and limit.isdigit():
+            queryset = queryset[:int(limit)]
+            # If limited, we often want to skip standard pagination to return a clean list
+            # or just return the limited results.
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({'results': serializer.data})
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({'results': serializer.data})
     
     def perform_create(self, serializer):
         """Set patient automatically."""

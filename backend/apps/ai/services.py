@@ -10,36 +10,58 @@ from typing import List, Dict, Tuple
 from datetime import datetime
 import numpy as np
 
-# ML/NLP imports
-try:
-    import spacy
-    import joblib
-    import faiss
-    from huggingface_hub import hf_hub_download, InferenceClient
-    from sentence_transformers import SentenceTransformer
-    from sumy.parsers.plaintext import PlaintextParser
-    from sumy.nlp.tokenizers import Tokenizer
-    from sumy.summarizers.text_rank import TextRankSummarizer
-    import pytesseract
-    from PIL import Image
-    import easyocr
-    from transformers import pipeline, AutoTokenizer, AutoModelForTokenClassification
-except Exception:
-    # Dependencies not yet installed
-    spacy = None
-    joblib = None
-    faiss = None
-    hf_hub_download = None
-    SentenceTransformer = None
-    PlaintextParser = None
-    Tokenizer = None
-    TextRankSummarizer = None
-    pytesseract = None
-    Image = None
-    easyocr = None
-    pipeline = None
-    AutoTokenizer = None
-    AutoModelForTokenClassification = None
+# ML/NLP imports - Move heavy imports inside methods to reduce RAM footprint
+spacy = None
+joblib = None
+faiss = None
+hf_hub_download = None
+InferenceClient = None
+SentenceTransformer = None
+PlaintextParser = None
+Tokenizer = None
+TextRankSummarizer = None
+pytesseract = None
+Image = None
+easyocr = None
+pipeline = None
+AutoTokenizer = None
+AutoModelForTokenClassification = None
+
+def _import_heavy_deps():
+    global spacy, joblib, faiss, hf_hub_download, InferenceClient, SentenceTransformer
+    global PlaintextParser, Tokenizer, TextRankSummarizer, pytesseract, Image, easyocr
+    global pipeline, AutoTokenizer, AutoModelForTokenClassification
+    
+    try:
+        import spacy as sp
+        spacy = sp
+        import joblib as jl
+        joblib = jl
+        import faiss as fs
+        faiss = fs
+        from huggingface_hub import hf_hub_download as hhd, InferenceClient as ic
+        hf_hub_download = hhd
+        InferenceClient = ic
+        from sentence_transformers import SentenceTransformer as st
+        SentenceTransformer = st
+        from sumy.parsers.plaintext import PlaintextParser as pp
+        PlaintextParser = pp
+        from sumy.nlp.tokenizers import Tokenizer as tk
+        Tokenizer = tk
+        from sumy.summarizers.text_rank import TextRankSummarizer as trs
+        TextRankSummarizer = trs
+        import pytesseract as pt
+        pytesseract = pt
+        from PIL import Image as img
+        Image = img
+        import easyocr as eo
+        easyocr = eo
+        from transformers import pipeline as pl, AutoTokenizer as at, AutoModelForTokenClassification as am
+        pipeline = pl
+        AutoTokenizer = at
+        AutoModelForTokenClassification = am
+    except Exception as e:
+        print(f"Warning: Some AI dependencies could not be loaded: {e}")
 
 from django.db import models
 from django.conf import settings
@@ -103,20 +125,35 @@ class AIService:
         self.hf_client = None
         if self.use_hf_api and self.hf_token:
             try:
-                self.hf_client = InferenceClient(token=self.hf_token)
+                # Lazy import InferenceClient
+                if globals().get('InferenceClient') is None:
+                    from huggingface_hub import InferenceClient as ic
+                    globals()['InferenceClient'] = ic
+                
+                self.hf_client = globals()['InferenceClient'](token=self.hf_token)
                 print("☁️ AI Service running in HF CLOUD mode (Zero local load)")
             except Exception as e:
                 print(f"Warning: Could not initialize HF Inference Client: {e}")
                 self.use_hf_api = False
 
-        # Load local models only if NOT in HF API mode
+        # Load local models ONLY if NOT in HF API mode
         if not self.use_hf_api:
             self._load_models()
 
     def _call_hf_inference(self, data: any, model_id: str, task: str = "text-generation", **kwargs) -> any:
         """Call Hugging Face Inference API."""
         if not self.hf_client:
-            return None
+            # Try to initialize if not yet done
+            if self.hf_token:
+                try:
+                    if globals().get('InferenceClient') is None:
+                        from huggingface_hub import InferenceClient as ic
+                        globals()['InferenceClient'] = ic
+                    self.hf_client = globals()['InferenceClient'](token=self.hf_token)
+                except: return None
+            else:
+                return None
+                
         try:
             if task == "text-generation":
                 return self.hf_client.text_generation(data, model=model_id, **kwargs)
@@ -127,27 +164,53 @@ class AIService:
             elif task == "text-classification":
                 return self.hf_client.text_classification(data, model=model_id)
             elif task == "image-to-text":
-                return self.hf_client.image_to_text(data, model=model_id)
+                # Handle file-like objects or paths
+                if hasattr(data, 'read'):
+                    data.seek(0)
+                    image_bytes = data.read()
+                elif isinstance(data, str) and os.path.exists(data):
+                    with open(data, 'rb') as f:
+                        image_bytes = f.read()
+                else:
+                    image_bytes = data
+                return self.hf_client.image_to_text(image_bytes, model=model_id)
             elif task == "document-question-answering":
-                return self.hf_client.document_question_answering(data, kwargs.get('question', ''), model=model_id)
+                # Handle file-like objects or paths
+                if hasattr(data, 'read'):
+                    data.seek(0)
+                    image_bytes = data.read()
+                elif isinstance(data, str) and os.path.exists(data):
+                    with open(data, 'rb') as f:
+                        image_bytes = f.read()
+                else:
+                    image_bytes = data
+                return self.hf_client.document_question_answering(image_bytes, kwargs.get('question', ''), model=model_id)
             return None
         except Exception as e:
             print(f"HF Inference API Error ({task}): {e}")
             return None
 
     def _load_models(self):
-        """Lazy load ML models."""
+        """Lazy load ML models locally."""
+        global spacy, SentenceTransformer
         try:
+            if spacy is None:
+                import spacy as sp
+                spacy = sp
             # Load spaCy
             self.spacy_model = spacy.load(settings.SPACY_MODEL)
         except Exception as e:
             print(f"Warning: Could not load spaCy model: {e}")
         
         try:
+            if SentenceTransformer is None:
+                from sentence_transformers import SentenceTransformer as st
+                SentenceTransformer = st
             # Load sentence transformer
             self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
         except Exception as e:
             print(f"Warning: Could not load embedding model: {e}")
+
         
         # Load specialist classifier with intelligent model selection
         self._load_specialist_classifier()
@@ -166,6 +229,10 @@ class AIService:
     
     def _load_specialist_classifier(self):
         """Load specialist classifier (HF Hub -> Local Enhanced -> Pytorch -> Local Sklearn)."""
+        # SKIP if using HF Inference API for everything (Zero Local Load)
+        if self.use_hf_api:
+            return
+
         # 1. Try Hugging Face Hub (Cloud Priority)
         if getattr(settings, 'USE_HF_MODELS', False) and hf_hub_download:
             try:
@@ -361,16 +428,36 @@ class AIService:
     
     def analyze_symptoms(self, text: str) -> Dict:
         """
-        Analyze symptom text using spaCy NER.
+        Analyze symptom text using HF Inference API or spaCy NER.
         Returns cleaned text and extracted entities.
         """
+        cleaned = self.clean_text(text)
+        
+        # 1. Try HF Inference API (Cloud Priority)
+        if self.use_hf_api and self.hf_client:
+            entities = self.extract_entities_hf(text)
+            if entities:
+                # Map HF entities to standard format
+                mapped_entities = []
+                for ent in entities:
+                    mapped_entities.append({
+                        'text': ent.get('word', ''),
+                        'label': ent.get('entity_group', 'symptom'),
+                        'start': ent.get('start', 0),
+                        'end': ent.get('end', 0)
+                    })
+                return {
+                    'cleaned_text': cleaned,
+                    'entities': mapped_entities
+                }
+
+        # 2. Local Fallback (spaCy)
         if not self.spacy_model:
             return {
-                'cleaned_text': self.clean_text(text),
+                'cleaned_text': cleaned,
                 'entities': []
             }
         
-        cleaned = self.clean_text(text)
         doc = self.spacy_model(text)
         
         # Extract entities (symptoms, drugs, dates, etc.)
@@ -387,6 +474,7 @@ class AIService:
             'cleaned_text': cleaned,
             'entities': entities
         }
+
     
     def predict_specialist(self, text: str, model_type: str = None, mode: str = 'quick', 
                           patient_history: str = None) -> Dict:
@@ -459,7 +547,26 @@ Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternativ
                 }
             
             # Generate embedding
-            embedding = self.embedding_model.encode([text])[0]
+            if self.use_hf_api and self.hf_client:
+                model_id = getattr(settings, 'HF_EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
+                try:
+                    embedding = self._call_hf_inference([text], model_id, task="feature-extraction")[0]
+                    embedding = np.array(embedding)
+                except Exception as e:
+                    print(f"HF Embedding Error (specialist): {e}")
+                    if self.embedding_model:
+                        embedding = self.embedding_model.encode([text])[0]
+                    else:
+                        raise e
+            elif self.embedding_model:
+                embedding = self.embedding_model.encode([text])[0]
+            else:
+                return {
+                    'specialist': 'General Physician',
+                    'confidence': 0.5,
+                    'alternatives': [],
+                    'model_type': 'fallback_no_model'
+                }
             
             # Get prediction with probabilities
             if hasattr(self.specialist_classifier, 'predict_proba'):
@@ -511,7 +618,7 @@ Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternativ
         """
         Build or update FAISS index for a patient's medical records.
         """
-        if not self.embedding_model:
+        if not self.use_hf_api and not self.embedding_model:
             raise Exception("Embedding model not loaded")
         
         patient = Patient.objects.get(id=patient_id)
@@ -602,7 +709,13 @@ Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternativ
         """
         Generate extractive summary of patient's medical records.
         """
-        if not self.embedding_model or not self.faiss_index:
+        if not self.use_hf_api and not self.embedding_model:
+             return {
+                'bullets': ['No summary available - local models not loaded'],
+                'citations': []
+            }
+            
+        if not self.faiss_index:
             return {
                 'bullets': ['No summary available - index not built'],
                 'citations': []
@@ -611,7 +724,21 @@ Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternativ
         try:
             # Query for general medical summary
             query = "latest medical history summary diagnosis treatment"
-            query_embedding = self.embedding_model.encode([query])[0]
+            
+            # Generate query embedding
+            if self.use_hf_api and self.hf_client:
+                model_id = getattr(settings, 'HF_EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
+                try:
+                    query_embedding = self._call_hf_inference([query], model_id, task="feature-extraction")[0]
+                    query_embedding = np.array(query_embedding)
+                except Exception as e:
+                    print(f"HF Embedding Error (query): {e}")
+                    if self.embedding_model:
+                        query_embedding = self.embedding_model.encode([query])[0]
+                    else:
+                        raise e
+            else:
+                query_embedding = self.embedding_model.encode([query])[0]
             
             # Search FAISS index
             distances, indices = self.faiss_index.search(
@@ -1581,11 +1708,12 @@ class PrescriptionParser:
     @staticmethod
     def parse_image(file_obj, patient):
         import requests, os, ast, re, io
-        from datetime import timedelta
+        from datetime import timedelta, datetime
         from django.utils import timezone
         import dateutil.parser
         from django.conf import settings
         from apps.ai.services import ai_service
+        import numpy as np
         
         use_hf_api = getattr(settings, 'USE_HF_INFERENCE_API', False)
         file_name = getattr(file_obj, 'name', 'prescription.jpg').lower()
@@ -1621,76 +1749,83 @@ class PrescriptionParser:
                 print(f"HF Cloud OCR failed: {e}")
 
         if not raw_ocr:
-            print("[AI Service] Running local OCR...")
-            try:
-                # 1. Handle PDF conversion locally
-                if file_name.endswith('.pdf'):
-                    try:
-                        import pypdfium2 as pdfium
-                        file_obj.seek(0)
-                        pdf = pdfium.PdfDocument(file_obj)
-                        ocr_parts = []
+            # Native PDF extraction is light, so we can keep it as fallback
+            if file_name.endswith('.pdf'):
+                print("[AI Service] Running light local PDF extraction...")
+                try:
+                    import pypdfium2 as pdfium
+                    file_obj.seek(0)
+                    pdf = pdfium.PdfDocument(file_obj)
+                    ocr_parts = []
+                    
+                    # We ONLY use light extraction for PDF in Zero Local Load mode
+                    for i in range(len(pdf)):
+                        page = pdf.get_page(i)
+                        pil_image = page.render(scale=2).to_pil()
                         
-                        reader = ai_service._ocr_reader
-                        if not reader and easyocr:
-                            ai_service._load_ocr_reader()
-                            reader = ai_service._ocr_reader
+                        page_text = ""
+                        # Try Tesseract if available (much lighter than EasyOCR)
+                        if globals().get('pytesseract'):
+                            try:
+                                page_text = globals()['pytesseract'].image_to_string(pil_image).strip()
+                            except: pass
                             
-                        for i in range(len(pdf)):
-                            page = pdf.get_page(i)
-                            pil_image = page.render(scale=2).to_pil()
-                            
-                            page_text = ""
-                            if reader:
-                                img_np = np.array(pil_image)
-                                result = reader.readtext(img_np)
-                                page_text = '\n'.join([text[1] for text in result]).strip()
-                            
-                            if not page_text and pytesseract:
-                                page_text = pytesseract.image_to_string(pil_image).strip()
-                                
-                            if page_text:
-                                ocr_parts.append(page_text)
-                        
-                        raw_ocr = "\n\n".join(ocr_parts).strip()
-                    except Exception as pdf_err:
-                        print(f"Local PDF OCR failed: {pdf_err}")
-
-                # 2. Handle Image OCR locally
+                        if page_text:
+                            ocr_parts.append(page_text)
+                    
+                    raw_ocr = "\n\n".join(ocr_parts).strip()
+                except Exception as pdf_err:
+                    print(f"Local PDF extraction failed: {pdf_err}")
+            
+            # For images, we ONLY fall back to Tesseract, NEVER EasyOCR in Zero Local Load mode
+            elif not use_hf_api or not raw_ocr:
+                if use_hf_api:
+                    print("[AI Service] Cloud OCR failed. Avoiding heavy local OCR to prevent crash.")
                 else:
+                    print("[AI Service] Running local OCR...")
+                
+                try:
                     file_obj.seek(0)
                     image_data = file_obj.read()
                     
-                    reader = ai_service._ocr_reader
-                    if not reader and easyocr:
-                        ai_service._load_ocr_reader()
-                        reader = ai_service._ocr_reader
-
-                    if reader:
+                    # Try Tesseract (Lightweight)
+                    if globals().get('pytesseract'):
                         try:
-                            # Better to use PIL and then numpy
-                            from PIL import Image
-                            pil_img = Image.open(io.BytesIO(image_data))
-                            img_np = np.array(pil_img)
-                            result = reader.readtext(img_np)
-                            raw_ocr = '\n'.join([text[1] for text in result]).strip()
-                        except Exception as e:
-                            print(f"EasyOCR image error: {e}")
-                    
-                    if not raw_ocr and pytesseract:
-                        try:
-                            from PIL import Image
-                            pil_img = Image.open(io.BytesIO(image_data))
-                            raw_ocr = pytesseract.image_to_string(pil_img).strip()
+                            if globals().get('Image') is None:
+                                from PIL import Image as img
+                                globals()['Image'] = img
+                            pil_img = globals()['Image'].open(io.BytesIO(image_data))
+                            raw_ocr = globals()['pytesseract'].image_to_string(pil_img).strip()
                         except Exception as e:
                             print(f"Tesseract image error: {e}")
+                    
+                    # ONLY load EasyOCR if NOT in HF mode
+                    if not raw_ocr and not use_hf_api:
+                        if globals().get('easyocr'):
+                            ai_service._load_ocr_reader()
+                            reader = ai_service._ocr_reader
+                            if reader:
+                                try:
+                                    if globals().get('Image') is None:
+                                        from PIL import Image as img
+                                        globals()['Image'] = img
+                                    pil_img = globals()['Image'].open(io.BytesIO(image_data))
+                                    img_np = np.array(pil_img)
+                                    result = reader.readtext(img_np)
+                                    raw_ocr = '\n'.join([text[1] for text in result]).strip()
+                                except Exception as e:
+                                    print(f"EasyOCR image error: {e}")
+                except Exception as ocr_err:
+                    print(f"Local OCR error: {ocr_err}")
 
-            except Exception as ocr_err:
-                print(f"Local OCR critical error: {ocr_err}")
-
-        # Local HF NER Fallback
-        if not entities and raw_ocr and getattr(settings, 'USE_HF_MODELS', False):
+        # Local HF NER Fallback - ONLY if NOT in Zero Local Load mode
+        if not entities and raw_ocr and not use_hf_api and getattr(settings, 'USE_HF_MODELS', False):
             print("[AI Service] Running local Hugging Face NER...")
+            entities = ai_service.extract_entities_hf(raw_ocr)
+        
+        # If in HF mode and we have raw_ocr but no entities yet, try HF NER
+        if not entities and raw_ocr and use_hf_api:
+            print("[AI Service] Offloading NER to Hugging Face...")
             entities = ai_service.extract_entities_hf(raw_ocr)
 
         # Date extraction
@@ -1725,12 +1860,35 @@ class PrescriptionParser:
                     "purpose": ai_service.get_medication_info(item['drug'])['purpose']
                 })
 
+        # Create Prescription record in database
+        try:
+            from apps.records.models import Prescription
+            from apps.reminders.models import MedicationReminder
+            
+            # Create the main prescription record
+            rx = Prescription.objects.create(
+                patient=patient,
+                doctor=None, # AI Generated
+                items=items if not entities else medicines, # items are from structured extractor
+                notes=f"AI Analyzed Prescription from {extracted_date.isoformat()}\n\nRaw Text:\n{raw_ocr[:1000]}",
+                ts=timezone.make_aware(datetime.combine(extracted_date, datetime.min.time())),
+                expires_at=timezone.make_aware(datetime.combine(extracted_date + timedelta(days=15), datetime.min.time()))
+            )
+            
+            # Create reminders
+            PrescriptionParser.create_reminders(rx, medicines)
+            prescription_id = rx.id
+        except Exception as save_err:
+            print(f"Failed to save prescription record: {save_err}")
+            prescription_id = None
+
         return {
+            "id": prescription_id,
             "extracted_date": extracted_date.isoformat(),
             "expires_at": (extracted_date + timedelta(days=15)).isoformat(),
             "medicines": medicines,
             "raw_ocr": raw_ocr,
-            "doctor_advice": "Consult your doctor for specific instructions."
+            "doctor_advice": "Your medications have been saved and reminders synced to your mobile device. Consult your doctor for specific instructions."
         }
 
     @staticmethod

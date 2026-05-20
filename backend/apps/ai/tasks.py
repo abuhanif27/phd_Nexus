@@ -6,34 +6,13 @@ import re
 from typing import Dict, List
 import numpy as np
 
-try:
-    import pytesseract
-    from PIL import Image
-except ImportError:
-    pytesseract = None
-    Image = None
-
-try:
-    import easyocr
-except ImportError:
-    easyocr = None
-
-try:
-    import pypdf
-except ImportError:
-    pypdf = None
-
-try:
-    from pdf2image import convert_from_path
-except ImportError:
-    convert_from_path = None
-
-# spaCy can raise runtime/config errors on unsupported Python versions.
-# Keep backend startup resilient by treating it as optional.
-try:
-    import spacy
-except Exception:
-    spacy = None
+# ML/NLP imports - Move inside functions for Zero Local Load
+pytesseract = None
+Image = None
+easyocr = None
+pypdf = None
+convert_from_path = None
+spacy = None
 
 from django.conf import settings
 from apps.records.models import File, LabResult, Prescription
@@ -84,21 +63,24 @@ def extract_pdf_text(file_path: str) -> str:
 
     # 2. Fallback to OCR if native failed or returned nothing
     if not raw_text and convert_from_path:
+        use_hf_api = getattr(settings, 'USE_HF_INFERENCE_API', False)
         try:
             print(f"[PDF] Native extraction empty. Attempting OCR fallback for {file_path}")
             # Convert PDF pages to images
             pages = convert_from_path(file_path, dpi=300)
             ocr_parts = []
             
-            # Use EasyOCR if available (more robust for noise)
+            # Use EasyOCR ONLY if NOT in HF mode
             reader = None
-            if easyocr:
+            if easyocr and not use_hf_api:
                 print(f"[PDF] Using EasyOCR for PDF pages...")
                 from apps.ai.services import ai_service
                 reader = ai_service._ocr_reader
                 if not reader:
                     ai_service._load_ocr_reader()
                     reader = ai_service._ocr_reader
+            elif use_hf_api:
+                print(f"[PDF] HF mode enabled: Skipping heavy local EasyOCR for PDF pages.")
             
             for i, page_image in enumerate(pages):
                 print(f"[PDF] Processing page {i+1}/{len(pages)}")
@@ -180,10 +162,11 @@ def process_file_ocr(file_id: int) -> Dict:
         
         # 2. Handle Image
         elif _is_image_file(file_obj):
+            use_hf_api = getattr(settings, 'USE_HF_INFERENCE_API', False)
             print(f"[OCR] Processing image: {file_obj.storage_path}")
             
-            # Try EasyOCR first
-            if easyocr:
+            # Try EasyOCR ONLY if NOT in HF mode
+            if easyocr and not use_hf_api:
                 try:
                     print(f"[OCR] Attempting EasyOCR...")
                     from apps.ai.services import ai_service
@@ -197,6 +180,8 @@ def process_file_ocr(file_id: int) -> Dict:
                         raw_text = '\n'.join([text[1] for text in result]).strip()
                 except Exception as easyocr_error:
                     print(f"[OCR] EasyOCR error: {easyocr_error}")
+            elif use_hf_api:
+                print(f"[OCR] HF mode enabled: Skipping heavy local EasyOCR.")
             
             # Try Tesseract if needed
             if not raw_text and Image and pytesseract:
@@ -401,7 +386,7 @@ def get_or_extract_file_text(file_obj: File) -> str:
         
         # Image (Local OCR - CAUTION: Heavy)
         elif _is_image_file(file_obj):
-            if easyocr:
+            if easyocr and not use_hf_api:
                 try:
                     from apps.ai.services import ai_service
                     reader = ai_service._ocr_reader
@@ -413,6 +398,8 @@ def get_or_extract_file_text(file_obj: File) -> str:
                         result = reader.readtext(file_obj.storage_path)
                         raw_text = '\n'.join([text[1] for text in result]).strip()
                 except: pass
+            elif use_hf_api:
+                print(f"[OCR] HF mode enabled: Avoiding heavy local EasyOCR in get_or_extract_file_text.")
             
             if not raw_text and Image and pytesseract:
                 try:
