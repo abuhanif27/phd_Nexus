@@ -102,6 +102,7 @@ class DoctorAvailabilitySerializer(serializers.ModelSerializer):
 
 class AppointmentSerializer(serializers.ModelSerializer):
     doctor_name = serializers.CharField(source='doctor.name', read_only=True)
+    doctor_user_id = serializers.IntegerField(source='doctor.user_id', read_only=True)
     specialty = serializers.CharField(source='doctor.specialty', read_only=True)
     patient_name = serializers.CharField(source='patient.name', read_only=True)
     patient_phone = serializers.CharField(source='patient.phone', read_only=True)
@@ -111,10 +112,10 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Appointment
-        fields = ['id', 'doctor', 'doctor_name', 'specialty', 'patient', 'patient_name', 'patient_phone', 'patient_code',
+        fields = ['id', 'doctor', 'doctor_name', 'doctor_user_id', 'specialty', 'patient', 'patient_name', 'patient_phone', 'patient_code',
                   'date', 'start_time', 'end_time', 'scheduled_at', 'status', 'notes',
                   'consent_granted', 'consent', 'grant_consent', 'created_at']
-        read_only_fields = ['id', 'created_at', 'doctor_name', 'specialty', 'scheduled_at',
+        read_only_fields = ['id', 'created_at', 'doctor_name', 'doctor_user_id', 'specialty', 'scheduled_at',
                             'consent_granted', 'consent', 'patient_name', 'patient_phone', 'patient_code']
 
     def get_scheduled_at(self, obj):

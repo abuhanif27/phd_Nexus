@@ -14,6 +14,7 @@ import {
   Settings,
   Sparkles,
   Building2,
+  MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useAuthStore } from '@/features/auth/store';
@@ -30,6 +31,12 @@ const patientNavigation = [
     href: '/dashboard',
     icon: LayoutDashboard,
     description: 'Your health overview',
+  },
+  {
+    name: 'Messages',
+    href: '/messages',
+    icon: MessageCircle,
+    description: 'Chat with doctors',
   },
   {
     name: 'Symptom Checker',
@@ -85,6 +92,12 @@ const patientNavigation = [
 // Doctor navigation
 const doctorNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, description: "Today's schedule" },
+  {
+    name: 'Messages',
+    href: '/messages',
+    icon: MessageCircle,
+    description: 'Chat with patients',
+  },
   { name: 'Patients', href: '/patients', icon: Users, description: 'Patient list & records' },
   {
     name: 'Appointments',
@@ -109,6 +122,12 @@ const doctorNavigation = [
 
 const providerNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'Service pricing' },
+  {
+    name: 'Messages',
+    href: '/messages',
+    icon: MessageCircle,
+    description: 'Customer inquiries',
+  },
   {
     name: 'Public Offers',
     href: '/services',

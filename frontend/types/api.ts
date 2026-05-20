@@ -14,6 +14,7 @@ export interface User {
   phone: string | null;
   role: UserRole;
   twofa_enabled: boolean;
+  twofa_method?: 'email' | 'totp' | 'sms';
   is_active: boolean;
   is_staff: boolean;
   created_at: string;
@@ -84,6 +85,8 @@ export interface ProviderService {
   id: number;
   organization: number;
   organization_name?: string;
+  organization_user_id?: number;
+  organization_rating?: number;
   district?: string;
   logo?: string | null;
   name: string;
@@ -96,6 +99,34 @@ export interface ProviderService {
   approval_status: 'pending' | 'approved' | 'rejected';
   admin_feedback?: string;
   is_available: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceAvailability {
+  id: number;
+  organization: number;
+  service: number | null;
+  date: string;
+  start_time: string;
+  end_time: string;
+  slots_per_session: number;
+  is_active: boolean;
+}
+
+export interface ServiceBooking {
+  id: number;
+  patient: number;
+  patient_name: string;
+  service: number;
+  service_name: string;
+  organization_name: string;
+  organization_user_id: number;
+  availability: number | null;
+  date: string;
+  preferred_time: string | null;
+  status: 'pending' | 'confirmed' | 'completed' | 'canceled' | 'no_show';
+  notes: string;
   created_at: string;
   updated_at: string;
 }
@@ -174,25 +205,24 @@ export interface DoctorCreateRequest {
 // ========================================
 
 export type AppointmentStatus = 'scheduled' | 'canceled' | 'done' | 'hold' | 'expired';
-
 export interface Appointment {
   id: number;
   doctor: number;
   patient: number;
   doctor_name?: string;
+  doctor_user_id?: number;
   specialty?: string;
-  doctor_details?: Doctor;
-  patient_details?: Patient;
   patient_name?: string;
   patient_phone?: string;
   patient_code?: string;
   date: string;
   start_time: string;
   end_time: string;
+  scheduled_at: string;
   status: AppointmentStatus;
   notes?: string;
-  consent_granted: boolean; // Whether patient granted record access
-  consent: number | null; // ID of linked consent
+  consent_granted: boolean;
+  consent: number | null;
   created_at: string;
 }
 

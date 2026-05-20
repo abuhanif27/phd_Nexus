@@ -1,5 +1,11 @@
 import { api } from '@/lib/api/axios';
-import type { ProviderService, ProviderServiceCategory, ServiceProviderOrganization } from '@/types/api';
+import type { 
+  ProviderService, 
+  ProviderServiceCategory, 
+  ServiceProviderOrganization,
+  ServiceAvailability,
+  ServiceBooking
+} from '@/types/api';
 
 export interface ProviderServiceInput {
   name: string;
@@ -10,54 +16,6 @@ export interface ProviderServiceInput {
   turnaround_time?: string;
   sample_required?: string;
   is_available: boolean;
-}
-
-export interface ProviderService {
-  id: number;
-  organization: number;
-  organization_name: string;
-  organization_rating: number;
-  district: string;
-  logo: string | null;
-  name: string;
-  category: ProviderServiceCategory;
-  description: string;
-  price: string;
-  discounted_price: string | null;
-  turnaround_time: string;
-  sample_required: string;
-  approval_status: 'pending' | 'approved' | 'rejected';
-  admin_feedback?: string;
-  is_available: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ServiceAvailability {
-  id: number;
-  organization: number;
-  service: number | null;
-  date: string;
-  start_time: string;
-  end_time: string;
-  slots_per_session: number;
-  is_active: boolean;
-}
-
-export interface ServiceBooking {
-  id: number;
-  patient: number;
-  patient_name: string;
-  service: number;
-  service_name: string;
-  organization_name: string;
-  availability: number | null;
-  date: string;
-  preferred_time: string | null;
-  status: 'pending' | 'confirmed' | 'completed' | 'canceled' | 'no_show';
-  notes: string;
-  created_at: string;
-  updated_at: string;
 }
 
 export const serviceProvidersApi = {
@@ -72,7 +30,7 @@ export const serviceProvidersApi = {
     user_lat?: number;
     user_lng?: number;
   }): Promise<ProviderService[]> => {
-    const response = await api.get<ProviderService[] | { results: ProviderService[] }>(
+    const data = await api.get<any>(
       '/api/service-providers/services/',
       { params: { 
         ...params, 
@@ -81,8 +39,12 @@ export const serviceProvidersApi = {
         approval_status: params?.approval_status
       } }
     );
-    // Handle DRF pagination object vs raw array
-    return Array.isArray(response) ? response : (response as any).results || [];
+    // Robustly handle DRF pagination object vs raw array
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === 'object' && Array.isArray(data.results)) {
+      return data.results;
+    }
+    return [];
   },
 
   createService: async (data: ProviderServiceInput): Promise<ProviderService> => {

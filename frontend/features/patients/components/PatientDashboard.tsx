@@ -1,15 +1,17 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, FileText, Activity, Pill, TrendingUp, Clock, AlertCircle, Search } from 'lucide-react';
+import { Calendar, FileText, Activity, Pill, TrendingUp, Clock, AlertCircle, Search, Building2, MessageSquare } from 'lucide-react';
 import { getDashboardStats, getMyAppointments } from '../api';
-import { serviceProvidersApi, type ServiceBooking } from '@/features/service-providers/api';
+import { serviceProvidersApi } from '@/features/service-providers/api';
 import { getHealthInsights } from '@/features/health-summary/api';
-import type { Appointment } from '@/types/api';
+import { createConversation } from '@/features/chat/api';
+import type { Appointment, ServiceBooking } from '@/types/api';
 import { format, parseISO, isAfter, isSameDay } from 'date-fns';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
  * Patient Dashboard - Shows overview of appointments, records, and health stats
  */
 export function PatientDashboard() {
+  const router = useRouter();
   // Fetch dashboard stats
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['patient', 'dashboard', 'stats'],
@@ -62,6 +65,16 @@ export function PatientDashboard() {
       .filter(b => b.status !== 'completed' && b.status !== 'canceled')
       .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
   }, [serviceBookings]);
+
+  const handleMessage = async (userId: number) => {
+    try {
+      const response = await createConversation(userId);
+      const conversationId = response.id;
+      router.push(`/messages?id=${conversationId}`);
+    } catch (error) {
+      console.error('Failed to initiate conversation:', error);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -141,7 +154,11 @@ export function PatientDashboard() {
             ) : (
               <div className="space-y-3">
                 {upcomingAppointments.slice(0, 3).map((appointment) => (
-                  <AppointmentCard key={appointment.id} appointment={appointment} />
+                  <AppointmentCard 
+                    key={appointment.id} 
+                    appointment={appointment} 
+                    onMessage={() => appointment.doctor_user_id && handleMessage(appointment.doctor_user_id)}
+                  />
                 ))}
               </div>
             )}
@@ -175,7 +192,11 @@ export function PatientDashboard() {
             ) : (
               <div className="space-y-3">
                 {upcomingServiceBookings.slice(0, 3).map((booking) => (
-                  <ServiceBookingCard key={booking.id} booking={booking} />
+                  <ServiceBookingCard 
+                    key={booking.id} 
+                    booking={booking} 
+                    onMessage={() => handleMessage(booking.organization_user_id)}
+                  />
                 ))}
               </div>
             )}
@@ -293,58 +314,83 @@ function StatCard({
 // ========================================
 // Component: AppointmentCard
 // ========================================
-function AppointmentCard({ appointment }: { appointment: Appointment }) {
+function AppointmentCard({ appointment, onMessage }: { appointment: Appointment; onMessage: () => void }) {
   const appointmentDate = parseISO(appointment.date);
   const doctorName = appointment.doctor_name;
   const specialty = appointment.specialty;
 
   return (
-    <Link href={`/dashboard/appointments/${appointment.id}`}>
-      <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-accent">
-        <div className="flex-shrink-0">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Calendar className="h-6 w-6 text-primary" />
+    <div className="group relative">
+      <Link href={`/dashboard/appointments/${appointment.id}`}>
+        <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-accent pr-12">
+          <div className="flex-shrink-0">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <Calendar className="h-6 w-6 text-primary" />
+            </div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{doctorName ? `Dr. ${doctorName}` : 'Doctor Appointment'}</p>
+            <p className="text-sm text-muted-foreground">{specialty}</p>
+            <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              {format(appointmentDate, 'MMM d, yyyy')} at {appointment.start_time}
+            </div>
           </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold">{doctorName ? `Dr. ${doctorName}` : 'Doctor Appointment'}</p>
-          <p className="text-sm text-muted-foreground">{specialty}</p>
-          <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {format(appointmentDate, 'MMM d, yyyy')} at {appointment.start_time}
-          </div>
-        </div>
-      </div>
-    </Link>
+      </Link>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={(e) => {
+          e.preventDefault();
+          onMessage();
+        }}
+        title="Message Doctor"
+      >
+        <MessageSquare className="h-4 w-4" />
+      </Button>
+    </div>
   );
 }
 
 // ========================================
 // Component: ServiceBookingCard
 // ========================================
-function ServiceBookingCard({ booking }: { booking: ServiceBooking }) {
+function ServiceBookingCard({ booking, onMessage }: { booking: ServiceBooking; onMessage: () => void }) {
   const bookingDate = parseISO(booking.date);
 
   return (
-    <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-accent">
-      <div className="flex-shrink-0">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 text-blue-600">
-          <Activity className="h-6 w-6" />
+    <div className="group relative">
+      <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-accent pr-12">
+        <div className="flex-shrink-0">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 text-blue-600">
+            <Activity className="h-6 w-6" />
+          </div>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-semibold truncate">{booking.service_name}</p>
+            <Badge variant={booking.status === 'confirmed' ? 'default' : 'outline'} className="text-[10px] uppercase">
+              {booking.status}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground truncate">{booking.organization_name}</p>
+          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            {format(bookingDate, 'MMM d, yyyy')} {booking.preferred_time ? `at ${booking.preferred_time.substring(0, 5)}` : ''}
+          </div>
         </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-semibold truncate">{booking.service_name}</p>
-          <Badge variant={booking.status === 'confirmed' ? 'default' : 'outline'} className="text-[10px] uppercase">
-            {booking.status}
-          </Badge>
-        </div>
-        <p className="text-xs text-muted-foreground truncate">{booking.organization_name}</p>
-        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-          <Clock className="h-3 w-3" />
-          {format(bookingDate, 'MMM d, yyyy')} {booking.preferred_time ? `at ${booking.preferred_time.substring(0, 5)}` : ''}
-        </div>
-      </div>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={onMessage}
+        title="Message Hospital"
+      >
+        <MessageSquare className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

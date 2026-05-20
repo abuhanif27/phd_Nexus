@@ -62,6 +62,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return f"{self.email} ({self.role})"
 
+    def get_full_name(self):
+        if self.role == 'doctor' and hasattr(self, 'doctor_profile'):
+            return f"Dr. {self.doctor_profile.name}"
+        elif self.role == 'patient' and hasattr(self, 'patient_profile'):
+            return self.patient_profile.name
+        elif self.role == 'provider' and hasattr(self, 'service_provider_profile'):
+            return self.service_provider_profile.organization_name
+        return self.email.split('@')[0]
+
 
 class OTPToken(models.Model):
     """

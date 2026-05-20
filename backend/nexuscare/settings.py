@@ -4,6 +4,7 @@ Django settings for NexusCare project.
 Platform-specific settings for Windows, Linux, and macOS.
 """
 import os
+import sys
 import platform
 from pathlib import Path
 from datetime import timedelta
@@ -48,6 +49,7 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 # Application definition
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -59,6 +61,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'channels',
     
     # Local apps
     'apps.users',
@@ -72,6 +75,7 @@ INSTALLED_APPS = [
     'apps.ai',
     'apps.reminders',
     'apps.reviews',
+    'apps.chat',
 ]
 
 MIDDLEWARE = [
@@ -105,6 +109,32 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'nexuscare.wsgi.application'
+ASGI_APPLICATION = 'nexuscare.asgi.application'
+
+# Channel Layers (Redis)
+import socket
+
+def is_redis_running():
+    try:
+        with socket.create_connection(('localhost', 6379), timeout=0.1):
+            return True
+    except OSError:
+        return False
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [os.getenv('REDIS_URL', 'redis://localhost:6379/0')],
+        },
+    },
+}
+
+# Use in-memory channel layer for testing or if Redis is not running locally
+if 'pytest' in sys.modules or 'test' in sys.argv or not is_redis_running():
+    CHANNEL_LAYERS['default'] = {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    }
 
 # Database
 DATABASES = {

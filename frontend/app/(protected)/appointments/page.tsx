@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ import { useCurrentUser } from '@/features/auth/hooks';
 import type { Appointment, AppointmentStatus } from '@/types/api';
 import { format } from 'date-fns';
 
-export default function AppointmentsPage() {
+function AppointmentsContent() {
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -320,6 +320,16 @@ export default function AppointmentsPage() {
           }
         />
       )}
+    </div>
+  );
+}
+
+export default function AppointmentsPage() {
+  return (
+    <div className="h-full">
+      <Suspense fallback={<div className="p-8">Loading appointments...</div>}>
+        <AppointmentsContent />
+      </Suspense>
     </div>
   );
 }

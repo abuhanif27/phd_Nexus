@@ -7,30 +7,16 @@ import {
   Bell,
   Shield,
   Lock,
-  Globe,
   Moon,
   Sun,
   Monitor,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  Smartphone,
-  Key,
-  Activity,
-  Heart,
-  FileText,
-  Trash2,
   Save,
-  AlertCircle,
-  Eye,
-  EyeOff,
-  Link2,
   Loader2,
-  CheckCircle2,
+  Link2,
   QrCode,
+  Key,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -40,7 +26,6 @@ import { Switch } from '@/components/ui/switch';
 import { useAuthStore } from '@/features/auth/store';
 import { authApi } from '@/features/auth/api';
 import { useToast } from '@/components/ui/use-toast';
-import { cn } from '@/lib/utils/cn';
 import { ShareLinksManager } from './ShareLinksManager';
 import { 
   getSettings, updateSettings, updateProfile, changePassword, 

@@ -84,7 +84,7 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: authApi.register,
-    onSuccess: (data, variables) => {
+    onSuccess: (_, variables) => {
       toast({
         title: 'Account created!',
         description: 'Please verify your email with the code sent to you.',

@@ -12,7 +12,7 @@ class DoctorSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Doctor
-        fields = ['id', 'email', 'name', 'user_name', 'specialty', 'qualifications', 
+        fields = ['id', 'user', 'email', 'name', 'user_name', 'specialty', 'qualifications', 
                   'bio', 'location', 'latitude', 'longitude', 'google_place_id', 
                   'rating', 'license_number', 'is_verified', 'verification_status']
     

@@ -8,25 +8,30 @@ class ServiceAvailabilitySerializer(serializers.ModelSerializer):
         model = ServiceAvailability
         fields = '__all__'
         read_only_fields = ['id', 'organization']
+        extra_kwargs = {
+            'service': {'required': False, 'allow_null': True}
+        }
 
 
 class ServiceBookingSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source='patient.name', read_only=True)
     service_name = serializers.CharField(source='service.name', read_only=True)
     organization_name = serializers.CharField(source='service.organization.organization_name', read_only=True)
+    organization_user_id = serializers.IntegerField(source='service.organization.user_id', read_only=True)
 
     class Meta:
         model = ServiceBooking
         fields = [
             'id', 'patient', 'patient_name', 'service', 'service_name', 
-            'organization_name', 'availability', 'date', 'preferred_time', 
-            'status', 'notes', 'created_at', 'updated_at'
+            'organization_name', 'organization_user_id', 'availability', 'date', 
+            'preferred_time', 'status', 'notes', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'patient', 'created_at', 'updated_at']
 
 
 class ProviderServiceSerializer(serializers.ModelSerializer):
     organization_name = serializers.CharField(source='organization.organization_name', read_only=True)
+    organization_user_id = serializers.IntegerField(source='organization.user_id', read_only=True)
     district = serializers.CharField(source='organization.district', read_only=True)
     logo = serializers.ImageField(source='organization.logo', read_only=True)
     organization_rating = serializers.FloatField(source='organization.rating', read_only=True)
@@ -37,6 +42,7 @@ class ProviderServiceSerializer(serializers.ModelSerializer):
             'id',
             'organization',
             'organization_name',
+            'organization_user_id',
             'organization_rating',
             'district',
             'logo',
@@ -73,10 +79,10 @@ class ServiceProviderOrganizationSerializer(serializers.ModelSerializer):
         model = ServiceProviderOrganization
         fields = [
             'id',
+            'user',
             'email',
             'organization_name',
-            'legal_name',
-            'organization_type',
+            'legal_name',            'organization_type',
             'registration_number',
             'contact_person',
             'phone',

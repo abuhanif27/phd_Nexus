@@ -251,7 +251,7 @@ function StatCard({
 // Component: DoctorAppointmentCard
 // ========================================
 function DoctorAppointmentCard({ appointment }: { appointment: Appointment }) {
-  const patient = appointment.patient_details;
+  const patientName = appointment.patient_name;
   const startTime = appointment.start_time;
   const endTime = appointment.end_time;
 
@@ -266,13 +266,13 @@ function DoctorAppointmentCard({ appointment }: { appointment: Appointment }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between">
             <div>
-              <p className="font-semibold">{patient?.name || 'Patient'}</p>
+              <p className="font-semibold">{patientName || 'Patient'}</p>
               <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-3 w-3" />
                 {startTime} - {endTime}
               </div>
             </div>
-            <Badge variant="outline">Scheduled</Badge>
+            <Badge variant="outline">{appointment.status}</Badge>
           </div>
           {appointment.notes && (
             <p className="mt-2 line-clamp-1 text-sm text-muted-foreground">{appointment.notes}</p>

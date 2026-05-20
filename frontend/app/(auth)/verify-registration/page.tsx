@@ -6,11 +6,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useVerifyRegistration } from '@/features/auth/hooks';
 import { VerifyRegistrationInput, verifyRegistrationSchema } from '@/features/auth/schemas';
-import { Mail, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { OTPInput } from '@/features/auth/components/OTPInput';
 
-export default function VerifyRegistrationPage() {
+function VerifyRegistrationForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const email = searchParams.get('email') || '';
@@ -144,5 +144,13 @@ export default function VerifyRegistrationPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VerifyRegistrationPage() {
+  return (
+    <React.Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+      <VerifyRegistrationForm />
+    </React.Suspense>
   );
 }

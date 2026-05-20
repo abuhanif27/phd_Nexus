@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, Plus, Save, Search, Trash2, Users, Settings, Clock, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import { Building2, Plus, Save, Search, Trash2, Users, Settings, Clock, CheckCircle2, AlertCircle, FileText, Calendar, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,10 +15,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { LocationPicker } from '@/components/ui/LocationPicker';
+import { ServiceAvailabilityManager } from './ServiceAvailabilityManager';
 import { cn } from '@/lib/utils/cn';
-import type { ProviderService, ProviderServiceCategory, ServiceProviderOrganization } from '@/types/api';
-import { serviceProvidersApi, type ProviderServiceInput, type ServiceAvailability, type ServiceBooking } from '../api';
+import type { ProviderService, ProviderServiceCategory, ServiceProviderOrganization, ServiceBooking } from '@/types/api';
+import { serviceProvidersApi, type ProviderServiceInput } from '../api';
 import { useAuthStore } from '@/features/auth/store';
+import { useToast } from '@/components/ui/use-toast';
 
 const emptyForm: ProviderServiceInput = {
   name: '',
@@ -31,16 +33,9 @@ const emptyForm: ProviderServiceInput = {
   is_available: true,
 };
 
-const emptyAvailForm = {
-  service: '' as string | number,
-  date: '',
-  start_time: '09:00',
-  end_time: '17:00',
-  slots_per_session: 10,
-};
-
 export function ProviderDashboard() {
-  const { user: authUser, updateUser } = useAuthStore.getState();
+  const { user: authUser, updateUser } = useAuthStore();
+  const { toast } = useToast();
   const [organization, setOrganization] = useState<ServiceProviderOrganization | null>(null);
   const [orgForm, setOrgForm] = useState<Partial<ServiceProviderOrganization>>({});
   const [services, setServices] = useState<ProviderService[]>([]);
@@ -57,10 +52,7 @@ export function ProviderDashboard() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   // Scheduling States
-  const [availabilities, setAvailabilities] = useState<ServiceAvailability[]>([]);
   const [bookings, setBookings] = useState<ServiceBooking[]>([]);
-  const [availForm, setAvailForm] = useState(emptyAvailForm);
-  const [isSchedulingLoading, setIsSchedulingLoading] = useState(false);
 
   const activeServices = useMemo(() => services.filter(s => s.approval_status === 'approved'), [services]);
   const pendingServices = useMemo(() => services.filter(s => s.approval_status === 'pending'), [services]);
@@ -84,61 +76,38 @@ export function ProviderDashboard() {
     }
   };
 
-  const loadScheduling = async () => {
+  const loadBookings = async () => {
     try {
-      setIsSchedulingLoading(true);
-      const [availData, bookingData] = await Promise.all([
-        serviceProvidersApi.listAvailability(),
-        serviceProvidersApi.listBookings(),
-      ]);
-      setAvailabilities(availData);
+      const bookingData = await serviceProvidersApi.listBookings();
       setBookings(bookingData);
     } catch (err) {
-      console.error('Failed to load scheduling data', err);
-    } finally {
-      setIsSchedulingLoading(false);
+      console.error('Failed to load bookings', err);
     }
-  };
-
-  const saveAvailability = async () => {
-    try {
-      setError(null);
-      const payload = {
-        ...availForm,
-        service: availForm.service === '' ? null : Number(availForm.service),
-      };
-      await serviceProvidersApi.createAvailability(payload);
-      setMessage('Availability slot added.');
-      setAvailForm(emptyAvailForm);
-      loadScheduling();
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'Could not save availability.');
-    }
-  };
-
-  const deleteAvailability = async (id: number) => {
-    await serviceProvidersApi.deleteAvailability(id);
-    loadScheduling();
   };
 
   const updateBookingStatus = async (id: number, status: ServiceBooking['status']) => {
-    await serviceProvidersApi.updateBookingStatus(id, status);
-    loadScheduling();
+    try {
+      await serviceProvidersApi.updateBookingStatus(id, status);
+      toast({ description: `Booking ${status}.` });
+      loadBookings();
+    } catch (err) {
+      toast({ title: 'Error', description: 'Status update failed.', variant: 'destructive' });
+    }
   };
 
   const saveProfile = async () => {
     try {
-      const { user: authUser, updateUser } = useAuthStore.getState();
       setError(null);
       setMessage(null);
       const updated = await serviceProvidersApi.updateMyOrganization(orgForm);
       setOrganization(updated);
-      if (authUser) {
-        updateUser({ ...authUser, provider_profile: updated });
-      }
+      updateUser({ ...authUser!, provider_profile: updated });
+      toast({ title: 'Success', description: 'Profile updated successfully.' });
       setMessage('Profile updated successfully.');
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Could not update profile.');
+      const msg = err?.response?.data?.error || 'Could not update profile.';
+      setError(msg);
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
     }
   };
 
@@ -203,15 +172,20 @@ export function ProviderDashboard() {
       };
       if (editingId) {
         await serviceProvidersApi.updateService(editingId, payload);
+        toast({ title: 'Success', description: 'Service updated.' });
         setMessage('Service updated.');
       } else {
         await serviceProvidersApi.createService(payload);
+        toast({ title: 'Success', description: 'Service submitted for approval.' });
         setMessage('Service created.');
       }
       resetForm();
+      setShowAddForm(false);
       await loadDashboard();
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Could not save service.');
+      const msg = err?.response?.data?.error || 'Could not save service.';
+      setError(msg);
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
     }
   };
 
@@ -227,11 +201,18 @@ export function ProviderDashboard() {
       sample_required: service.sample_required,
       is_available: service.is_available,
     });
+    setShowAddForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const deleteService = async (id: number) => {
-    await serviceProvidersApi.deleteService(id);
-    await loadDashboard();
+    try {
+      await serviceProvidersApi.deleteService(id);
+      toast({ description: 'Service removed.' });
+      await loadDashboard();
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to delete service.', variant: 'destructive' });
+    }
   };
 
   if (isLoading) {
@@ -258,10 +239,16 @@ export function ProviderDashboard() {
               <span className="text-sm font-semibold">{organization.organization_name}</span>
             </div>
           )}
-          <Button onClick={() => { setShowAddForm(!showAddForm); setEditingId(null); setForm(emptyForm); }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add New Service
-          </Button>
+          {showAddForm ? (
+            <Button variant="ghost" size="icon" onClick={() => { setShowAddForm(false); resetForm(); }} className="h-9 w-9 rounded-full hover:bg-red-50 hover:text-red-600 transition-colors">
+              <X className="h-5 w-5" />
+            </Button>
+          ) : (
+            <Button onClick={() => { setShowAddForm(true); resetForm(); }} className="shadow-sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Add New Service
+            </Button>
+          )}
         </div>
       </div>
 
@@ -270,8 +257,11 @@ export function ProviderDashboard() {
 
       {showAddForm && (
         <Card className="border-blue-200 bg-blue-50/30">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>{editingId ? 'Edit medical service' : 'Submit new service for approval'}</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => { setShowAddForm(false); resetForm(); }} className="h-8 w-8 p-0 rounded-full">
+              <X className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
@@ -375,152 +365,73 @@ export function ProviderDashboard() {
         </Card>
       )}
 
-      <Tabs defaultValue="services" className="space-y-6">
+      <Tabs defaultValue="services" className="space-y-6" onValueChange={(val) => {
+        if (val === 'scheduling') loadBookings();
+        if (val === 'services') loadDashboard();
+      }}>
         <TabsList className="bg-slate-100 dark:bg-slate-800 p-1">
           <TabsTrigger value="services" className="px-6">Medical Services</TabsTrigger>
-          <TabsTrigger value="scheduling" className="px-6" onClick={loadScheduling}>Scheduling</TabsTrigger>
+          <TabsTrigger value="scheduling" className="px-6">Scheduling</TabsTrigger>
           <TabsTrigger value="competitors" className="px-6">Market Intelligence</TabsTrigger>
           <TabsTrigger value="profile" className="px-6">Hospital Profile</TabsTrigger>
         </TabsList>
 
         <TabsContent value="scheduling" className="space-y-6">
-          <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight">Availability Management</h2>
+              <p className="text-sm text-muted-foreground">Manage your hospital's operational windows for medical services.</p>
+            </div>
+            
+            <ServiceAvailabilityManager activeServices={activeServices} />
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-600" />
-                  Set Availability
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  Incoming Bookings
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">Define your hospital's operational slots for services.</p>
+                <p className="text-sm text-muted-foreground">Approve or manage patient service requests.</p>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Service (Optional)</label>
-                  <select
-                    value={availForm.service}
-                    onChange={(e) => setAvailForm({ ...availForm, service: e.target.value })}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Apply to all services</option>
-                    {activeServices.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {bookings.length > 0 ? (
+                    bookings.map((booking) => (
+                      <div key={booking.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{booking.patient_name}</span>
+                            <Badge variant={
+                              booking.status === 'confirmed' ? 'default' : 
+                              booking.status === 'pending' ? 'outline' : 'secondary'
+                            }>
+                              {booking.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-slate-900 font-medium mt-1">{booking.service_name}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(booking.date).toLocaleDateString()} at {booking.preferred_time || 'N/A'}
+                          </p>
+                          {booking.notes && <p className="text-xs italic text-muted-foreground mt-1">"{booking.notes}"</p>}
+                        </div>
+                        <div className="flex gap-2">
+                          {booking.status === 'pending' && (
+                            <Button size="sm" onClick={() => updateBookingStatus(booking.id, 'confirmed')}>Confirm</Button>
+                          )}
+                          {booking.status === 'confirmed' && (
+                            <Button size="sm" variant="outline" onClick={() => updateBookingStatus(booking.id, 'completed')}>Complete</Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => updateBookingStatus(booking.id, 'canceled')}>Cancel</Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="py-12 text-center text-sm text-muted-foreground">No bookings found.</p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Date</label>
-                  <Input
-                    type="date"
-                    value={availForm.date}
-                    onChange={(e) => setAvailForm({ ...availForm, date: e.target.value })}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Start Time</label>
-                    <Input
-                      type="time"
-                      value={availForm.start_time}
-                      onChange={(e) => setAvailForm({ ...availForm, start_time: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">End Time</label>
-                    <Input
-                      type="time"
-                      value={availForm.end_time}
-                      onChange={(e) => setAvailForm({ ...availForm, end_time: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Patient Capacity (Slots)</label>
-                  <Input
-                    type="number"
-                    value={availForm.slots_per_session}
-                    onChange={(e) => setAvailForm({ ...availForm, slots_per_session: Number(e.target.value) })}
-                  />
-                </div>
-                <Button onClick={saveAvailability} className="w-full">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Availability Window
-                </Button>
               </CardContent>
             </Card>
-
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-blue-600" />
-                    Incoming Bookings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <div className="divide-y">
-                    {bookings.length > 0 ? (
-                      bookings.map((booking) => (
-                        <div key={booking.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold">{booking.patient_name}</span>
-                              <Badge variant={
-                                booking.status === 'confirmed' ? 'default' : 
-                                booking.status === 'pending' ? 'outline' : 'secondary'
-                              }>
-                                {booking.status}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-slate-900 font-medium mt-1">{booking.service_name}</p>
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(booking.date).toLocaleDateString()} at {booking.preferred_time || 'N/A'}
-                            </p>
-                            {booking.notes && <p className="text-xs italic text-muted-foreground mt-1">"{booking.notes}"</p>}
-                          </div>
-                          <div className="flex gap-2">
-                            {booking.status === 'pending' && (
-                              <Button size="sm" onClick={() => updateBookingStatus(booking.id, 'confirmed')}>Confirm</Button>
-                            )}
-                            {booking.status === 'confirmed' && (
-                              <Button size="sm" variant="outline" onClick={() => updateBookingStatus(booking.id, 'completed')}>Complete</Button>
-                            )}
-                            <Button size="sm" variant="ghost" className="text-red-500" onClick={() => updateBookingStatus(booking.id, 'canceled')}>Cancel</Button>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="py-12 text-center text-sm text-muted-foreground">No bookings found.</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Configured Slots</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <div className="divide-y text-sm">
-                    {availabilities.map(avail => (
-                      <div key={avail.id} className="p-3 flex items-center justify-between">
-                        <div>
-                          <span className="font-medium">{new Date(avail.date).toLocaleDateString()}</span>
-                          <span className="mx-2 text-muted-foreground">•</span>
-                          <span>{avail.start_time.substring(0,5)} - {avail.end_time.substring(0,5)}</span>
-                          <span className="ml-2 text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
-                            {avail.slots_per_session} slots
-                          </span>
-                        </div>
-                        <Button size="sm" variant="ghost" onClick={() => deleteAvailability(avail.id)}>
-                          <Trash2 className="h-4 w-4 text-red-400" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
         </TabsContent>
 
@@ -575,7 +486,10 @@ export function ProviderDashboard() {
               <div className="divide-y">
                 {services.length > 0 ? (
                   services.map((service) => (
-                    <div key={service.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                    <div key={service.id} className={cn(
+                      "flex flex-col md:flex-row md:items-center justify-between p-4 hover:bg-slate-50 transition-colors",
+                      editingId === service.id && "bg-blue-50/50 ring-1 ring-inset ring-blue-200"
+                    )}>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-slate-900">{service.name}</span>
@@ -586,6 +500,11 @@ export function ProviderDashboard() {
                             {service.approval_status}
                           </Badge>
                           {!service.is_available && <Badge variant="secondary" className="text-[10px]">HIDDEN</Badge>}
+                          {editingId === service.id && (
+                            <Badge variant="outline" className="text-[10px] border-blue-400 text-blue-600 bg-blue-50">
+                              CURRENTLY EDITING
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <span className="font-medium text-slate-700">৳ {Number(service.price).toLocaleString()}</span>
@@ -602,22 +521,15 @@ export function ProviderDashboard() {
                         )}
                       </div>
                       <div className="flex gap-2 mt-3 md:mt-0">
-                        <Button size="sm" variant="outline" onClick={() => {
-                          setEditingId(service.id);
-                          setForm({
-                            name: service.name,
-                            category: service.category,
-                            description: service.description,
-                            price: service.price,
-                            discounted_price: service.discounted_price || '',
-                            turnaround_time: service.turnaround_time,
-                            sample_required: service.sample_required,
-                            is_available: service.is_available,
-                          });
-                          setShowAddForm(true);
-                        }}>
-                          Edit
-                        </Button>
+                        {editingId === service.id ? (
+                          <Button size="sm" variant="secondary" disabled className="bg-blue-100 text-blue-700 opacity-100">
+                            Editing...
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => editService(service)}>
+                            Edit
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => deleteService(service.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -761,15 +673,17 @@ export function ProviderDashboard() {
                 <div className="col-span-2 space-y-2">
                   <label className="text-sm font-medium">Organization Address (with Suggestions)</label>
                   <LocationPicker
-                    defaultAddress={orgForm.address}
+                    placeholder={organization?.address || "Pick location"}
                     onLocationSelect={(loc) => {
-                      setOrgForm(prev => ({
-                        ...prev,
-                        address: loc.address,
-                        latitude: loc.latitude,
-                        longitude: loc.longitude,
-                        google_place_id: loc.google_place_id
-                      }));
+                      if (loc) {
+                        setOrgForm(prev => ({
+                          ...prev,
+                          address: loc.address,
+                          latitude: loc.latitude,
+                          longitude: loc.longitude,
+                          google_place_id: loc.google_place_id
+                        }));
+                      }
                     }}
                   />
                 </div>

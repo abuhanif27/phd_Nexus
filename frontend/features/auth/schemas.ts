@@ -28,6 +28,7 @@ export const loginResponseSchema = z.object({
     created_at: z.string(),
   }),
   requires_2fa: z.boolean().optional(),
+  requires_verification: z.boolean().optional(),
   pending_approval: z.boolean().optional(),
   message: z.string().optional(),
 });

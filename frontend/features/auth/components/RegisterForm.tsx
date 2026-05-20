@@ -4,8 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
-  UserPlus, Mail, Lock, User, Stethoscope, MapPin, 
-  Building2, Upload, ArrowRight, ArrowLeft, CheckCircle2,
+  UserPlus, Mail, Lock, User, Stethoscope, 
+  Building2, Upload, ArrowRight, CheckCircle2,
   ShieldCheck, HeartPulse, Hospital, ClipboardCheck
 } from 'lucide-react';
 import { authService } from '../api';

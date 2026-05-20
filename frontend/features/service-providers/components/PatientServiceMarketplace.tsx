@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, Calendar, Clock, FlaskConical, MapPin, Search, Star } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Building2, Calendar, FlaskConical, MapPin, Search, Star, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +14,7 @@ import { ReviewSection } from '@/features/reviews/components/ReviewSection';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { LocationPicker } from '@/components/ui/LocationPicker';
+import { createConversation } from '@/features/chat/api';
 
 import {
   Select,
@@ -33,6 +35,7 @@ const categories: Array<{ value: string; label: string }> = [
 ];
 
 export function PatientServiceMarketplace() {
+  const router = useRouter();
   const [services, setServices] = useState<ProviderService[]>([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string>('all');
@@ -115,6 +118,16 @@ export function PatientServiceMarketplace() {
       });
     } finally {
       setIsBooking(false);
+    }
+  };
+
+  const handleMessageProvider = async (userId: number) => {
+    try {
+      const response = await createConversation(userId);
+      const conversationId = response.id;
+      router.push(`/messages?id=${conversationId}`);
+    } catch (error) {
+      console.error('Failed to initiate conversation:', error);
     }
   };
 
@@ -242,7 +255,15 @@ export function PatientServiceMarketplace() {
                   <div>{service.turnaround_time || 'Turnaround time not specified'}</div>
                 </div>
                 
-                <div className="flex justify-end pt-2">
+                <div className="flex justify-end pt-2 gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => service.organization_user_id && handleMessageProvider(service.organization_user_id)}
+                    title="Message Hospital"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
+
                   <Dialog open={isDialogOpen === service.id} onOpenChange={(open) => setIsDialogOpen(open ? service.id : null)}>
                     <DialogTrigger asChild>
                       <Button variant="default" className="w-full sm:w-auto">

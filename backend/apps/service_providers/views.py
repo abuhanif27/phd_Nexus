@@ -39,6 +39,12 @@ class ServiceAvailabilityViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.service_provider_profile)
 
+    def perform_update(self, serializer):
+        if self.request.user.role == 'provider':
+            serializer.save(approval_status='pending')
+        else:
+            serializer.save()
+
 
 class ServiceBookingViewSet(viewsets.ModelViewSet):
     serializer_class = ServiceBookingSerializer
@@ -119,6 +125,7 @@ class ProviderServiceViewSet(viewsets.ModelViewSet):
         user = self.request.user
         user_role = getattr(user, 'role', None)
         is_provider = user.is_authenticated and user_role == 'provider'
+        is_patient = user.is_authenticated and user_role == 'patient'
         
         if self.request.query_params.get('mine') == 'true':
             if is_provider and hasattr(user, 'service_provider_profile'):
@@ -135,6 +142,14 @@ class ProviderServiceViewSet(viewsets.ModelViewSet):
                 ).exclude(organization=user.service_provider_profile)
             else:
                 return ProviderService.objects.none()
+        elif is_patient:
+            # Patients see everything that is approved
+            queryset = queryset.filter(
+                is_available=True,
+                approval_status='approved',
+                organization__verification_status='approved',
+                organization__is_verified=True
+            )
         else:
             # Default public view: only approved services from approved organizations
             queryset = queryset.filter(
@@ -206,6 +221,12 @@ class ProviderServiceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.service_provider_profile)
+
+    def perform_update(self, serializer):
+        if self.request.user.role == 'provider':
+            serializer.save(approval_status='pending')
+        else:
+            serializer.save()
 
 
 class ServiceProviderApprovalView(APIView):

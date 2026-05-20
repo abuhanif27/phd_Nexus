@@ -18,8 +18,10 @@ import {
   Clock,
   CheckCircle2,
   Briefcase,
+  MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
+import { createConversation } from '@/features/chat/api';
 import { ReviewSection } from '@/features/reviews/components/ReviewSection';
 
 export default function DoctorProfilePage() {
@@ -36,6 +38,17 @@ export default function DoctorProfilePage() {
     queryFn: () => getDoctor(Number(id)),
     enabled: !!id,
   });
+
+  const handleMessageDoctor = async () => {
+    if (!doctor) return;
+    try {
+      const response = await createConversation(doctor.user);
+      const conversationId = response.id;
+      router.push(`/messages?id=${conversationId}`);
+    } catch (error) {
+      console.error('Failed to initiate conversation:', error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -139,6 +152,17 @@ export default function DoctorProfilePage() {
                       Book Appointment
                     </Button>
                   </Link>
+
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={handleMessageDoctor}
+                    className="w-full sm:w-auto"
+                  >
+                    <MessageSquare className="mr-2 h-5 w-5" />
+                    Message Doctor
+                  </Button>
+
                   <Button
                     size="lg"
                     variant="outline"

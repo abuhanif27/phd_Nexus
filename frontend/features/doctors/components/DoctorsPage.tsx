@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { getDoctors } from '@/features/doctors/api';
+import { createConversation } from '@/features/chat/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Search,
@@ -26,6 +27,7 @@ import {
   Bone,
   Pill,
   Smile,
+  MessageSquare,
 } from 'lucide-react';
 import type { Doctor } from '@/types/api';
 
@@ -94,6 +96,7 @@ const SPECIALTY_CATEGORIES = [
 ];
 
 export function DoctorsPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
@@ -136,6 +139,19 @@ export function DoctorsPage() {
       SPECIALTY_CATEGORIES.find((cat) => cat.value === specialty) ||
       SPECIALTY_CATEGORIES.find((cat) => cat.value === 'General Practice')!
     );
+  };
+
+  const handleMessageDoctor = async (e: React.MouseEvent, doctorUserId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const response = await createConversation(doctorUserId);
+      // If backend returns the conversation object directly
+      const conversationId = response.id;
+      router.push(`/messages?id=${conversationId}`);
+    } catch (error) {
+      console.error('Failed to initiate conversation:', error);
+    }
   };
 
   return (
@@ -200,26 +216,8 @@ export function DoctorsPage() {
           <CardDescription>Select a medical specialty to find specialists</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={selectedSpecialty} onValueChange={setSelectedSpecialty}>
-            <TabsList className="grid h-auto w-full grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
-              {SPECIALTY_CATEGORIES.slice(0, 10).map((category) => {
-                const Icon = category.icon;
-                return (
-                  <TabsTrigger
-                    key={category.value}
-                    value={category.value}
-                    className="flex min-h-[40px] items-center justify-center gap-2 whitespace-nowrap px-2 py-2 text-xs sm:text-sm"
-                  >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{category.name}</span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </Tabs>
-
           {/* Category Grid */}
-          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
             {SPECIALTY_CATEGORIES.map((category) => {
               const Icon = category.icon;
               const isSelected = selectedSpecialty === category.value;
@@ -381,6 +379,15 @@ export function DoctorsPage() {
                           Book Appointment
                         </Button>
                       </Link>
+
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={(e) => handleMessageDoctor(e, doctor.user)}
+                        title="Message Doctor"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
 
                       <Link href={`/doctors/${doctor.id}`}>
                         <Button variant="outline" size="sm">

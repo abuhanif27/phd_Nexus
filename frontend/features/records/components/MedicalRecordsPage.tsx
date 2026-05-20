@@ -18,7 +18,6 @@ import {
   Trash2,
   Eye,
   Sparkles,
-  Loader2,
 } from 'lucide-react';
 import {
   getMedicalFiles,
