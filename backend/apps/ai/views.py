@@ -362,12 +362,13 @@ class AIStatusView(views.APIView):
         from django.conf import settings
         return Response({
             'classifier_type': ai_service.specialist_classifier_type,
-            'deep_mode_available': ai_service.distilbert_classifier is not None,
-            'remote_brain_url': ai_service.remote_url,
+            'deep_mode_available': ai_service.distilbert_classifier is not None or ai_service.use_hf_api,
+            'cloud_inference': ai_service.use_hf_api,
             'hugging_face': {
                 'enabled': getattr(settings, 'USE_HF_MODELS', False),
+                'cloud_api': getattr(settings, 'USE_HF_INFERENCE_API', False),
                 'repo_id': getattr(settings, 'HF_REPO_ID', 'None'),
-                'is_active': 'hf' in (ai_service.specialist_classifier_type or '') or symptom_checker_service.model_source == 'hf'
+                'is_active': ai_service.use_hf_api or 'hf' in (ai_service.specialist_classifier_type or '') or symptom_checker_service.model_source == 'hf'
             },
             'symptom_checker_loaded': symptom_checker_service.model is not None,
             'symptom_checker_source': getattr(symptom_checker_service, 'model_source', 'unknown'),

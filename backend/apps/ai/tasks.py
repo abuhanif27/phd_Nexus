@@ -357,7 +357,7 @@ def _extract_prescription_data(file_obj: File, text: str) -> Dict:
 def get_or_extract_file_text(file_obj: File) -> str:
     """
     Return extracted text for any supported file.
-    Proxies to Remote Brain if available to prevent local crashes.
+    Proxies to HF Inference API if available to prevent local crashes.
     """
     if getattr(file_obj, 'extracted_text', None) and (file_obj.extracted_text or '').strip():
         return (file_obj.extracted_text or '').strip()
@@ -365,26 +365,35 @@ def get_or_extract_file_text(file_obj: File) -> str:
     if not os.path.exists(file_obj.storage_path):
         return ''
     
-    remote_url = getattr(settings, 'REMOTE_BRAIN_URL', None)
+    use_hf_api = getattr(settings, 'USE_HF_INFERENCE_API', False)
     raw_text = ""
     
-    # 1. Try Remote Brain OCR first (for both Images and PDFs)
-    if remote_url and (_is_image_file(file_obj) or _is_pdf_file(file_obj)):
-        import requests
+    # 1. Try Hugging Face Cloud OCR (Zero Local Load)
+    if use_hf_api and _is_image_file(file_obj):
+        from apps.ai.services import ai_service
         try:
-            print(f"[REMOTE OCR] Offloading {file_obj.filename} to {remote_url}")
-            with open(file_obj.storage_path, 'rb') as f:
-                # Use multipart/form-data to send the file
-                files = {'file': (file_obj.filename, f, file_obj.mime or 'application/octet-stream')}
-                response = requests.post(f"{remote_url.rstrip('/')}/ocr", files=files, timeout=120) # Longer timeout for PDFs
-                if response.status_code == 200:
-                    raw_text = response.json().get('text', '')
-                    if raw_text:
-                        print(f"[REMOTE OCR] Success: {len(raw_text)} chars")
+            print(f"[CLOUD OCR] Offloading {file_obj.filename} to Hugging Face...")
+            model_id = getattr(settings, 'HF_OCR_MODEL', 'naver-clova-ix/donut-base-finetuned-docvqa')
+            # Donut DocVQA needs a question, or we can use a generic OCR model
+            # For general OCR, let's try to ask a broad question if using Donut
+            if 'donut' in model_id:
+                response = ai_service._call_hf_inference(file_obj.storage_path, model_id, 
+                                                       task="document-question-answering", 
+                                                       question="What is the text content of this document?")
+                if response and isinstance(response, list):
+                    raw_text = response[0].get('answer', '')
+            else:
+                # Regular image-to-text
+                response = ai_service._call_hf_inference(file_obj.storage_path, model_id, task="image-to-text")
+                if response:
+                    raw_text = response.get('generated_text', '')
+            
+            if raw_text:
+                print(f"[CLOUD OCR] Success: {len(raw_text)} chars")
         except Exception as e:
-            print(f"[REMOTE OCR] Error: {e}")
+            print(f"[CLOUD OCR] Error: {e}")
 
-    # 2. Local Fallback (Only if remote failed or unavailable)
+    # 2. Local Fallback (Only if cloud failed or unavailable)
     if not raw_text:
         # PDF (Native text extraction is usually light)
         if _is_pdf_file(file_obj):

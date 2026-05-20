@@ -45,16 +45,22 @@ npm install
 npm run dev
 ```
 
-### Remote AI (Offloading)
-To prevent local crashes on low-resource hardware, use the "Remote Brain":
-1. Open `COLAB_BRAIN.py` and run it in a Google Colab GPU instance.
-2. Update `backend/.env` with: `REMOTE_BRAIN_URL=https://<your-ngrok-url>.ngrok-free.app`.
+### AI Cloud Offloading
+To prevent local crashes on low-resource hardware (e.g., free domain hosting), the project offloads all AI processing to the Hugging Face Cloud.
+1. **Hugging Face Cloud:** Recommended for all AI tasks (LLM, OCR, NER). Set `USE_HF_INFERENCE_API=True` in your `.env`.
+2. **Setup:** Add `HF_TOKEN` to your `backend/.env`.
 
 ### Hugging Face Integration
-The project supports hosting and running models directly from the Hugging Face Hub.
-1. **Setup:** Add `HF_TOKEN` and `HF_REPO_ID` to your `backend/.env`.
-2. **Train & Push:** Run `cd backend && python retrain_and_push.py` to train all models locally and push them to the Hub.
-3. **Run with HF Models:** Set `USE_HF_MODELS=True` in `.env`. The system will automatically download the latest models from the Hub on startup.
+The project supports offloading all AI processing to the Hugging Face Cloud using the Inference API.
+1. **Setup:** Add `HF_TOKEN` to your `backend/.env`.
+2. **Enable Cloud Inference:** Set `USE_HF_INFERENCE_API=True` in `.env`.
+3. **Cloud Models:**
+   - **LLM:** Mistral-7B (for summarization and complex analysis).
+   - **NER:** Clinical BERT (for entity extraction).
+   - **Embeddings:** MiniLM (for vector search).
+   - **OCR:** Donut (for document text extraction).
+   
+This mode completely offloads model execution from your local CPU/GPU to Hugging Face's infrastructure, making it ideal for low-resource environments.
 
 ## Development Conventions
 

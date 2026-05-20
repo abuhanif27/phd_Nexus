@@ -259,11 +259,11 @@ SPACY_MODEL = os.getenv('SPACY_MODEL', 'en_core_web_sm')
 HF_TOKEN = os.getenv('HF_TOKEN', None)
 HF_REPO_ID = os.getenv('HF_REPO_ID', 'hanifgp2500/nexuscare-medical-ai')
 USE_HF_MODELS = os.getenv('USE_HF_MODELS', 'True').lower() == 'true'
-
-# REMOTE BRAIN (Google Colab / Ngrok)
-# Set this to your Ngrok URL (e.g., 'https://xxxx-xx-xx.ngrok.io') 
-# to offload AI processing and prevent local crashes.
-REMOTE_BRAIN_URL = os.getenv('REMOTE_BRAIN_URL', None)
+USE_HF_INFERENCE_API = os.getenv('USE_HF_INFERENCE_API', 'True').lower() == 'true' # Set to True to run models on HF Cloud
+HF_LLM_MODEL = os.getenv('HF_LLM_MODEL', 'mistralai/Mistral-7B-Instruct-v0.2')
+HF_EMBEDDING_MODEL = os.getenv('HF_EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
+HF_NER_MODEL = os.getenv('HF_NER_MODEL', 'samrawal/bert-base-uncased_clinical-ner')
+HF_OCR_MODEL = os.getenv('HF_OCR_MODEL', 'naver-clova-ix/donut-base-finetuned-docvqa')
 
 # Windows-specific: Tesseract OCR path
 if IS_WINDOWS:

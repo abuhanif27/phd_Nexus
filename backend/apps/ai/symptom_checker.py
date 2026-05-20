@@ -208,15 +208,31 @@ class SymptomCheckerService:
                 if s in self.symptom_idx:
                     detected_symptoms.add(s)
 
-        # 2. NLP Extraction (Proxy to Colab or local keyword)
+        # 2. NLP Extraction (Proxy to HF Cloud or local keyword)
         if text.strip():
-            if self.ai_service.remote_url:
-                res = self.ai_service._call_remote_brain('extract_symptoms', {'text': text})
-                for s in res.get('symptoms', []):
-                    if s in self.symptom_idx:
-                        detected_symptoms.add(s)
-            
+            if self.ai_service.use_hf_api:
+                model_id = getattr(settings, 'HF_LLM_MODEL', 'mistralai/Mistral-7B-Instruct-v0.2')
+                prompt = f"""[INST] Extract medical symptoms from the text. 
+Possible symptoms: {', '.join(self.all_symptoms)}
+
+Text: {text}
+
+Return only a JSON object with 'symptoms' (list of strings matching the exact names above). [/INST]"""
+                try:
+                    import json
+                    response = self.ai_service._call_hf_inference(prompt, model_id, task="text-generation", max_new_tokens=200)
+                    if response:
+                        match = re.search(r'\{.*\}', response, re.DOTALL)
+                        if match:
+                            res = json.loads(match.group(0))
+                            for s in res.get('symptoms', []):
+                                if s in self.symptom_idx:
+                                    detected_symptoms.add(s)
+                except Exception as e:
+                    print(f"HF Symptom Extraction Error: {e}")
+
             # Local fallback / reinforcement (keyword search)
+
             clean_text = text.lower().replace('_', ' ').replace('-', ' ')
             clean_text = re.sub(r'([.,!?;:])', r' \1 ', clean_text)
             for sym in self.all_symptoms:
