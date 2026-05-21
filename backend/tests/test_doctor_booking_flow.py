@@ -87,11 +87,11 @@ class TestDoctorBookingEdgeCases:
         assert response.status_code == 201
 
     def test_02_expired_consent(self, doctor_client, doctor_user, patient_user):
-        """Doctor cannot book if consent is expired."""
+        """Doctor can book even without active consent (consent no longer required)."""
         doctor_profile = doctor_user.doctor_profile
         patient_profile = patient_user.patient_profile
 
-        # Create expired consent
+        # Create expired consent (should not block booking anymore)
         Consent.objects.create(
             patient=patient_profile,
             doctor=doctor_profile,
@@ -108,15 +108,14 @@ class TestDoctorBookingEdgeCases:
             'end_time': '11:30:00'
         }
         response = doctor_client.post('/api/scheduling/appointments/', booking_data)
-        assert response.status_code == 403
-        assert 'No active consent' in response.data['error']
+        assert response.status_code == 201
 
     def test_03_wrong_scope(self, doctor_client, doctor_user, patient_user):
-        """Doctor cannot book if consent exists but lacks scheduling scope."""
+        """Doctor can book regardless of consent scope (consent no longer required)."""
         doctor_profile = doctor_user.doctor_profile
         patient_profile = patient_user.patient_profile
 
-        # Create consent with read-only scope
+        # Create consent with read-only scope (should not block booking anymore)
         Consent.objects.create(
             patient=patient_profile,
             doctor=doctor_profile,
@@ -133,15 +132,14 @@ class TestDoctorBookingEdgeCases:
             'end_time': '12:30:00'
         }
         response = doctor_client.post('/api/scheduling/appointments/', booking_data)
-        assert response.status_code == 403
-        assert 'permissions' in response.data['error']
+        assert response.status_code == 201
 
     def test_04_revoked_consent(self, doctor_client, doctor_user, patient_user):
-        """Doctor cannot book if consent was revoked."""
+        """Doctor can book even if consent was revoked (consent no longer required)."""
         doctor_profile = doctor_user.doctor_profile
         patient_profile = patient_user.patient_profile
 
-        # Create revoked consent
+        # Create revoked consent (should not block booking anymore)
         Consent.objects.create(
             patient=patient_profile,
             doctor=doctor_profile,
@@ -158,10 +156,10 @@ class TestDoctorBookingEdgeCases:
             'end_time': '13:30:00'
         }
         response = doctor_client.post('/api/scheduling/appointments/', booking_data)
-        assert response.status_code == 403
+        assert response.status_code == 201
 
     def test_05_missing_patient_id(self, doctor_client, doctor_user):
-        """Doctor must provide patient ID."""
+        """Doctor must provide patient code or patient ID."""
         doctor_profile = doctor_user.doctor_profile
         booking_data = {
             'doctor': doctor_profile.id,
@@ -171,7 +169,7 @@ class TestDoctorBookingEdgeCases:
         }
         response = doctor_client.post('/api/scheduling/appointments/', booking_data)
         assert response.status_code == 400
-        assert 'Patient ID is required' in response.data['error']
+        assert 'Patient code' in response.data['error']
 
     def test_06_doctor_time_conflict(self, doctor_client, doctor_user, patient_user):
         """Doctor cannot book if they already have an appointment at that time."""
@@ -250,7 +248,7 @@ class TestDoctorBookingEdgeCases:
         assert 'You already have' in response.data['error']
 
     def test_08_double_booking_prevention(self, doctor_client, doctor_user, patient_user):
-        """Prevent scheduling multiple active appointments with the same doctor/patient pair."""
+        """Doctors can book multiple appointments for the same patient (no double-booking restriction)."""
         doctor_profile = doctor_user.doctor_profile
         patient_profile = patient_user.patient_profile
 
@@ -272,7 +270,7 @@ class TestDoctorBookingEdgeCases:
             status='scheduled'
         )
 
-        # Try to book another one (different time)
+        # Book another one (different time) — should succeed for doctors
         booking_data = {
             'doctor': doctor_profile.id,
             'patient': patient_profile.id,
@@ -281,8 +279,7 @@ class TestDoctorBookingEdgeCases:
             'end_time': '14:30:00'
         }
         response = doctor_client.post('/api/scheduling/appointments/', booking_data)
-        assert response.status_code == 409
-        assert 'upcoming appointment' in response.data['error']
+        assert response.status_code == 201
 
     def test_09_patient_self_booking_no_consent_needed(self, patient_client, doctor_user, patient_user):
         """Patients should always be able to book for themselves without special consent."""

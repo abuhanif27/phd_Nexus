@@ -71,6 +71,7 @@ export function AppointmentBooking() {
         description: 'Your appointment has been successfully scheduled.',
       });
       queryClient.invalidateQueries({ queryKey: ['patient', 'appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['doctor', 'availability'] });
       setStep(4);
     },
     onError: (error: any) => {

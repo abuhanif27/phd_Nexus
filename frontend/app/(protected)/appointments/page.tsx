@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  Trash2,
 } from 'lucide-react';
 import { BookingModal } from '@/features/scheduling/components/BookingModal';
 import { apiClient } from '@/lib/api/axios';
@@ -29,6 +30,7 @@ function AppointmentsContent() {
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showDoctorBookModal, setShowDoctorBookModal] = useState(false);
   const [pastPage, setPastPage] = useState(1);
   const [canceledPage, setCanceledPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,25 +60,37 @@ function AppointmentsContent() {
     },
   });
 
+  const invalidateAfterChange = () => {
+    qc.invalidateQueries({ queryKey: ['appointments'] });
+    qc.invalidateQueries({ queryKey: ['doctor', 'availability'] });
+  };
+
   const cancelMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiClient.patch(`/api/scheduling/appointments/${id}/cancel/`);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointments'] }),
+    onSuccess: invalidateAfterChange,
   });
 
   const completeMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiClient.patch(`/api/scheduling/appointments/${id}/`, { status: 'done' });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointments'] }),
+    onSuccess: invalidateAfterChange,
   });
 
   const holdMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiClient.patch(`/api/scheduling/appointments/${id}/`, { status: 'hold' });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointments'] }),
+    onSuccess: invalidateAfterChange,
+  });
+
+  const freeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/api/scheduling/appointments/${id}/free/`);
+    },
+    onSuccess: invalidateAfterChange,
   });
 
   const rawAppointments: Appointment[] = Array.isArray(data) ? data : data?.results || [];
@@ -161,6 +175,12 @@ function AppointmentsContent() {
               Book Appointment
             </Button>
           )}
+          {isDoctor && (
+            <Button onClick={() => setShowDoctorBookModal(true)} size="lg" className="w-full sm:w-auto">
+              <Plus className="mr-2 h-5 w-5" />
+              Book for Patient
+            </Button>
+          )}
         </div>
       </div>
 
@@ -197,6 +217,7 @@ function AppointmentsContent() {
                       ? () => holdMutation.mutate(apt.id)
                       : undefined
                   }
+                  onFree={isDoctor ? () => freeMutation.mutate(apt.id) : undefined}
                 />
               ))}
             </div>
@@ -320,6 +341,14 @@ function AppointmentsContent() {
           }
         />
       )}
+
+      {/* Doctor Book for Patient Modal */}
+      {mounted && isDoctor && (
+        <DoctorBookModal
+          open={showDoctorBookModal}
+          onClose={() => setShowDoctorBookModal(false)}
+        />
+      )}
     </div>
   );
 }
@@ -342,6 +371,7 @@ function AppointmentCard({
   onCancel,
   onComplete,
   onHold,
+  onFree,
 }: {
   appointment: Appointment;
   isDoctor: boolean;
@@ -350,6 +380,7 @@ function AppointmentCard({
   onCancel?: () => void;
   onComplete?: () => void;
   onHold?: () => void;
+  onFree?: () => void;
 }) {
   const personName = isDoctor
     ? apt.patient_name || 'Patient'
@@ -434,8 +465,218 @@ function AppointmentCard({
                 <XCircle className="h-3.5 w-3.5" /> Cancel
               </Button>
             )}
+            {onFree && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1 border-orange-300 text-xs text-orange-600 hover:bg-orange-50"
+                onClick={onFree}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Free Slot
+              </Button>
+            )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ========================================
+// Doctor Book for Patient Modal
+// ========================================
+interface BookingSlot {
+  start_time: string;
+  end_time: string;
+  available: boolean;
+  past?: boolean;
+}
+interface BookingSession {
+  id: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+  status: 'expired' | 'running' | 'upcoming';
+  total_slots: number;
+  available_count: number;
+  slots: BookingSlot[];
+}
+
+function DoctorBookModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [patientCode, setPatientCode] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState<{ date: string; start: string; end: string } | null>(null);
+  const [notes, setNotes] = useState('');
+  const [error, setError] = useState('');
+  const qc = useQueryClient();
+
+  const { data: user } = useCurrentUser();
+  const doctorId = user?.doctor_profile?.id;
+
+  const { data: sessions = [], isLoading: sessionsLoading } = useQuery<BookingSession[]>({
+    queryKey: ['doctor', 'booking-slots'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/doctors/booking-slots/');
+      return data;
+    },
+    enabled: open,
+  });
+
+  const bookMutation = useMutation({
+    mutationFn: async () => {
+      if (!doctorId || !selectedSlot) throw new Error('Missing data');
+      const { data } = await apiClient.post('/api/scheduling/appointments/', {
+        patient_code: patientCode.trim(),
+        doctor: doctorId,
+        date: selectedSlot.date,
+        start_time: selectedSlot.start + ':00',
+        end_time: selectedSlot.end + ':00',
+        notes,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['appointments'] });
+      qc.invalidateQueries({ queryKey: ['doctor', 'booking-slots'] });
+      setPatientCode('');
+      setSelectedSlot(null);
+      setNotes('');
+      setError('');
+      onClose();
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.error
+        || err?.response?.data?.detail
+        || (err?.response?.data && typeof err.response.data === 'object' ? JSON.stringify(err.response.data) : null)
+        || 'Failed to book appointment';
+      setError(msg);
+    },
+  });
+
+  if (!open) return null;
+
+  const statusBadge = (s: string) => {
+    if (s === 'expired') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+    if (s === 'running') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+    return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+  };
+
+  const statusLabel = (s: string) => {
+    if (s === 'expired') return 'Expired';
+    if (s === 'running') return 'Currently Running';
+    return 'Upcoming';
+  };
+
+  const formatSlotTime = (t: string) => {
+    const [h, m] = t.split(':');
+    const d = new Date();
+    d.setHours(parseInt(h), parseInt(m));
+    return format(d, 'h:mm a');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="mx-4 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg bg-background p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+        <h2 className="mb-4 text-lg font-semibold">Book Appointment for Patient</h2>
+
+        <div className="space-y-4">
+          {/* Patient Code */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">Patient Code</label>
+            <Input
+              placeholder="PT-XXXXXXXX"
+              value={patientCode}
+              onChange={(e) => setPatientCode(e.target.value)}
+            />
+          </div>
+
+          {/* Sessions List */}
+          <div>
+            <label className="mb-2 block text-sm font-medium">Select a Slot from Your Sessions</label>
+            {sessionsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading sessions...</p>
+            ) : sessions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No availability sessions found. Create one first.</p>
+            ) : (
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {sessions.map((session) => (
+                  <div key={session.id} className="rounded-lg border p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">
+                        {format(new Date(session.date + 'T00:00'), 'EEE, MMM d')} · {formatSlotTime(session.start_time)} – {formatSlotTime(session.end_time)}
+                      </span>
+                      <Badge className={statusBadge(session.status)}>
+                        {statusLabel(session.status)}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {session.available_count}/{session.total_slots} slots available
+                    </p>
+                    {session.status !== 'expired' && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {session.slots.map((slot) => {
+                          const isSelected = selectedSlot?.date === session.date && selectedSlot?.start === slot.start_time;
+                          const isDisabled = !slot.available;
+                          return (
+                            <button
+                              key={slot.start_time}
+                              onClick={() => !isDisabled && setSelectedSlot({ date: session.date, start: slot.start_time, end: slot.end_time })}
+                              disabled={isDisabled}
+                              className={`rounded border px-2 py-1 text-xs transition-colors ${
+                                isDisabled
+                                  ? slot.past
+                                    ? 'border-gray-200 bg-gray-100 text-gray-400 line-through cursor-not-allowed'
+                                    : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : isSelected
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'border-border hover:border-primary hover:bg-primary/10'
+                              }`}
+                            >
+                              {formatSlotTime(slot.start_time)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {session.status === 'expired' && (
+                      <p className="text-xs text-red-500">Session has expired</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Selected slot display */}
+          {selectedSlot && (
+            <div className="rounded border border-primary/30 bg-primary/5 p-2 text-sm">
+              Selected: <strong>{format(new Date(selectedSlot.date + 'T00:00'), 'MMM d, yyyy')}</strong> at <strong>{formatSlotTime(selectedSlot.start)} – {formatSlotTime(selectedSlot.end)}</strong>
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">Notes (optional)</label>
+            <Input
+              placeholder="Reason for visit..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => bookMutation.mutate()}
+              disabled={!patientCode || !selectedSlot || bookMutation.isPending}
+            >
+              {bookMutation.isPending ? 'Booking...' : 'Book Appointment'}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

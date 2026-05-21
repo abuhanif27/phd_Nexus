@@ -177,6 +177,7 @@ export function BookingModal({
       toast.success('Appointment booked successfully!');
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['available-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['doctor', 'availability'] });
       reset();
       onClose();
     },

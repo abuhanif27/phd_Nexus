@@ -62,6 +62,7 @@ class UserSerializer(serializers.ModelSerializer):
         try:
             d = obj.doctor_profile
             return {
+                'id': d.id,
                 'name': d.name,
                 'specialty': d.specialty,
                 'qualifications': d.qualifications,

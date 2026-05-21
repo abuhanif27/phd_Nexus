@@ -30,15 +30,17 @@ class DoctorAvailabilitySerializer(serializers.ModelSerializer):
 
     def get_booked_count(self, obj):
         """Count scheduled appointments inside this session's time window."""
+        from django.db.models import Q
         dt = datetime.combine(obj.date, obj.start_time)
-        end = dt + timedelta(minutes=obj.session_duration_minutes)
-        return Appointment.objects.filter(
-            doctor=obj.doctor,
-            date=obj.date,
-            start_time__gte=obj.start_time,
-            start_time__lt=end.time(),
-            status='scheduled',
-        ).count()
+        end_time = (dt + timedelta(minutes=obj.session_duration_minutes)).time()
+        base = Appointment.objects.filter(
+            doctor=obj.doctor, date=obj.date, status='scheduled',
+        )
+        if end_time > obj.start_time:
+            # Normal session (no midnight crossing)
+            return base.filter(start_time__gte=obj.start_time, start_time__lt=end_time).count()
+        # Cross-midnight: slots are >= start OR < end
+        return base.filter(Q(start_time__gte=obj.start_time) | Q(start_time__lt=end_time)).count()
 
     def validate(self, data):
         """

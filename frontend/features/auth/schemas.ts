@@ -75,6 +75,7 @@ export interface RegisterInput {
     emergency_contact?: string;
   };
   doctor_profile?: {
+    id: number;
     name: string;
     specialty?: string;
     qualifications?: string;

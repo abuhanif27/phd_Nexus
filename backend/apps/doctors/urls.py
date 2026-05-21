@@ -10,6 +10,7 @@ from apps.scheduling.views import (
     DoctorDashboardStatsView,
     DoctorAppointmentsView,
     DoctorPatientsView,
+    DoctorBookingSlotsView,
 )
 
 # Single router — avoids two DefaultRouters competing at the same '' prefix.
@@ -29,6 +30,7 @@ urlpatterns = [
     path('me/', DoctorProfileView.as_view(), name='doctor-me'),
     path('dashboard/stats/', DoctorDashboardStatsView.as_view(), name='doctor-stats'),
     path('appointments/', DoctorAppointmentsView.as_view(), name='doctor-appointments'),
+    path('booking-slots/', DoctorBookingSlotsView.as_view(), name='doctor-booking-slots'),
     path('patients/', DoctorPatientsView.as_view(), name='doctor-patients'),
     # All remaining CRUD routes (doctors list/detail + availability CRUD)
     path('', include(router.urls)),

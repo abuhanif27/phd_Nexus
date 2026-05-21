@@ -155,41 +155,23 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         elif request.user.role == 'doctor':
-            # Doctors must provide patient ID
+            # Doctors can provide patient_code (PT-XXXXXXXX) or patient ID
+            patient_code = data.get('patient_code')
             patient_id = data.get('patient')
-            if not patient_id:
+
+            if not patient_code and not patient_id:
                 return Response(
-                    {'error': 'Patient ID is required for doctor-initiated booking.'},
+                    {'error': 'Patient code (e.g. PT-XXXXXXXX) or patient ID is required.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             try:
-                patient_obj = PatientModel.objects.get(id=patient_id)
+                if patient_code:
+                    patient_obj = PatientModel.objects.get(patient_code__iexact=patient_code)
+                else:
+                    patient_obj = PatientModel.objects.get(id=patient_id)
+                data['patient'] = patient_obj.id
                 doctor_obj = request.user.doctor_profile
-                
-                # Verify consent
-                consent = Consent.objects.filter(
-                    patient=patient_obj,
-                    doctor=doctor_obj,
-                    status='active',
-                    expires_at__gt=timezone.now()
-                ).first()
-                
-                if not consent:
-                    return Response(
-                        {'error': 'No active consent from this patient. Please request booking permission first.'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-                
-                # Check if scheduling is allowed in scope
-                scope = consent.scope or {}
-                write_scope = scope.get('write', [])
-                if 'scheduling' not in write_scope and 'appointments' not in write_scope and '*' not in write_scope:
-                    return Response(
-                        {'error': 'Consent does not include scheduling permissions.'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-                    
             except PatientModel.DoesNotExist:
                 return Response({'error': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)
             except Exception:
@@ -237,17 +219,19 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
             
         # 3. Patient already has a scheduled appointment with this exact doctor (prevent double booking)
-        patient_doctor_conflict = Appointment.objects.filter(
-            patient=patient,
-            doctor=doctor,
-            status='scheduled'
-        ).exists()
-        
-        if patient_doctor_conflict:
-            return Response(
-                {'error': 'You already have an upcoming appointment scheduled with this doctor'},
-                status=status.HTTP_409_CONFLICT
-            )
+        # Only enforce for patient-initiated bookings; doctors can book multiple for same patient
+        if request.user.role == 'patient':
+            patient_doctor_conflict = Appointment.objects.filter(
+                patient=patient,
+                doctor=doctor,
+                status='scheduled'
+            ).exists()
+            
+            if patient_doctor_conflict:
+                return Response(
+                    {'error': 'You already have an upcoming appointment scheduled with this doctor'},
+                    status=status.HTTP_409_CONFLICT
+                )
         
         # Create appointment
         appointment = serializer.save()
@@ -282,6 +266,26 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment.save()
 
         return Response(AppointmentSerializer(appointment).data)
+
+    @action(detail=True, methods=['delete'], url_path='free')
+    def free_slot(self, request, pk=None):
+        """Doctor deletes/frees a booking slot if the appointment time hasn't passed."""
+        appointment = self.get_object()
+
+        if request.user.role != 'doctor':
+            return Response({'error': 'Only doctors can free slots.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Check time hasn't passed
+        from datetime import datetime as dt
+        apt_datetime = datetime.combine(appointment.date, appointment.start_time)
+        if apt_datetime <= datetime.now():
+            return Response(
+                {'error': 'Cannot free a slot whose time has already passed.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        appointment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -454,3 +458,98 @@ class DoctorAvailabilityByIdView(views.APIView):
         if month and year:
             qs = qs.filter(date__month=int(month), date__year=int(year))
         return Response(DoctorAvailabilitySerializer(qs, many=True).data)
+
+
+class DoctorBookingSlotsView(views.APIView):
+    """
+    Returns the logged-in doctor's availability sessions with:
+    - status: expired / running / upcoming
+    - available_slots: list of unbooked time slots within each session
+    Used by the doctor booking modal to pick a slot for a patient.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            doctor = request.user.doctor_profile
+        except Exception:
+            return Response({'error': 'Doctor profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        qs = DoctorAvailability.objects.filter(doctor=doctor).order_by('date', 'start_time')
+
+        # Optional date filter
+        date_filter = request.query_params.get('date')
+        if date_filter:
+            qs = qs.filter(date=date_filter)
+        else:
+            # Default: show from yesterday (to show recent expired) onward
+            qs = qs.filter(date__gte=date_type.today() - timedelta(days=1))
+
+        now = datetime.now()
+        results = []
+
+        for session in qs:
+            session_start_dt = datetime.combine(session.date, session.start_time)
+            session_end_dt = session_start_dt + timedelta(minutes=session.session_duration_minutes)
+
+            # Determine status
+            if now >= session_end_dt:
+                session_status = 'expired'
+            elif now >= session_start_dt:
+                session_status = 'running'
+            else:
+                session_status = 'upcoming'
+
+            # Generate slots
+            slots = []
+            current = session_start_dt
+            patient_count = 0
+            while current < session_end_dt and patient_count < session.max_patients:
+                slot_start = current.time()
+                slot_end = (current + timedelta(minutes=session.minutes_per_patient)).time()
+
+                # Skip break windows
+                in_break = False
+                for brk in session.breaks:
+                    brk_start = datetime.strptime(brk['start'], '%H:%M').time()
+                    brk_end = datetime.strptime(brk['end'], '%H:%M').time()
+                    if brk_start <= slot_start < brk_end:
+                        in_break = True
+                        break
+
+                if not in_break:
+                    booked = Appointment.objects.filter(
+                        doctor=doctor,
+                        date=session.date,
+                        start_time=slot_start,
+                        status='scheduled',
+                    ).exists()
+                    # Mark slot as past if its start time has already passed
+                    is_past = session_status == 'running' and current <= now
+                    slots.append({
+                        'start_time': slot_start.strftime('%H:%M'),
+                        'end_time': slot_end.strftime('%H:%M'),
+                        'available': not booked and not is_past,
+                        'past': is_past,
+                    })
+                    patient_count += 1
+
+                current += timedelta(minutes=session.minutes_per_patient)
+
+            available_count = sum(1 for s in slots if s['available'])
+
+            results.append({
+                'id': session.id,
+                'date': session.date.isoformat(),
+                'start_time': session.start_time.strftime('%H:%M'),
+                'end_time': session_end_dt.time().strftime('%H:%M'),
+                'session_duration_minutes': session.session_duration_minutes,
+                'max_patients': session.max_patients,
+                'minutes_per_patient': session.minutes_per_patient,
+                'status': session_status,
+                'total_slots': len(slots),
+                'available_count': available_count,
+                'slots': slots,
+            })
+
+        return Response(results)

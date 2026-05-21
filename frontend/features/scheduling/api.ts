@@ -65,6 +65,28 @@ export async function cancelAppointment(id: number): Promise<Appointment> {
 }
 
 /**
+ * Doctor books appointment by patient code
+ */
+export async function doctorBookAppointment(payload: {
+  patient_code: string;
+  doctor: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+  notes?: string;
+}): Promise<Appointment> {
+  const { data } = await apiClient.post<Appointment>(`${BASE}/appointments/`, payload);
+  return data;
+}
+
+/**
+ * Doctor frees/deletes a booking slot (only if time hasn't passed)
+ */
+export async function freeAppointmentSlot(id: number): Promise<void> {
+  await apiClient.delete(`${BASE}/appointments/${id}/free/`);
+}
+
+/**
  * Mark appointment as completed
  */
 export async function completeAppointment(id: number): Promise<Appointment> {

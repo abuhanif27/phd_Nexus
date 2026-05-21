@@ -52,7 +52,10 @@ export default function ConsultationsPage() {
 
   const cancelMutation = useMutation({
     mutationFn: async (id: number) => apiClient.patch(`/api/scheduling/appointments/${id}/cancel/`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['consultations'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['consultations'] });
+      qc.invalidateQueries({ queryKey: ['doctor', 'availability'] });
+    },
   });
 
   const saveNotesMutation = useMutation({
