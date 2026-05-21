@@ -368,28 +368,32 @@ export function DoctorsPage() {
                     )}
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-2">
-                      <Link href={`/appointments?doctor=${doctor.id}`} className="flex-1">
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <Link href={`/appointments?doctor=${doctor.id}`} className="w-full">
                         <Button className="w-full" size="sm">
                           <Calendar className="mr-2 h-4 w-4" />
                           Book Appointment
                         </Button>
                       </Link>
 
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={(e) => handleMessageDoctor(e, doctor.user)}
-                        title="Message Doctor"
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                      </Button>
-
-                      <Link href={`/doctors/${doctor.id}`}>
-                        <Button variant="outline" size="sm">
-                          View Profile
+                      <div className="flex gap-2 w-full">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="flex-1"
+                          onClick={(e) => handleMessageDoctor(e, doctor.user)}
+                          title="Message Doctor"
+                        >
+                          <MessageSquare className="mr-1 h-4 w-4" />
+                          Message
                         </Button>
-                      </Link>
+
+                        <Link href={`/doctors/${doctor.id}`} className="flex-1">
+                          <Button variant="outline" size="sm" className="w-full">
+                            View Profile
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
