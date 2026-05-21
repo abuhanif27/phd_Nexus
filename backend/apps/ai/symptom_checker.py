@@ -68,8 +68,7 @@ class SymptomCheckerService:
         
         clean_spec = specialist_name.split('(')[0].strip()
         doctors = Doctor.objects.filter(
-            Q(specialty__icontains=clean_spec) | Q(specialty__icontains=clean_spec.replace('ist', '')),
-            verification_status='approved'
+            Q(specialty__icontains=clean_spec) | Q(specialty__icontains=clean_spec.replace('ist', ''))
         ).select_related('user')
 
         doc_list = []

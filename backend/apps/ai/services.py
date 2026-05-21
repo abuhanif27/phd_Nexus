@@ -711,6 +711,16 @@ class AIService:
             if label in ('symptom', 'condition', 'sign_symptom', 'disease_disorder'):
                 found_symptoms.append(ent.get('text', ent.get('word', '')))
         found_symptoms = [s for s in found_symptoms if s]
+
+        # Merge WordPiece tokens (e.g. ['it', '##ching'] -> ['itching'])
+        if found_symptoms:
+            merged = []
+            for token in found_symptoms:
+                if token.startswith('##') and merged:
+                    merged[-1] += token[2:]
+                else:
+                    merged.append(token)
+            found_symptoms = merged
         
         # If no specific symptoms found via NER, use the keyword containment fallback
         if not found_symptoms:
@@ -718,6 +728,13 @@ class AIService:
 
         # 1. Use Reinforced Engine
         predictions = self.rl_engine.predict(found_symptoms)
+
+        # If NER-extracted symptoms didn't match, try keyword containment on original text
+        if not predictions:
+            contained = self.rl_engine.get_contained_symptoms(text)
+            if contained and contained != found_symptoms:
+                found_symptoms = contained
+                predictions = self.rl_engine.predict(found_symptoms)
         
         if predictions:
             best_disease, score = predictions[0]
