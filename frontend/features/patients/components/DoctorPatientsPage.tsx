@@ -36,7 +36,7 @@ import { toast } from 'sonner';
 import React from 'react';
 import { PrescriptionGenerator } from '@/features/records/components/PrescriptionGenerator';
 import { BookingModal } from '@/features/scheduling/components/BookingModal';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 export function DoctorPatientsPage() {
   const { data: user, isLoading: userLoading } = useCurrentUser();
@@ -498,6 +498,7 @@ export function DoctorPatientsPage() {
 
       <Dialog open={!!prescribePatient} onOpenChange={(open) => !open && setPrescribePatient(null)}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden border-none bg-transparent">
+          <DialogTitle className="sr-only">Prescribe Medication</DialogTitle>
           {prescribePatient && (
             <PrescriptionGenerator
               patientId={prescribePatient.id}
