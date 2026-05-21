@@ -348,10 +348,11 @@ class SymptomListView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        symptom_checker_service._ensure_resources()
         symptoms = [s.replace('_', ' ').title() for s in symptom_checker_service.all_symptoms]
         return Response({
             'symptoms': symptoms,
-            'raw_symptoms': symptom_checker_service.all_symptoms
+            'raw_symptoms': [s.lower().replace(' ', '_') for s in symptoms]
         })
 
 class AIStatusView(views.APIView):

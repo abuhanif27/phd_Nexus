@@ -640,47 +640,42 @@ class AIService:
     
     def analyze_symptoms(self, text: str) -> Dict:
         """
-        Analyze symptom text using HF Inference API or spaCy NER.
+        Analyze symptom text using HF Inference API or Dataset-based Mapping.
         Returns cleaned text and extracted entities.
         """
         cleaned = self.clean_text(text)
+        entities = []
         
         # 1. Try HF Inference API (Cloud Priority)
         if self._hf_available():
             entities = self.extract_entities_hf(text)
-            if entities:
-                # Map HF entities to standard format
-                mapped_entities = []
-                for ent in entities:
-                    mapped_entities.append({
-                        'text': ent.get('word', ''),
-                        'label': ent.get('entity_group', 'symptom'),
-                        'start': ent.get('start', 0),
-                        'end': ent.get('end', 0)
-                    })
-                return {
-                    'cleaned_text': cleaned,
-                    'entities': mapped_entities
-                }
+        
+        # 2. Dataset-based Fallback (Zero CPU, High Reliability)
+        if not entities:
+            # Find known symptoms in text
+            found = self.rl_engine.get_contained_symptoms(text)
+            for sym in found:
+                # Find position in original text for UI mapping
+                match = re.search(re.escape(sym), text, re.IGNORECASE)
+                start = match.start() if match else 0
+                end = match.end() if match else 0
+                entities.append({
+                    'text': sym,
+                    'label': 'symptom',
+                    'start': start,
+                    'end': end
+                })
 
-        # 2. Local Fallback (spaCy)
-        if not self.spacy_model:
-            return {
-                'cleaned_text': cleaned,
-                'entities': []
-            }
-        
-        doc = self.spacy_model(text)
-        
-        # Extract entities (symptoms, drugs, dates, etc.)
-        entities = []
-        for ent in doc.ents:
-            entities.append({
-                'text': ent.text,
-                'label': ent.label_,
-                'start': ent.start_char,
-                'end': ent.end_char
-            })
+        # 3. Local Model Fallback (Legacy/Heavy)
+        if not entities and self.spacy_model:
+            doc = self.spacy_model(text)
+            for ent in doc.ents:
+                entities.append({
+                    'text': ent.text,
+                    'label': ent.label_,
+                    'start': ent.start_char,
+                    'end': ent.end_char
+                })
         
         return {
             'cleaned_text': cleaned,

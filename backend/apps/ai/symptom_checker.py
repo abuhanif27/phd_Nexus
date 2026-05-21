@@ -1,5 +1,6 @@
 import os
 import re
+import csv
 from typing import List, Dict, Optional
 from django.conf import settings
 
@@ -83,83 +84,122 @@ class SymptomCheckerService:
         return doc_list[:5]
 
     def _load_resources(self):
-        """Load datasets and model (Cloud Priority -> Local Fallback)."""
+        """Load datasets and model (Dataset Driven -> Cloud Fallback)."""
+        # Always load standard symptom list from the project's local CSV (Very light)
+        try:
+            base_dir = settings.BASE_DIR
+            dataset_path = os.path.join(base_dir, 'chating system', 'Dataset', 'Symptom Severity.csv')
+            if os.path.exists(dataset_path):
+                with open(dataset_path, mode='r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    self.all_symptoms = [row['Symptom'].strip().replace('_', ' ').title() for row in reader]
+                    self.all_symptoms = sorted(list(set(self.all_symptoms)))
+                    print(f"✅ Loaded {len(self.all_symptoms)} symptoms from dataset.")
+            
+            # Populate disease_info for mapping
+            spec_path = os.path.join(base_dir, 'chating system', 'Dataset', 'Disease Specialist.csv')
+            if os.path.exists(spec_path):
+                with open(spec_path, mode='r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        disease = row['Disease'].strip()
+                        self.disease_info[disease] = {'specialist': row['Specialist'], 'description': '', 'precautions': []}
+        except Exception as e:
+            print(f"Error loading lightweight symptoms: {e}")
+
         if self.use_hf_api:
-            # In Cloud mode, we only need the metadata (list of symptoms)
-            if os.path.exists(self.METADATA_PATH):
+            # Cloud mode metadata fallback (Legacy)
+            if not self.all_symptoms and os.path.exists(self.METADATA_PATH):
                 try:
                     import joblib as j
                     meta = j.load(self.METADATA_PATH)
                     self.all_symptoms = meta['all_symptoms']
-                    self.symptom_idx = meta['symptom_idx']
                     self.model_source = 'cloud_meta'
-                    print("☁️ Symptom Checker: Using Cloud mode (No local model loaded)")
                     return
                 except: pass
         
-        # Local Fallback path (Heavy)
-        try:
-            _import_heavy_deps()
-            if pd is None: return
-
-            # Load CSVs
-            df_specialist = pd.read_csv(os.path.join(self.DATA_DIR, 'Disease Specialist.csv'))
-            df_desc = pd.read_csv(os.path.join(self.DATA_DIR, 'Symptom Description.csv'))
-            df_prec = pd.read_csv(os.path.join(self.DATA_DIR, 'Symptom Precaution.csv'))
-            df_severity = pd.read_csv(os.path.join(self.DATA_DIR, 'Symptom Severity.csv'))
-
-            # Standardize
-            for _, row in df_specialist.iterrows():
-                disease = str(row['Disease']).strip()
-                self.disease_info[disease] = {'specialist': row['Specialist'], 'description': '', 'precautions': []}
-
-            # Map Severity
-            self.severity_map = {str(k).strip().lower().replace(' ', '_'): v for k, v in zip(df_severity['Symptom'], df_severity['weight'])}
-
-            # Load Model
-            if os.path.exists(self.MODEL_PATH):
-                self.model = joblib.load(self.MODEL_PATH)
-                self.model_source = 'local'
-        except Exception as e:
-            print(f"Error loading Symptom Checker resources: {e}")
+        # We now avoid loading heavy sklearn models unless explicitly requested,
+        # because the Reinforced Knowledge engine replaces them.
+        self.model_source = 'reinforced_knowledge'
 
     def check_symptoms(self, text: str, manual_symptoms: List[str] = None, patient=None) -> Dict:
         """
-        Main entry point. Uses HF Cloud if enabled, else falls back to local.
+        Main entry point. Prioritizes Reinforced Local Engine.
         """
-        self._ensure_resources()
-        
-        if self.use_hf_api and self.ai_service._hf_available():
-            # Cloud Logic
-            model_id = getattr(settings, 'HF_LLM_MODEL', 'openai/gpt-oss-20b')
-            prompt = (
-                "Diagnose these symptoms and return only valid JSON with keys: "
-                "disease, specialist, confidence, alternatives, detected_symptoms.\n"
-                f"Symptoms: {text}"
-            )
-            
-            try:
-                response = self.ai_service._call_hf_chat(prompt, system_prompt="You are a medical AI. Only output JSON.")
-                result = self.ai_service._extract_json(response)
-                if result:
-                    # Enrich with doctor info
-                    spec = result.get('specialist', 'General Physician')
-                    result['recommended_doctors'] = self._get_recommended_doctors(spec, patient=patient)
-                    return result
-            except Exception as e:
-                print(f"Cloud Diagnostic Error: {e}")
+        # Ensure we have symptoms to work with
+        if not manual_symptoms and not text:
+            return {"error": "No symptoms provided"}
 
-        # Local Fallback
-        specialist = self.ai_service.predict_specialist(text, mode='quick')
-        spec = specialist.get('specialist', 'General Physician')
+        # 1. Use Reinforced Engine (Zero CPU, Dataset Driven)
+        specialist_result = self.ai_service.predict_specialist(text or ", ".join(manual_symptoms or []))
+        
+        disease = specialist_result.get('disease_prediction', 'Undetermined')
+        specialist = specialist_result.get('specialist', 'General Physician')
+        
+        # 2. Get additional info from datasets (Description, Precautions, Severity)
+        description = "Please consult a professional for a detailed diagnosis."
+        precautions = ["Avoid self-medication", "Monitor symptoms", "Consult a doctor if worsening"]
+        severity_level = "Moderate"
+        severity_score = 4
+        
+        try:
+            # Use data from the 'chating system' datasets
+            base_dir = settings.BASE_DIR
+            
+            # Map description
+            desc_path = os.path.join(base_dir, 'chating system', 'Dataset', 'Symptom Description.csv')
+            with open(desc_path, mode='r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row['Disease'].strip().lower() == disease.lower():
+                        description = row['Description'].strip()
+                        break
+            
+            # Map precautions
+            prec_path = os.path.join(base_dir, 'chating system', 'Dataset', 'Symptom Precaution.csv')
+            with open(prec_path, mode='r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row['Disease'].strip().lower() == disease.lower():
+                        precautions = [row[f'Precaution_{i}'].strip() for i in range(1, 5) if row.get(f'Precaution_{i}') and row[f'Precaution_{i}'].strip()]
+                        break
+                        
+            # Map severity (average weight of detected symptoms)
+            sev_path = os.path.join(base_dir, 'chating system', 'Dataset', 'Symptom Severity.csv')
+            detected_symptoms = specialist_result.get('symptoms_detected', manual_symptoms or [])
+            total_sev = 0
+            found_sev = 0
+            with open(sev_path, mode='r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                sev_data = {row['Symptom'].strip().replace('_', ' ').lower(): int(row['weight']) for row in reader}
+                for s in detected_symptoms:
+                    s_clean = s.lower().strip()
+                    if s_clean in sev_data:
+                        total_sev += sev_data[s_clean]
+                        found_sev += 1
+            
+            if found_sev > 0:
+                severity_score = total_sev / found_sev
+                severity_level = "High" if severity_score > 5 else "Moderate" if severity_score > 3 else "Low"
+
+        except Exception as e:
+            print(f"Error fetching dataset info: {e}")
+
         return {
-            "disease": "Needs clinical review",
-            "specialist": spec,
-            "confidence": specialist.get('confidence', 0.5),
-            "alternatives": specialist.get('alternatives', []),
-            "detected_symptoms": manual_symptoms or self._extract_symptom_terms(text),
-            "recommended_doctors": self._get_recommended_doctors(spec, patient=patient),
-            "model_source": specialist.get('model_type', 'fallback')
+            "disease": disease,
+            "specialist": specialist,
+            "confidence": specialist_result.get('confidence', 0.5),
+            "alternatives": [
+                {"disease": d, "specialist": self.ai_service._map_disease_to_specialist(d), "confidence": 0.4} 
+                for d in specialist_result.get('alternatives', [])
+            ],
+            "detected_symptoms": detected_symptoms,
+            "severity_score": severity_score,
+            "severity_level": severity_level,
+            "description": description,
+            "precautions": precautions,
+            "recommended_doctors": self._get_recommended_doctors(specialist, patient=patient),
+            "model_source": "reinforced_knowledge"
         }
 
     def _extract_symptom_terms(self, text: str) -> List[str]:
