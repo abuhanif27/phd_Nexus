@@ -18,6 +18,7 @@ import {
 } from '@/features/notifications/api';
 import { approveBookingPermission } from '@/features/consent/api';
 import React from 'react';
+import Link from 'next/link';
 
 type NotificationCategory = 'access_request' | 'booking_request' | 'all';
 
@@ -241,18 +242,28 @@ function AccessRequestCard({
   const payload = notification.payload;
 
   if (payload?.type !== 'access_request' && payload?.type !== 'booking_permission_request') {
+    const isPrescription = payload?.type === 'prescription_created';
     return (
-      <Card className="overflow-hidden">
+      <Card className={cn("overflow-hidden", isPrescription && "border-l-4 border-l-green-500")}>
         <CardContent className="pt-6">
           <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-semibold">{payload?.message || payload?.body || payload?.title || 'System Notification'}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
+            <div className="flex-1 space-y-2">
+              <p className="text-sm font-semibold">{payload?.title || 'Notification'}</p>
+              <p className="text-sm text-muted-foreground">{payload?.body || payload?.message || 'System Notification'}</p>
+              <p className="text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(notification.ts), { addSuffix: true })}
               </p>
+              {isPrescription && (
+                <Link href="/dashboard/records">
+                  <Button size="sm" variant="outline" className="mt-2 gap-2 text-green-700 border-green-200 hover:bg-green-50">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    View Prescription
+                  </Button>
+                </Link>
+              )}
             </div>
             <Badge variant="secondary" className="ml-2">
-              {notification.status}
+              {isPrescription ? 'Prescription' : notification.status}
             </Badge>
           </div>
         </CardContent>

@@ -8,7 +8,7 @@ import type { PaginatedResponse } from '@/types/api';
 const BASE = '/api/notifications';
 
 export interface NotificationPayload {
-  type: 'access_request' | 'appointment' | 'lab_result' | 'system' | 'booking_permission_request';
+  type: 'access_request' | 'appointment' | 'lab_result' | 'system' | 'booking_permission_request' | 'prescription_created';
   message: string;
   title?: string;
   body?: string;
@@ -18,6 +18,7 @@ export interface NotificationPayload {
   doctor_id?: number;
   doctor_name?: string;
   patient_id?: number;
+  prescription_id?: number;
 }
 
 export interface BackendNotification {

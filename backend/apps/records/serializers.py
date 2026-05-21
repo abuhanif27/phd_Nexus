@@ -30,6 +30,10 @@ class LabResultSerializer(serializers.ModelSerializer):
 class PrescriptionSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(read_only=True)
     items = serializers.JSONField(required=True)
+    doctor_name = serializers.SerializerMethodField()
+    
+    def get_doctor_name(self, obj):
+        return obj.doctor.name if obj.doctor else None
     
     def validate_items(self, value):
         if not isinstance(value, list):
@@ -38,7 +42,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Prescription
-        fields = ['id', 'patient', 'doctor', 'items', 'notes', 'status', 'ts', 'expires_at', 'is_active']
+        fields = ['id', 'patient', 'doctor', 'doctor_name', 'items', 'notes', 'status', 'ts', 'expires_at', 'is_active']
         read_only_fields = ['id', 'ts', 'is_active']
 
 
