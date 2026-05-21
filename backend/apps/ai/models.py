@@ -66,7 +66,7 @@ class HealthSummaryShare(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='health_summary_shares')
     share_token = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField(null=True, blank=True)  # Optional expiration date
+    expires_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     
     class Meta:
@@ -80,11 +80,32 @@ class HealthSummaryShare(models.Model):
         return f"Share link for {self.patient.name} ({self.share_token})"
     
     def is_expired(self):
-        """Check if share link has expired."""
         if self.expires_at is None:
             return False
         return timezone.now() > self.expires_at
     
     def is_valid(self):
-        """Check if share link is valid and active."""
         return self.is_active and not self.is_expired()
+
+
+class ReinforcedKnowledge(models.Model):
+    """
+    Stores learned weights for symptom-disease pairs.
+    This acts as the 'brain' of the reinforcement learning engine.
+    """
+    symptom = models.CharField(max_length=100, db_index=True)
+    disease = models.CharField(max_length=100, db_index=True)
+    weight = models.FloatField(default=1.0)  # Initial weight from dataset
+    occurrences = models.IntegerField(default=1)  # Number of times seen together
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'ai_reinforced_knowledge'
+        unique_together = ('symptom', 'disease')
+        indexes = [
+            models.Index(fields=['symptom', 'weight']),
+            models.Index(fields=['disease']),
+        ]
+
+    def __str__(self):
+        return f"{self.symptom} -> {self.disease} (w={self.weight})"

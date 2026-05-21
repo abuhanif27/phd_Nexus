@@ -6,6 +6,7 @@ import re
 import string
 import pickle
 import time
+import csv
 from pathlib import Path
 from typing import List, Dict, Tuple
 from datetime import datetime
@@ -72,14 +73,15 @@ from django.utils import timezone
 from datetime import timedelta
 from apps.records.models import LabResult, Prescription, Encounter, File
 from apps.patients.models import Patient
-from .models import EmbeddingMeta, AISummary
+from .models import EmbeddingMeta, AISummary, ReinforcedKnowledge
 from .tasks import get_or_extract_file_text
+from .reinforcement import ReinforcementEngine
 
 
 class AIService:
     """
     Main AI service for NLP/ML operations.
-    Supports sklearn and DistilBERT models with intelligent fallback.
+    Uses Reinforced Knowledge engine for Zero CPU pressure and adaptive learning.
     100% FREE - no API costs!
     """
     
@@ -118,6 +120,7 @@ class AIService:
         self.hf_last_error = ''
         self.local_fallback_mode = getattr(settings, 'AI_LOCAL_FALLBACK_MODE', 'lightweight')
         
+        self.rl_engine = ReinforcementEngine()
         self.spacy_model = None
         self.embedding_model = None
         self.specialist_classifier = None
@@ -689,9 +692,35 @@ class AIService:
                           patient_history: str = None) -> Dict:
         """
         Predict specialist from symptom text.
-        Proxies to HF Inference API or Remote Brain if available.
+        PRIORITY 1: Reinforced Local Engine (Zero CPU, Dataset Driven, Continuous Learning)
+        FALLBACK: HF Inference API
         """
-        # 1. Try HF Inference API (Cloud Priority)
+        # Extract symptoms from text for the RL engine
+        analysis = self.analyze_symptoms(text)
+        found_symptoms = [ent['text'] for ent in analysis.get('entities', []) if ent['label'].lower() in ('symptom', 'condition')]
+        
+        # If no specific symptoms found via NER, use the keyword containment fallback
+        if not found_symptoms:
+            found_symptoms = self.rl_engine.get_contained_symptoms(text)
+
+        # 1. Use Reinforced Engine
+        predictions = self.rl_engine.predict(found_symptoms)
+        
+        if predictions:
+            best_disease, score = predictions[0]
+            # Map disease to specialist (lightweight lookup)
+            specialist = self._map_disease_to_specialist(best_disease)
+            
+            return {
+                'specialist': specialist,
+                'disease_prediction': best_disease,
+                'confidence': min(0.95, 0.5 + (score / 10)),
+                'source': 'reinforced_knowledge',
+                'symptoms_detected': found_symptoms,
+                'alternatives': [self._map_disease_to_specialist(d) for d, s in predictions[1:]]
+            }
+
+        # 2. Try HF Inference API (If RL engine had zero matches)
         if self._hf_available():
             model_id = getattr(settings, 'HF_LLM_MODEL', 'openai/gpt-oss-20b')
             prompt = f"""You are a medical specialist classifier. Given the symptoms, predict the most relevant medical specialist.
@@ -1096,6 +1125,36 @@ Return only a list of strings representing bullet points. [/INST]"""
             # Fallback: return first few sentences
             sentences = text.split('.')[:sentence_count]
             return [s.strip() + '.' for s in sentences if s.strip()]
+
+    def _map_disease_to_specialist(self, disease: str) -> str:
+        """Map disease name to a specialist using the CSV dataset."""
+        try:
+            path = os.path.join(settings.BASE_DIR, 'chating system', 'Dataset', 'Disease Specialist.csv')
+            with open(path, mode='r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row['Disease'].strip().lower() == disease.strip().lower():
+                        return row['Specialist'].strip()
+        except Exception as e:
+            print(f"Mapping error: {e}")
+        return "General Physician"
+
+    def reinforce_knowledge(self, symptoms_text: str, disease: str, is_reward: bool = True):
+        """
+        Public interface to reward or penalize the AI's knowledge base.
+        Called when a doctor confirms a diagnosis (Prescription creation).
+        """
+        analysis = self.analyze_symptoms(symptoms_text)
+        symptoms = [ent['text'] for ent in analysis.get('entities', []) if ent['label'].lower() in ('symptom', 'condition')]
+        
+        # If NER failed to find entities, use the keyword containment fallback
+        if not symptoms:
+            symptoms = self.rl_engine.get_contained_symptoms(symptoms_text)
+
+        if is_reward:
+            self.rl_engine.reward(symptoms, disease)
+        else:
+            self.rl_engine.penalize(symptoms, disease)
 
     def classify_document(self, text: str) -> str:
         """Classify document type (lab, prescription, other) based on text content."""

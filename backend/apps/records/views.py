@@ -4,6 +4,7 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 Views for medical records management.
 """
 import os
+from datetime import timedelta
 from django.conf import settings
 from django.db import models
 from django.http import FileResponse, Http404
@@ -311,15 +312,40 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        """Set doctor automatically if user is a doctor."""
+        """Set doctor automatically and trigger AI reinforcement learning."""
+        prescription = None
         if self.request.user.role == 'doctor':
             try:
                 doctor = self.request.user.doctor_profile
-                serializer.save(doctor=doctor)
+                prescription = serializer.save(doctor=doctor)
             except Exception:
-                serializer.save()
+                prescription = serializer.save()
         else:
-            serializer.save()
+            prescription = serializer.save()
+
+        # Reinforcement Learning: Reward the AI for this diagnosis
+        if prescription and prescription.doctor and prescription.patient:
+            try:
+                from apps.ai.services import AIService
+                from apps.records.models import SymptomLog
+                
+                # Find most recent symptoms for this patient (last 7 days)
+                recent_symptoms = SymptomLog.objects.filter(
+                    patient=prescription.patient,
+                    ts__gte=timezone.now() - timedelta(days=7)
+                ).order_by('-ts').first()
+
+                if recent_symptoms:
+                    # We assume the doctor's prescription notes or status contains the diagnosis
+                    # or we can use the 'disease_prediction' if it was recently logged.
+                    # For now, we'll use the notes as the diagnosis source
+                    diagnosis = prescription.notes or prescription.status
+                    if diagnosis and len(diagnosis) > 3:
+                        ai_service = AIService()
+                        ai_service.reinforce_knowledge(recent_symptoms.text, diagnosis, is_reward=True)
+                        print(f"[AI-Reinforcement] Rewarded knowledge for patient {prescription.patient.id}")
+            except Exception as e:
+                print(f"[AI-Reinforcement] Error during reward: {e}")
 
     @action(detail=False, methods=['post'], url_path='parse-image', parser_classes=[MultiPartParser, FormParser])
     def parse_image(self, request):
