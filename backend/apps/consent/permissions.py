@@ -43,6 +43,12 @@ class IsDoctor(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.role == 'doctor'
 
 
+class IsServiceProvider(permissions.BasePermission):
+    """Only service providers can access."""
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.role == 'provider'
+
+
 class IsAdmin(permissions.BasePermission):
     """Only admins can access."""
     def has_permission(self, request, view):

@@ -5,11 +5,12 @@ from django.db import models
 from django.utils import timezone
 from apps.patients.models import Patient
 from apps.doctors.models import Doctor
+from apps.service_providers.models import ServiceProviderOrganization
 
 
 class Consent(models.Model):
     """
-    Scoped patient consent for doctor access.
+    Scoped patient consent for doctor or service provider access.
     """
     STATUS_CHOICES = [
         ('active', 'Active'),
@@ -18,7 +19,8 @@ class Consent(models.Model):
     ]
     
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='consents')
-    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='consents')
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='consents', null=True, blank=True)
+    service_provider = models.ForeignKey(ServiceProviderOrganization, on_delete=models.CASCADE, related_name='consents', null=True, blank=True)
     scope = models.JSONField(default=dict)  # {"read": ["labs", "prescriptions"], "write": [...]}
     expires_at = models.DateTimeField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
@@ -29,10 +31,12 @@ class Consent(models.Model):
         db_table = 'consents'
         indexes = [
             models.Index(fields=['patient', 'doctor', 'status']),
+            models.Index(fields=['patient', 'service_provider', 'status']),
         ]
     
     def __str__(self):
-        return f"Consent: {self.patient} → {self.doctor} ({self.status})"
+        target = self.doctor if self.doctor else self.service_provider
+        return f"Consent: {self.patient} → {target} ({self.status})"
 
 
 class AuditLog(models.Model):

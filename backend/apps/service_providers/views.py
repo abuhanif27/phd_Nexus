@@ -47,23 +47,92 @@ class ServiceAvailabilityViewSet(viewsets.ModelViewSet):
 
 
 class ServiceBookingViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for service bookings. Supports both patient-initiated 
+    and provider-initiated (with consent) booking.
+    """
     serializer_class = ServiceBookingSerializer
+    queryset = ServiceBooking.objects.all()
 
     def get_permissions(self):
-        if self.action == 'create':
-            return [IsAuthenticated()]
-        return [IsAuthenticated()] # refine as needed
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         user = self.request.user
         if user.role == 'provider' and hasattr(user, 'service_provider_profile'):
-            return ServiceBooking.objects.filter(service__organization=user.service_provider_profile)
+            return self.queryset.filter(service__organization=user.service_provider_profile)
         if user.role == 'patient' and hasattr(user, 'patient_profile'):
-            return ServiceBooking.objects.filter(patient=user.patient_profile)
-        return ServiceBooking.objects.none()
+            return self.queryset.filter(patient=user.patient_profile)
+        return self.queryset.none()
+
+    def create(self, request, *args, **kwargs):
+        from apps.consent.models import Consent
+        from apps.patients.models import Patient as PatientModel
+        
+        data = request.data.copy()
+        user = request.user
+        
+        if user.role == 'patient':
+            try:
+                data['patient'] = user.patient_profile.id
+            except PatientModel.DoesNotExist:
+                return Response(
+                    {'error': 'Patient profile not found.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        elif user.role == 'provider':
+            # Providers must provide patient ID
+            patient_id = data.get('patient')
+            if not patient_id:
+                return Response(
+                    {'error': 'Patient ID is required for provider-initiated booking.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                patient_obj = PatientModel.objects.get(id=patient_id)
+                provider_obj = user.service_provider_profile
+                
+                # Verify consent
+                consent = Consent.objects.filter(
+                    patient=patient_obj,
+                    service_provider=provider_obj,
+                    status='active',
+                    expires_at__gt=timezone.now()
+                ).first()
+                
+                if not consent:
+                    return Response(
+                        {'error': 'No active consent from this patient. Please request booking permission first.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                
+                # Check if scheduling is allowed in scope
+                scope = consent.scope or {}
+                write_scope = scope.get('write', [])
+                if 'scheduling' not in write_scope and 'appointments' not in write_scope and '*' not in write_scope:
+                    return Response(
+                        {'error': 'Consent does not include scheduling permissions.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                    
+            except PatientModel.DoesNotExist:
+                return Response({'error': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)
+            except ServiceProviderOrganization.DoesNotExist:
+                return Response({'error': 'Provider profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Conflict check (Optional: check if patient already booked this service at this time)
+        # For now, we allow multiple bookings unless business rules dictate otherwise
+        
+        booking = serializer.save()
+        return Response(self.get_serializer(booking).data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
-        serializer.save(patient=self.request.user.patient_profile)
+        # Overridden by create() above, but kept for safety
+        pass
 
 
 class ServiceProviderOrganizationViewSet(viewsets.ReadOnlyModelViewSet):

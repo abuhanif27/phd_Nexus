@@ -26,7 +26,10 @@ class ServiceBookingSerializer(serializers.ModelSerializer):
             'organization_name', 'organization_user_id', 'availability', 'date', 
             'preferred_time', 'status', 'notes', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'patient', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'patient': {'required': False, 'allow_null': True}
+        }
 
 
 class ProviderServiceSerializer(serializers.ModelSerializer):

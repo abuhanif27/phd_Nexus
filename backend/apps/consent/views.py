@@ -10,9 +10,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.users.models import OTPToken
 from apps.doctors.models import Doctor
+from apps.service_providers.models import ServiceProviderOrganization
 from .models import Consent, AuditLog
 from .serializers import ConsentSerializer, GrantConsentSerializer, ClaimConsentSerializer, AuditLogSerializer
-from .permissions import IsPatient, IsDoctor, IsAdmin
+from .permissions import IsPatient, IsDoctor, IsAdmin, IsServiceProvider
 from .utils import generate_scoped_token
 
 
@@ -141,7 +142,7 @@ class RevokeConsentView(views.APIView):
 
 
 class ConsentListView(generics.ListAPIView):
-    """List user's consents (patient sees granted, doctor sees received)."""
+    """List user's consents (patient sees granted, doctor/provider sees received)."""
     serializer_class = ConsentSerializer
     permission_classes = [IsAuthenticated]
     
@@ -154,37 +155,55 @@ class ConsentListView(generics.ListAPIView):
         elif user.role == 'doctor':
             # Doctor sees consents they've received
             return Consent.objects.filter(doctor__user=user, status='active').order_by('-created_at')
+        elif user.role == 'provider':
+            # Provider sees consents they've received
+            return Consent.objects.filter(service_provider__user=user, status='active').order_by('-created_at')
         
         return Consent.objects.none()
 
 
 class RequestBookingPermissionView(views.APIView):
-    """Doctor requests permission to book appointments for a patient."""
-    permission_classes = [IsAuthenticated, IsDoctor]
+    """Doctor or Service Provider requests permission to book appointments for a patient."""
+    permission_classes = [IsAuthenticated]
     
     def post(self, request):
         from apps.patients.models import Patient
         from apps.notifications.models import Notification
         
+        if request.user.role not in ['doctor', 'provider']:
+            return Response({'error': 'Only doctors and service providers can request booking permission.'}, status=status.HTTP_403_FORBIDDEN)
+            
         patient_id = request.data.get('patient_id')
         if not patient_id:
             return Response({'error': 'patient_id is required'}, status=status.HTTP_400_BAD_REQUEST)
             
         try:
             patient = Patient.objects.get(id=patient_id)
-            doctor = request.user.doctor_profile
+            if request.user.role == 'doctor':
+                sender = request.user.doctor_profile
+                sender_type = 'doctor'
+                sender_name = sender.name
+            else:
+                sender = request.user.service_provider_profile
+                sender_type = 'service_provider'
+                sender_name = sender.organization_name
         except (Patient.DoesNotExist, Exception):
-            return Response({'error': 'Patient or Doctor profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Patient or Profile not found'}, status=status.HTTP_404_NOT_FOUND)
             
         # Check for recent identical request (5 minute cooldown)
-        recent_request = Notification.objects.filter(
-            user=patient.user,
-            channel='in_app',
-            status='sent',
-            ts__gte=timezone.now() - timedelta(minutes=5),
-            payload__doctor_id=doctor.id,
-            payload__type='booking_permission_request'
-        ).first()
+        filter_kwargs = {
+            'user': patient.user,
+            'channel': 'in_app',
+            'status': 'sent',
+            'ts__gte': timezone.now() - timedelta(minutes=5),
+            'payload__type': 'booking_permission_request'
+        }
+        if sender_type == 'doctor':
+            filter_kwargs['payload__doctor_id'] = sender.id
+        else:
+            filter_kwargs['payload__service_provider_id'] = sender.id
+
+        recent_request = Notification.objects.filter(**filter_kwargs).first()
 
         if recent_request:
             return Response(
@@ -193,21 +212,28 @@ class RequestBookingPermissionView(views.APIView):
             )
 
         # Create notification for patient
+        payload = {
+            'type': 'booking_permission_request',
+            'title': 'Appointment Booking Request',
+            'body': f'{sender_name} is requesting permission to book appointments on your behalf.',
+            'sender_type': sender_type,
+            'actions': [
+                {'label': 'Approve', 'url': '/api/consent/approve-booking/', 'method': 'POST', 'params': {f'{sender_type}_id': sender.id}},
+                {'label': 'Deny', 'url': '/api/consent/deny-booking/', 'method': 'POST', 'params': {f'{sender_type}_id': sender.id}}
+            ]
+        }
+        if sender_type == 'doctor':
+            payload['doctor_id'] = sender.id
+            payload['doctor_name'] = sender.name
+        else:
+            payload['service_provider_id'] = sender.id
+            payload['organization_name'] = sender.organization_name
+
         notification = Notification.objects.create(
             user=patient.user,
             channel='in_app',
             status='sent',
-            payload={
-                'type': 'booking_permission_request',
-                'title': 'Appointment Booking Request',
-                'body': f'Dr. {doctor.name} is requesting permission to book appointments on your behalf.',
-                'doctor_id': doctor.id,
-                'doctor_name': doctor.name,
-                'actions': [
-                    {'label': 'Approve', 'url': '/api/consent/approve-booking/', 'method': 'POST', 'params': {'doctor_id': doctor.id}},
-                    {'label': 'Deny', 'url': '/api/consent/deny-booking/', 'method': 'POST', 'params': {'doctor_id': doctor.id}}
-                ]
-            }
+            payload=payload
         )
         
         return Response({
@@ -224,34 +250,42 @@ class ApproveBookingPermissionView(views.APIView):
         from apps.notifications.models import Notification
         
         doctor_id = request.data.get('doctor_id')
+        provider_id = request.data.get('service_provider_id') or request.data.get('provider_id')
         notification_id = request.data.get('notification_id')
         
-        if not doctor_id:
-            return Response({'error': 'doctor_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not doctor_id and not provider_id:
+            return Response({'error': 'doctor_id or service_provider_id is required'}, status=status.HTTP_400_BAD_REQUEST)
             
         try:
-            doctor = Doctor.objects.get(id=doctor_id)
             patient = request.user.patient_profile
-        except (Doctor.DoesNotExist, Exception):
-            return Response({'error': 'Doctor or Patient profile not found'}, status=status.HTTP_404_NOT_FOUND)
-            
-        # Create or update consent
-        consent, created = Consent.objects.update_or_create(
-            patient=patient,
-            doctor=doctor,
-            defaults={
+            defaults = {
                 'scope': {"write": ["appointments", "scheduling"], "read": ["records"]},
-                'expires_at': timezone.now() + timedelta(days=365), # Long term permission
+                'expires_at': timezone.now() + timedelta(days=365),
                 'status': 'active'
             }
-        )
-        
+            
+            if doctor_id:
+                doctor = Doctor.objects.get(id=doctor_id)
+                consent, created = Consent.objects.update_or_create(
+                    patient=patient, doctor=doctor, defaults=defaults
+                )
+                name = doctor.name
+            else:
+                provider = ServiceProviderOrganization.objects.get(id=provider_id)
+                consent, created = Consent.objects.update_or_create(
+                    patient=patient, service_provider=provider, defaults=defaults
+                )
+                name = provider.organization_name
+                
+        except (Doctor.DoesNotExist, ServiceProviderOrganization.DoesNotExist, Exception):
+            return Response({'error': 'Doctor/Provider or Patient profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            
         # Mark notification as read if provided
         if notification_id:
             Notification.objects.filter(id=notification_id, user=request.user).update(read=True)
             
         return Response({
-            'message': f'Permission granted to Dr. {doctor.name}.',
+            'message': f'Permission granted to {name}.',
             'consent_id': consent.id
         })
 
