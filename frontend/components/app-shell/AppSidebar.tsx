@@ -45,12 +45,6 @@ const patientNavigation = [
     description: 'Check symptoms & specialists',
   },
   {
-    name: 'AI Analysis',
-    href: '/ai-analysis',
-    icon: Brain,
-    description: 'Deep health analysis',
-  },
-  {
     name: 'Explore Doctors',
     href: '/doctors',
     icon: Users,
@@ -104,12 +98,6 @@ const doctorNavigation = [
     href: '/appointments',
     icon: Calendar,
     description: 'Schedule management',
-  },
-  {
-    name: 'AI Insights',
-    href: '/ai-insights',
-    icon: Sparkles,
-    description: 'Patient analysis tools',
   },
   {
     name: 'Consultations',

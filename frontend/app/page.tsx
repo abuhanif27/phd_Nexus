@@ -47,7 +47,7 @@ export default function HomePage() {
                 href="#ai-analysis"
                 className="text-sm font-medium text-gray-700 transition-colors hover:text-blue-600 dark:text-gray-200"
               >
-                AI Analysis
+                Symptom Checker
               </Link>
               <Link
                 href="#dashboard"
@@ -104,7 +104,7 @@ export default function HomePage() {
                   className="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-slate-800"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  AI Analysis
+                  Symptom Checker
                 </Link>
                 <Link
                   href="#dashboard"
@@ -145,8 +145,8 @@ export default function HomePage() {
               </h1>
 
               <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300 sm:text-xl">
-                Advanced AI analysis for symptom understanding, specialist recommendations, and
-                comprehensive health insights. Privacy-first, locally-powered, instant results.
+                Advanced Symptom Checker for understanding health concerns, specialist recommendations, and
+                immediate diagnostic insights. Privacy-first, locally-powered, dataset-driven results.
               </p>
 
               {/* Key Features */}
@@ -206,7 +206,7 @@ export default function HomePage() {
             {/* Right Content - Feature Cards */}
             <div id="features" className="relative scroll-mt-24">
               <div className="grid gap-6">
-                {/* AI Analysis Card */}
+                {/* Symptom Checker Card */}
                 <div
                   id="ai-analysis"
                   className="group relative scroll-mt-24 rounded-2xl border border-gray-200 bg-white p-6 shadow-xl transition-all hover:scale-105 hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900"
