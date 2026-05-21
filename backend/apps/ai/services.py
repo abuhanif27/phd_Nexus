@@ -232,6 +232,17 @@ class AIService:
         """Robustly extract JSON from a string that might contain other text."""
         if not text: return None
         import json
+        import re
+        
+        # Clean markdown code blocks
+        if '```json' in text:
+            text = text.split('```json')[1].split('```')[0]
+        elif '```' in text:
+            text = text.split('```')[1].split('```')[0]
+            
+        # Clean trailing commas which break python json.loads
+        text = re.sub(r',\s*([\]}])', r'\1', text)
+            
         try:
             # 1. Try direct parse
             return json.loads(text.strip())
@@ -240,7 +251,9 @@ class AIService:
                 # 2. Try finding JSON-like structure
                 match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
                 if match:
-                    return json.loads(match.group(0))
+                    # Clean trailing commas again just in case
+                    clean_match = re.sub(r',\s*([\]}])', r'\1', match.group(0))
+                    return json.loads(clean_match)
             except:
                 pass
         return None
@@ -249,7 +262,7 @@ class AIService:
         """Call HF Chat Completion API (preferred for Mistral/Llama)."""
         if not self._hf_available(): return ""
         if not model_id:
-            model_id = getattr(settings, 'HF_LLM_MODEL', 'openai/gpt-oss-20b')
+            model_id = getattr(settings, 'HF_LLM_MODEL', 'Qwen/Qwen2.5-Coder-32B-Instruct')
             
         try:
             messages = [
@@ -1958,12 +1971,66 @@ Return only a JSON object with:
             return items
 
         # Pattern for common medicine lines
-        med_pattern = r'(?i)(?:Tab|Cap|Syr|Inj|T\.|C\.)?[\.\s]*([A-Z][a-z0-9\s\-]{2,})\s+(\d+(?:\.\d+)?\s*(?:mg|mcg|ml|gm|g|IU))\b.*?(\b(?:BD|TDS|QD|QID|OD|HS|twice daily|once daily|three times a day|at bedtime|every \d+ hours)\b)?.*?(?:for\s+(\d+)\s+(?:days|day|weeks|week))?'
-        simple_pattern = r'(?i)([A-Z][a-z0-9\s\-]{2,})\s+(\d+(?:\.\d+)?\s*(?:mg|mcg|ml|gm|g|IU))\b'
-        freq_pattern = r'\b(BD|TDS|QD|QID|OD|HS|twice daily|once daily|three times a day|at bedtime|every \d+ hours)\b'
-        dur_pattern = r'\bfor\s+(\d+)\s+(?:days|day|weeks|week)\b'
+        med_pattern = (
+            r'(?i)(?:Tab|Cap|Syr|Syp|Inj|Cream|Oint|Drop|Drops|Susp|Soln|T\.|C\.)?[\.\s]*'
+            r'([A-Z][a-z0-9\s\-]{2,})\s+'
+            r'(\d+(?:\.\d+)?\s*(?:mg|mcg|ml|gm|g|IU|mcg/ml|mg/ml|%))\b'
+            r'.*?(\b(?:BD|TDS|QD|QID|OD|HS|SOS|PRN|twice daily|once daily|three times a day|at bedtime|every \d+ hours)\b)?'
+            r'.*?(?:for\s+(\d+)\s+(?:days|day|weeks|week|w|d))?'
+        )
+        simple_pattern = r'(?i)([A-Z][a-z0-9\s\-]{2,})\s+(\d+(?:\.\d+)?\s*(?:mg|mcg|ml|gm|g|IU|mcg/ml|mg/ml|%))\b'
+        loose_dose_pattern = r'(?i)([A-Z][a-z0-9\s\-]{2,})\s+(\d{1,4})\b'
+        freq_pattern = r'\b(BD|TDS|QD|QID|OD|HS|SOS|PRN|twice daily|once daily|three times a day|at bedtime|every \d+ hours)\b'
+        schedule_pattern = r'\b(\d+\s*[-+]\s*\d+\s*[-+]\s*\d+(?:\s*[-+]\s*\d+)?)\b'
+        dur_pattern = r'(?:\bfor\b|\bx\b|\b×\b)?\s*(\d{1,3})\s*(days|day|d|weeks|week|w)\b'
 
-        lines = text.split('\n')
+        def _normalize_frequency(line: str, explicit: str | None) -> str:
+            if explicit:
+                return explicit.upper()
+            l_lower = line.lower()
+            schedule = re.search(schedule_pattern, line)
+            if schedule:
+                raw = re.sub(r'\s+', '', schedule.group(1))
+                if raw in {'1-0-1', '1+0+1'}:
+                    return 'BD'
+                if raw in {'1-1-1', '1+1+1'}:
+                    return 'TDS'
+                if raw in {'1-1-1-1', '1+1+1+1'}:
+                    return 'QID'
+                if raw in {'0-0-1', '0+0+1'}:
+                    return 'HS'
+            if 'bd' in l_lower or 'twice daily' in l_lower:
+                return 'BD'
+            if 'tds' in l_lower or 'three times' in l_lower:
+                return 'TDS'
+            if 'qd' in l_lower or 'od' in l_lower or 'once daily' in l_lower:
+                return 'QD'
+            if 'qid' in l_lower or 'four times' in l_lower:
+                return 'QID'
+            if 'hs' in l_lower or 'at bedtime' in l_lower:
+                return 'HS'
+            if 'sos' in l_lower:
+                return 'SOS'
+            if 'prn' in l_lower:
+                return 'PRN'
+            return ''
+
+        def _normalize_duration(line: str, explicit: str | None) -> str:
+            if explicit:
+                return explicit
+            dur_match = re.search(dur_pattern, line, re.I)
+            if not dur_match:
+                return ''
+            qty = int(dur_match.group(1))
+            unit = dur_match.group(2).lower()
+            if unit.startswith('w'):
+                qty *= 7
+            return str(qty)
+
+        lines = []
+        for chunk in text.split('\n'):
+            parts = re.split(r'[;|]', chunk)
+            lines.extend(parts)
         seen_drugs = set()
 
         for line in lines:
@@ -1973,32 +2040,30 @@ Return only a JSON object with:
             if match:
                 drug = match.group(1).strip()
                 dosage = match.group(2).strip()
-                frequency = match.group(3).strip().upper() if match.group(3) else ""
-                duration = match.group(4).strip() if match.group(4) else ""
+                frequency = _normalize_frequency(line, match.group(3))
+                duration = _normalize_duration(line, match.group(4))
             else:
                 match_simple = re.search(simple_pattern, line)
                 if match_simple:
                     drug = match_simple.group(1).strip()
                     dosage = match_simple.group(2).strip()
                     freq_match = re.search(freq_pattern, line, re.I)
-                    frequency = freq_match.group(1).upper() if freq_match else ""
-                    dur_match = re.search(dur_pattern, line, re.I)
-                    duration = dur_match.group(1) if dur_match else ""
+                    frequency = _normalize_frequency(line, freq_match.group(1) if freq_match else "")
+                    duration = _normalize_duration(line, "")
                 else:
-                    continue
+                    match_loose = re.search(loose_dose_pattern, line)
+                    if match_loose:
+                        drug = match_loose.group(1).strip()
+                        dosage = match_loose.group(2).strip()
+                        frequency = _normalize_frequency(line, "")
+                        duration = _normalize_duration(line, "")
+                    else:
+                        continue
 
             drug = re.sub(r'[\s\-,.]{2,}.*$', '', drug).strip()
             if len(drug) < 3: continue
             if drug.lower() in seen_drugs: continue
             seen_drugs.add(drug.lower())
-
-            if not frequency:
-                l_lower = line.lower()
-                if 'bd' in l_lower or 'twice daily' in l_lower: frequency = 'BD'
-                elif 'tds' in l_lower or 'three times' in l_lower: frequency = 'TDS'
-                elif 'qd' in l_lower or 'od' in l_lower or 'once daily' in l_lower: frequency = 'QD'
-                elif 'qid' in l_lower or 'four times' in l_lower: frequency = 'QID'
-                elif 'hs' in l_lower or 'at bedtime' in l_lower: frequency = 'HS'
 
             items.append({
                 'drug': drug.capitalize(),
@@ -2025,7 +2090,13 @@ Return only a JSON object with:
 
 class PrescriptionParser:
     @staticmethod
-    def parse_image(file_obj, patient, auto_save=True):
+    def parse_image(
+        file_obj,
+        patient,
+        auto_save=True,
+        raw_text_override: str | None = None,
+        clinical_date_override=None,
+    ):
         import requests, os, ast, re, io
         from datetime import timedelta, datetime
         from django.utils import timezone
@@ -2039,8 +2110,12 @@ class PrescriptionParser:
         raw_ocr = ""
         entities = []
 
+        if raw_text_override and raw_text_override.strip():
+            raw_ocr = raw_text_override.strip()
+            print("[Prescription] Using stored extracted text; skipping OCR.")
+
         # 1. Try Hugging Face Cloud OCR (Zero Local Load)
-        if use_hf_api and not file_name.endswith('.pdf'):
+        if not raw_ocr and use_hf_api and not file_name.endswith('.pdf'):
             try:
                 print(f"[Prescription] Offloading to HF Cloud OCR (Model: {getattr(settings, 'HF_OCR_MODEL', 'donut')})...")
                 file_obj.seek(0)
@@ -2110,9 +2185,28 @@ class PrescriptionParser:
                     # Try Tesseract (Lightweight)
                     try:
                         import pytesseract
-                        from PIL import Image as img
+                        from PIL import Image as img, ImageEnhance, ImageOps
                         pil_img = img.open(io.BytesIO(image_data))
-                        raw_ocr = pytesseract.image_to_string(pil_img).strip()
+                        
+                        # Handle transparent backgrounds (RGBA to RGB with white background)
+                        if pil_img.mode in ('RGBA', 'LA') or (pil_img.mode == 'P' and 'transparency' in pil_img.info):
+                            alpha = pil_img.convert('RGBA').split()[-1]
+                            bg = img.new("RGB", pil_img.size, (255, 255, 255))
+                            bg.paste(pil_img, mask=alpha)
+                            pil_img = bg
+                            
+                        # Pre-process for better OCR accuracy
+                        # 1. Convert to Grayscale
+                        pil_img = pil_img.convert('L')
+                        # 2. Increase contrast
+                        enhancer = ImageEnhance.Contrast(pil_img)
+                        pil_img = enhancer.enhance(2.0)
+                        # 3. Increase sharpness
+                        sharpness = ImageEnhance.Sharpness(pil_img)
+                        pil_img = sharpness.enhance(2.0)
+                        
+                        # Try psm 6 (Assume a single uniform block of text) which works well for prescriptions
+                        raw_ocr = pytesseract.image_to_string(pil_img, config='--psm 6').strip()
                         if raw_ocr:
                             print(f"[Prescription] Lightweight Local OCR Success: {len(raw_ocr)} chars extracted.")
                     except ImportError:
@@ -2153,11 +2247,50 @@ class PrescriptionParser:
 
         # Date extraction
         extracted_date = None
-        date_match = re.search(r'(\d{1,2}[\./-]\d{1,2}[\./-]\d{2,4})', raw_ocr)
-        if date_match:
-            try: extracted_date = dateutil.parser.parse(date_match.group(1), fuzzy=True).date()
-            except: pass
-        if not extracted_date: extracted_date = timezone.now().date()
+
+        if clinical_date_override:
+            try:
+                if isinstance(clinical_date_override, str):
+                    extracted_date = dateutil.parser.parse(clinical_date_override, fuzzy=True).date()
+                else:
+                    extracted_date = clinical_date_override
+            except Exception:
+                extracted_date = None
+
+        def _extract_date_from_text(text: str):
+            if not text:
+                return None
+            # Prefer lines that explicitly mention date
+            date_lines = [line for line in text.split('\n') if re.search(r'\bdate\b|\bdated\b', line, re.I)]
+            for line in date_lines:
+                try:
+                    return dateutil.parser.parse(line, fuzzy=True, dayfirst=True).date()
+                except Exception:
+                    continue
+
+            # Common explicit formats with year
+            patterns = [
+                r'(\d{4}[\./-]\d{1,2}[\./-]\d{1,2})',
+                r'(\d{1,2}[\./-]\d{1,2}[\./-]\d{2,4})',
+                r'(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4})',
+                r'([A-Za-z]{3,9}\s+\d{1,2},\s*\d{4})',
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, text)
+                if match:
+                    raw = match.group(1)
+                    try:
+                        if re.match(r'^\d{4}', raw):
+                            return dateutil.parser.parse(raw, fuzzy=True, yearfirst=True).date()
+                        return dateutil.parser.parse(raw, fuzzy=True, dayfirst=True).date()
+                    except Exception:
+                        continue
+            return None
+
+        if not extracted_date:
+            extracted_date = _extract_date_from_text(raw_ocr)
+        if not extracted_date:
+            extracted_date = timezone.now().date()
 
         # Medicines Extraction (Clinical NER -> LLM Fallback -> Regex Fallback)
         medicines = []
@@ -2180,8 +2313,8 @@ class PrescriptionParser:
 
         # 2. Try LLM Extraction (High-priority fallback)
         if len(medicines) < 1 and clean_ocr and use_hf_api:
-            print("[Prescription] NER empty or failed. Attempting deep LLM extraction (Mistral)...")
-            prompt = f"""[INST] Extract every single medication, drug, or tablet mentioned in this prescription text.
+            print("[Prescription] NER empty or failed. Attempting deep LLM extraction...")
+            prompt = f"""Extract every single medication, drug, or tablet mentioned in this prescription text.
 For each medication found, provide:
 - drug_name (e.g., Amoxicillin, Paracetamol)
 - dosage (e.g., 500mg, 1 tab)
@@ -2190,7 +2323,7 @@ For each medication found, provide:
 
 Text to analyze: {clean_ocr[:2500]}
 
-Return ONLY a JSON list of objects. If no medications are found, return []. [/INST]"""
+Return ONLY a JSON list of objects. If no medications are found, return []."""
             
             system_msg = "You are a precise medical data extraction engine. You specialize in identifying drug names, dosages, and frequencies from noisy OCR text. Only output valid JSON."
             llm_res = ai_service._call_hf_chat(prompt, system_prompt=system_msg)

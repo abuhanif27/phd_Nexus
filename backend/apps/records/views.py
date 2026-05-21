@@ -361,6 +361,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         
         target_file = None
         opened_file = None
+        raw_text_override = None
         
         try:
             if file_id and str(file_id) != 'undefined':
@@ -369,6 +370,8 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
                 except File.DoesNotExist:
                     return Response({"error": f"Medical record with ID {file_id} not found for this patient."}, status=status.HTTP_404_NOT_FOUND)
                 
+                raw_text_override = (db_file.extracted_text or '').strip() or None
+
                 path = db_file.storage_path
                 # Handle path compatibility
                 if ':\\' in path or path.startswith('\\\\'):
@@ -399,7 +402,13 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
                 
             from apps.ai.services import PrescriptionParser
             auto_save = request.data.get('save', 'false').lower() == 'true' or request.data.get('auto_save', 'false').lower() == 'true'
-            results = PrescriptionParser.parse_image(target_file, patient, auto_save=auto_save)
+            results = PrescriptionParser.parse_image(
+                target_file,
+                patient,
+                auto_save=auto_save,
+                raw_text_override=raw_text_override,
+                clinical_date_override=getattr(db_file, 'clinical_date', None) if file_id else None,
+            )
             return Response(results, status=status.HTTP_200_OK)
             
         except Exception as e:
