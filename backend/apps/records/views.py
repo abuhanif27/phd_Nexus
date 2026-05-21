@@ -310,6 +310,17 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     serializer_class = PrescriptionSerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        """Set doctor automatically if user is a doctor."""
+        if self.request.user.role == 'doctor':
+            try:
+                doctor = self.request.user.doctor_profile
+                serializer.save(doctor=doctor)
+            except Exception:
+                serializer.save()
+        else:
+            serializer.save()
+
     @action(detail=False, methods=['post'], url_path='parse-image', parser_classes=[MultiPartParser, FormParser])
     def parse_image(self, request):
         """Parse prescription image using AI service."""
@@ -361,7 +372,8 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
                 return Response({"error": "Please provide a file to upload or select an existing record ID."}, status=status.HTTP_400_BAD_REQUEST)
                 
             from apps.ai.services import PrescriptionParser
-            results = PrescriptionParser.parse_image(target_file, patient)
+            auto_save = request.data.get('save', 'false').lower() == 'true' or request.data.get('auto_save', 'false').lower() == 'true'
+            results = PrescriptionParser.parse_image(target_file, patient, auto_save=auto_save)
             return Response(results, status=status.HTTP_200_OK)
             
         except Exception as e:

@@ -26,12 +26,15 @@ import {
   CheckCircle2,
   Search,
   FileText,
+  Pill,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { Appointment, Consent, Patient, PaginatedResponse, MedicalFile } from '@/types/api';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import React from 'react';
+import { PrescriptionGenerator } from '@/features/records/components/PrescriptionGenerator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export function DoctorPatientsPage() {
   const { data: user, isLoading: userLoading } = useCurrentUser();
@@ -49,6 +52,9 @@ export function DoctorPatientsPage() {
   const [patientCodeSummary, setPatientCodeSummary] =
     useState<DoctorPatientDocumentsSummaryResponse | null>(null);
   const [sentRequestPatientIds, setSentRequestPatientIds] = useState<Set<number>>(new Set());
+  const [prescribePatient, setPrescribePatient] = useState<{ id: number; name: string } | null>(
+    null
+  );
 
   const { data: appointmentsData, isLoading: appointmentsLoading } = useQuery<Appointment[]>({
     queryKey: ['doctor', 'appointments'],
@@ -412,10 +418,15 @@ export function DoctorPatientsPage() {
                       key={appointment.patient}
                       appointment={appointment}
                       status="registered"
+                      onPrescribe={(id, name) => setPrescribePatient({ id, name })}
                     />
                   ))}
                   {consentOnlyPatients.map((consent: Consent) => (
-                    <ConsentOnlyPatientCard key={consent.patient} consent={consent} />
+                    <ConsentOnlyPatientCard 
+                      key={consent.patient} 
+                      consent={consent} 
+                      onPrescribe={(id, name) => setPrescribePatient({ id, name })}
+                    />
                   ))}
                 </>
               )}
@@ -459,6 +470,19 @@ export function DoctorPatientsPage() {
           </Card>
         </>
       )}
+
+      <Dialog open={!!prescribePatient} onOpenChange={(open) => !open && setPrescribePatient(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden border-none bg-transparent">
+          {prescribePatient && (
+            <PrescriptionGenerator
+              patientId={prescribePatient.id}
+              patientName={prescribePatient.name}
+              onSuccess={() => setPrescribePatient(null)}
+              onCancel={() => setPrescribePatient(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -486,6 +510,7 @@ interface PatientCardProps {
   appointment: Appointment;
   status: 'registered' | 'unregistered';
   onRequestAccess?: (appointment: Appointment) => void;
+  onPrescribe?: (patientId: number, patientName: string) => void;
   sentRequestPatientIds?: Set<number>;
 }
 
@@ -493,6 +518,7 @@ function PatientCard({
   appointment,
   status,
   onRequestAccess,
+  onPrescribe,
   sentRequestPatientIds,
 }: PatientCardProps): React.ReactElement {
   const patientName = appointment.patient_name || `Patient #${appointment.patient}`;
@@ -540,8 +566,14 @@ function PatientCard({
           {status === 'registered' ? 'Access Granted' : 'No Access'}
         </Badge>
         {status === 'registered' && (
-          <Button asChild size="sm">
+          <Button asChild size="sm" variant="outline">
             <Link href={`/patients/${appointment.patient}`}>View Records</Link>
+          </Button>
+        )}
+        {status === 'registered' && onPrescribe && (
+          <Button size="sm" onClick={() => onPrescribe(appointment.patient, patientName)}>
+            <Pill className="mr-2 h-4 w-4" />
+            Prescribe
           </Button>
         )}
       </div>
@@ -551,10 +583,15 @@ function PatientCard({
 
 interface ConsentOnlyPatientCardProps {
   consent: Consent;
+  onPrescribe?: (patientId: number, patientName: string) => void;
 }
 
-function ConsentOnlyPatientCard({ consent }: ConsentOnlyPatientCardProps): React.ReactElement {
+function ConsentOnlyPatientCard({ 
+  consent, 
+  onPrescribe 
+}: ConsentOnlyPatientCardProps): React.ReactElement {
   const expiresAt = format(new Date(consent.expires_at), 'MMM d, yyyy h:mm a');
+  const patientName = `Patient #${consent.patient}`;
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -575,9 +612,15 @@ function ConsentOnlyPatientCard({ consent }: ConsentOnlyPatientCardProps): React
       </div>
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <Badge variant="default">Access Granted</Badge>
-        <Button asChild size="sm">
+        <Button asChild size="sm" variant="outline">
           <Link href={`/patients/${consent.patient}`}>View Records</Link>
         </Button>
+        {onPrescribe && (
+          <Button size="sm" onClick={() => onPrescribe(consent.patient, patientName)}>
+            <Pill className="mr-2 h-4 w-4" />
+            Prescribe
+          </Button>
+        )}
       </div>
     </div>
   );

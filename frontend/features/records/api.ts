@@ -94,6 +94,12 @@ export async function deleteMedicalFile(fileId: number): Promise<void> {
   await apiClient.delete(`/api/records/files/${fileId}/`);
 }
 
+// Create a new prescription
+export async function createPrescription(data: Partial<Prescription>): Promise<Prescription> {
+  const response = await apiClient.post('/api/records/prescriptions/', data);
+  return response.data;
+}
+
 export async function getDoctorPatientDocumentsByCode(
   patientCode: string
 ): Promise<DoctorPatientDocumentsResponse> {
@@ -112,14 +118,17 @@ export async function summarizeDoctorPatientDocumentsByCode(
   return response.data;
 }
 
-export const parsePrescriptionImage = async (fileId?: number, fileObj?: File) => {
+export const parsePrescriptionImage = async (fileId?: number, fileObj?: File, save: boolean = false) => {
   const formData = new FormData();
   if (fileObj) {
     formData.append('file', fileObj);
   } else if (fileId) {
     formData.append('file_id', fileId.toString());
   }
-  
+
+  // Pass save parameter
+  formData.append('save', save.toString());
+
   const response = await apiClient.post('/api/records/prescriptions/parse-image/', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',

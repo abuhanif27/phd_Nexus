@@ -260,7 +260,13 @@ HF_TOKEN = os.getenv('HF_TOKEN', None)
 HF_REPO_ID = os.getenv('HF_REPO_ID', 'hanifgp2500/nexuscare-medical-ai')
 USE_HF_MODELS = os.getenv('USE_HF_MODELS', 'True').lower() == 'true'
 USE_HF_INFERENCE_API = os.getenv('USE_HF_INFERENCE_API', 'True').lower() == 'true' # Set to True to run models on HF Cloud
-HF_LLM_MODEL = os.getenv('HF_LLM_MODEL', 'mistralai/Mistral-7B-Instruct-v0.2')
+USE_LOCAL_AI_MODELS = os.getenv('USE_LOCAL_AI_MODELS', 'False').lower() == 'true' # STRICT: Disable local models for Low RAM
+AI_LOCAL_FALLBACK_MODE = os.getenv('AI_LOCAL_FALLBACK_MODE', 'lightweight').lower() # disabled, lightweight, full
+AI_LOCAL_TEXT_MAX_CHARS = int(os.getenv('AI_LOCAL_TEXT_MAX_CHARS', '6000'))
+HF_INFERENCE_TIMEOUT_SECONDS = float(os.getenv('HF_INFERENCE_TIMEOUT_SECONDS', '20'))
+HF_INFERENCE_MAX_RETRIES = int(os.getenv('HF_INFERENCE_MAX_RETRIES', '1'))
+HF_RATE_LIMIT_COOLDOWN_SECONDS = int(os.getenv('HF_RATE_LIMIT_COOLDOWN_SECONDS', '120'))
+HF_LLM_MODEL = os.getenv('HF_LLM_MODEL', 'openai/gpt-oss-20b')
 HF_EMBEDDING_MODEL = os.getenv('HF_EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
 HF_NER_MODEL = os.getenv('HF_NER_MODEL', 'samrawal/bert-base-uncased_clinical-ner')
 HF_OCR_MODEL = os.getenv('HF_OCR_MODEL', 'naver-clova-ix/donut-base-finetuned-docvqa')

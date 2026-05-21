@@ -1,13 +1,8 @@
 """
 Machine Learning utilities for training and inference.
 """
-import pandas as pd
-import numpy as np
 from pathlib import Path
 from typing import Tuple, List, Dict
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-
 
 class DataLoader:
     """Load and preprocess training data."""
@@ -16,15 +11,20 @@ class DataLoader:
         self.csv_path = csv_path
         self.test_size = test_size
         self.random_state = random_state
+        # Lazy import label encoder
+        from sklearn.preprocessing import LabelEncoder
         self.label_encoder = LabelEncoder()
     
-    def load_data(self) -> Tuple[List[str], List[str], List[str], List[str], LabelEncoder]:
+    def load_data(self) -> Tuple[List[str], List[str], List[str], List[str], any]:
         """
         Load data and split into train/test.
         
         Returns:
             X_train, X_test, y_train, y_test, label_encoder
         """
+        import pandas as pd
+        from sklearn.model_selection import train_test_split
+        
         df = pd.read_csv(self.csv_path)
         
         # Clean text
@@ -47,11 +47,12 @@ class DataLoader:
     
     def get_class_names(self) -> List[str]:
         """Get list of specialist names."""
+        import pandas as pd
         df = pd.read_csv(self.csv_path)
         return sorted(df['label'].unique().tolist())
 
 
-def evaluate_model(y_true: np.ndarray, y_pred: np.ndarray, class_names: List[str]) -> Dict:
+def evaluate_model(y_true: any, y_pred: any, class_names: List[str]) -> Dict:
     """
     Evaluate model performance.
     

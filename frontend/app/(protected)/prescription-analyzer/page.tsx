@@ -18,6 +18,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Pill, FileText, Search, Loader2, AlertCircle, Sparkles, Upload, Calendar, ChevronDown, Check, Maximize2, XCircle, RefreshCw } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +33,7 @@ export default function PrescriptionAnalyzerPage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [autoSave, setAutoSave] = useState(false);
 
   // Fetch all recent medical files (limit to 30 for speed and visibility)
   const { data: filesData, isLoading: filesLoading } = useQuery({
@@ -41,8 +44,8 @@ export default function PrescriptionAnalyzerPage() {
   const files = filesData?.results || [];
 
   const analyzeMutation = useMutation({
-    mutationFn: (data: { fileObj?: File, fileId?: number }) => 
-        parsePrescriptionImage(data.fileId, data.fileObj),
+    mutationFn: (data: { fileObj?: File, fileId?: number, save?: boolean }) => 
+        parsePrescriptionImage(data.fileId, data.fileObj, data.save ?? autoSave),
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,9 +104,9 @@ export default function PrescriptionAnalyzerPage() {
 
   const handleAnalyze = () => {
     if (selectedFileObj) {
-      analyzeMutation.mutate({ fileObj: selectedFileObj });
+      analyzeMutation.mutate({ fileObj: selectedFileObj, save: autoSave });
     } else if (selectedExistingFile) {
-      analyzeMutation.mutate({ fileId: selectedExistingFile.id });
+      analyzeMutation.mutate({ fileId: selectedExistingFile.id, save: autoSave });
     }
   };
 
@@ -294,6 +297,18 @@ export default function PrescriptionAnalyzerPage() {
                   )}
               </div>
               
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-dashed mb-4">
+                <div className="flex flex-col">
+                  <Label htmlFor="auto-save" className="text-sm font-semibold cursor-pointer">Auto-save to Records</Label>
+                  <p className="text-[10px] text-muted-foreground italic">Will sync reminders to your mobile app</p>
+                </div>
+                <Switch 
+                  id="auto-save" 
+                  checked={autoSave} 
+                  onCheckedChange={setAutoSave} 
+                />
+              </div>
+
               <Button 
                   className="w-full h-11 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20" 
                   onClick={handleAnalyze} 
@@ -419,14 +434,17 @@ export default function PrescriptionAnalyzerPage() {
                             <Sparkles className="h-5 w-5 text-blue-600" />
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-bold text-blue-900 dark:text-blue-300">Analysis Saved</p>
+                            <p className="text-sm font-bold text-blue-900 dark:text-blue-300">
+                              {(analyzeMutation.data as any).id ? 'Analysis Saved' : 'Analysis Complete'}
+                            </p>
                             <p className="text-xs text-blue-800/70 dark:text-blue-400/70">
-                              Reminders have been synced to your mobile app.
+                              {(analyzeMutation.data as any).id 
+                                ? 'Reminders have been synced to your mobile app.' 
+                                : 'This is a preview. Enable auto-save to sync reminders.'}
                             </p>
                           </div>
                         </div>
-                        {((analyzeMutation.data as any).id) && (
-                          <Button size="sm" variant="outline" className="bg-white hover:bg-blue-50 shrink-0" asChild>
+                        {((analyzeMutation.data as any).id) && (                          <Button size="sm" variant="outline" className="bg-white hover:bg-blue-50 shrink-0" asChild>
                             <Link href="/dashboard/records?filter=prescription">
                               View Record
                             </Link>

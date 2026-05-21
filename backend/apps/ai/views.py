@@ -364,6 +364,10 @@ class AIStatusView(views.APIView):
             'classifier_type': ai_service.specialist_classifier_type,
             'deep_mode_available': ai_service.distilbert_classifier is not None or ai_service.use_hf_api,
             'cloud_inference': ai_service.use_hf_api,
+            'cloud_available_now': ai_service._hf_available(),
+            'cloud_cooldown_seconds': max(0, int(ai_service.hf_disabled_until - timezone.now().timestamp())),
+            'cloud_last_error': ai_service.hf_last_error,
+            'local_fallback_mode': getattr(settings, 'AI_LOCAL_FALLBACK_MODE', 'lightweight'),
             'hugging_face': {
                 'enabled': getattr(settings, 'USE_HF_MODELS', False),
                 'cloud_api': getattr(settings, 'USE_HF_INFERENCE_API', False),

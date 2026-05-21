@@ -18,6 +18,7 @@ import {
   Trash2,
   Eye,
   Sparkles,
+  Plus,
 } from 'lucide-react';
 import {
   getMedicalFiles,
@@ -27,6 +28,9 @@ import {
   getMedicalFileBlob,
   deleteMedicalFile,
 } from '@/features/records/api';
+import { getPatient } from '@/features/patients/api';
+import { useCurrentUser } from '@/features/auth/hooks';
+import { PrescriptionGenerator } from './PrescriptionGenerator';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -64,6 +68,15 @@ export function MedicalRecordsPage({ patientId }: { patientId?: number } = {}) {
   const [activeTab, setActiveTab] = useState<RecordType>('all');
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { data: currentUser } = useCurrentUser();
+  const [showPrescriptionGen, setShowPrescriptionGen] = useState(false);
+
+  const { data: patientData } = useQuery({
+    queryKey: ['patient', patientId],
+    queryFn: () => (patientId ? getPatient(patientId) : null),
+    enabled: !!patientId && currentUser?.role === 'doctor',
+  });
+
   const [viewFile, setViewFile] = useState<{ id: number; filename: string; mime?: string } | null>(
     null
   );
@@ -241,18 +254,43 @@ export function MedicalRecordsPage({ patientId }: { patientId?: number } = {}) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Medical Records</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {patientId ? 'Viewing patient records' : 'View and manage your health records'}
+            {patientId
+              ? `Viewing records for ${patientData?.name || 'Patient'}`
+              : 'View and manage your health records'}
           </p>
         </div>
-        {!patientId && (
-          <Button asChild className="bg-primary hover:bg-primary/90">
-            <Link href="/records/upload">
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Document
-            </Link>
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {currentUser?.role === 'doctor' && patientId && (
+            <Button
+              onClick={() => setShowPrescriptionGen(true)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Prescription
+            </Button>
+          )}
+          {!patientId && (
+            <Button asChild className="bg-primary hover:bg-primary/90">
+              <Link href="/records/upload">
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Document
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
+
+      {showPrescriptionGen && patientId && (
+        <PrescriptionGenerator
+          patientId={patientId}
+          patientName={patientData?.name || 'Patient'}
+          onSuccess={() => {
+            setShowPrescriptionGen(false);
+            queryClient.invalidateQueries({ queryKey: ['prescriptions', patientId] });
+          }}
+          onCancel={() => setShowPrescriptionGen(false)}
+        />
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -605,47 +643,89 @@ function PrescriptionsTab({ prescriptions, isLoading }: any) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {prescriptions.map((rx: any) => (
-        <Card key={rx.id} className="border-none shadow-sm">
+        <Card key={rx.id} className="overflow-hidden border-2 border-slate-100 shadow-sm hover:border-blue-100 transition-all">
+          <div className="bg-slate-50 border-b border-slate-100 px-6 py-3 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <div className="bg-blue-600 p-1.5 rounded-md text-white">
+                <Stethoscope className="w-4 h-4" />
+              </div>
+              <span className="font-bold text-slate-800 tracking-tight">Digital Prescription</span>
+            </div>
+            <div className="text-xs font-medium text-slate-500">
+              ID: RX-{rx.id.toString().padStart(6, '0')}
+            </div>
+          </div>
           <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-50 dark:bg-green-950/20">
-                  <Pill className="h-6 w-6 text-green-600" />
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+              <div className="flex-1 space-y-6">
+                <div>
+                  <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Prescribed By</div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Dr. {rx.doctor_name || 'Unknown Doctor'}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1 text-sm text-slate-500">
+                    <Calendar className="h-3.5 w-3.5" />
+                    {format(new Date(rx.ts), 'PPP')}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">Prescription</h3>
-                  {rx.doctor_name && (
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                      Dr. {rx.doctor_name}
-                    </p>
-                  )}
-                  <div className="mt-3 space-y-2">
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <Pill className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-bold text-slate-700">Rx - Medications</span>
+                  </div>
+                  <div className="grid gap-3">
                     {rx.items.map((item: any, idx: number) => (
                       <div
                         key={idx}
-                        className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800"
+                        className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
                       >
-                        <p className="font-medium text-gray-900 dark:text-white">{item.drug}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {item.dosage} • {item.duration}
-                        </p>
-                        {item.instructions && (
-                          <p className="mt-1 text-xs text-gray-500">{item.instructions}</p>
-                        )}
+                        <div className="bg-slate-50 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-slate-400 font-bold text-xs">
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-slate-900">{item.drug}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                            <span className="text-sm font-medium text-slate-600 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                              Dosage: {item.dosage}
+                            </span>
+                            <span className="text-sm font-medium text-slate-600 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                              Duration: {item.duration}
+                            </span>
+                          </div>
+                          {item.instructions && (
+                            <p className="mt-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-md border border-slate-100 inline-block">
+                              Instructions: {item.instructions}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                    <Calendar className="h-3 w-3" />
-                    {format(new Date(rx.ts), 'MMM d, yyyy')}
-                  </div>
                 </div>
+
+                {rx.notes && (
+                  <div className="rounded-lg bg-yellow-50/50 border border-yellow-100 p-4">
+                    <div className="text-[10px] font-bold text-yellow-700 uppercase tracking-wider mb-1">Doctor's Notes</div>
+                    <p className="text-sm text-slate-700 italic">"{rx.notes}"</p>
+                  </div>
+                )}
               </div>
-              <Button variant="ghost" size="sm">
-                <Download className="h-4 w-4" />
-              </Button>
+
+              <div className="flex md:flex-col gap-2">
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 border-slate-200 hover:bg-slate-50">
+                  <Eye className="h-4 w-4" />
+                  View
+                </Button>
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 border-slate-200 hover:bg-slate-50">
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -18,6 +18,14 @@ import type {
 const BASE = '/api/patients';
 
 /**
+ * Get patient details
+ */
+export async function getPatient(id: number): Promise<Patient> {
+  const { data } = await apiClient.get<Patient>(`${BASE}/${id}/`);
+  return data;
+}
+
+/**
  * Get current patient profile
  */
 export async function getMyProfile(): Promise<Patient> {

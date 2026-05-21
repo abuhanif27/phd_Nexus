@@ -29,6 +29,12 @@ class LabResultSerializer(serializers.ModelSerializer):
 
 class PrescriptionSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(read_only=True)
+    items = serializers.JSONField(required=True)
+    
+    def validate_items(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Items must be a list of medications.")
+        return value
     
     class Meta:
         model = Prescription

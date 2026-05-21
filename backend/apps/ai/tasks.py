@@ -362,16 +362,18 @@ def get_or_extract_file_text(file_obj: File) -> str:
             # Donut DocVQA needs a question, or we can use a generic OCR model
             # For general OCR, let's try to ask a broad question if using Donut
             if 'donut' in model_id:
-                response = ai_service._call_hf_inference(file_obj.storage_path, model_id, 
-                                                       task="document-question-answering", 
-                                                       question="What is the text content of this document?")
-                if response and isinstance(response, list):
-                    raw_text = response[0].get('answer', '')
+                raw_text = ai_service._call_hf_inference(
+                    file_obj.storage_path, model_id, 
+                    task="document-question-answering", 
+                    question="What is the text content of this document?"
+                )
             else:
                 # Regular image-to-text
                 response = ai_service._call_hf_inference(file_obj.storage_path, model_id, task="image-to-text")
-                if response:
+                if isinstance(response, dict):
                     raw_text = response.get('generated_text', '')
+                elif isinstance(response, str):
+                    raw_text = response
             
             if raw_text:
                 print(f"[CLOUD OCR] Success: {len(raw_text)} chars")

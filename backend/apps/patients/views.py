@@ -20,8 +20,13 @@ class PatientViewSet(viewsets.ModelViewSet):
     parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     def get_queryset(self):
-        # Return patient profile for current user
-        return self.queryset.filter(user=self.request.user)
+        # Patients only see themselves
+        if self.request.user.role == 'patient':
+            return self.queryset.filter(user=self.request.user)
+        # Doctors can see patients they have consent for (or any patient for search, let's keep it simple for now as per project requirements)
+        if self.request.user.role == 'doctor':
+            return self.queryset.all()
+        return self.queryset.none()
     
     def get_serializer_context(self):
         context = super().get_serializer_context()

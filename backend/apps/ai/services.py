@@ -5,6 +5,7 @@ import os
 import re
 import string
 import pickle
+import time
 from pathlib import Path
 from typing import List, Dict, Tuple
 from datetime import datetime
@@ -111,8 +112,11 @@ class AIService:
         Supports HF_INFERENCE_API mode for zero-local-load.
         """
         self.model_type = model_type
-        self.use_hf_api = getattr(settings, 'USE_HF_INFERENCE_API', False)
+        self.use_hf_api = getattr(settings, 'USE_HF_INFERENCE_API', True) # Default to True
         self.hf_token = getattr(settings, 'HF_TOKEN', None)
+        self.hf_disabled_until = 0
+        self.hf_last_error = ''
+        self.local_fallback_mode = getattr(settings, 'AI_LOCAL_FALLBACK_MODE', 'lightweight')
         
         self.spacy_model = None
         self.embedding_model = None
@@ -125,25 +129,150 @@ class AIService:
         
         # Initialize HF Inference Client if enabled
         self.hf_client = None
-        if self.use_hf_api and self.hf_token:
-            try:
-                # Lazy import InferenceClient
-                if globals().get('InferenceClient') is None:
-                    from huggingface_hub import InferenceClient as ic
-                    globals()['InferenceClient'] = ic
-                
-                self.hf_client = globals()['InferenceClient'](token=self.hf_token)
-                print("☁️ AI Service running in HF CLOUD mode (Zero local load)")
-            except Exception as e:
-                print(f"Warning: Could not initialize HF Inference Client: {e}")
-                self.use_hf_api = False
-
-        # Load local models ONLY if NOT in HF API mode
-        if not self.use_hf_api:
+        if self.use_hf_api:
+            if not self.hf_token:
+                print("⚠️ Warning: USE_HF_INFERENCE_API is True but HF_TOKEN is missing. AI features will fail but machine will not crash.")
+            else:
+                try:
+                    # Lazy import InferenceClient
+                    if globals().get('InferenceClient') is None:
+                        from huggingface_hub import InferenceClient as ic
+                        globals()['InferenceClient'] = ic
+                    
+                    self.hf_client = globals()['InferenceClient'](token=self.hf_token)
+                    print("☁️ AI Service running in HF CLOUD mode (Zero local load)")
+                except Exception as e:
+                    print(f"❌ Error: Could not initialize HF Inference Client: {e}")
+                    # We still keep use_hf_api = True to PREVENT falling back to heavy local models
+                    # but we mark the client as None so methods can fail gracefully.
+        
+        # Load local models ONLY if EXPLICITLY NOT in HF API mode
+        # and NOT in a resource-constrained environment (default to False for safety)
+        if not self.use_hf_api and getattr(settings, 'USE_LOCAL_AI_MODELS', False):
+            print("🏠 AI Service running in LOCAL mode (Warning: High RAM usage)")
             self._load_models()
+        elif not self.use_hf_api:
+            print("🚫 AI Service: Local models disabled (USE_LOCAL_AI_MODELS=False). Cloud mode suggested.")
+
+    def _hf_available(self) -> bool:
+        """Return False while HF is cooling down after rate limits or outages."""
+        if not self.use_hf_api or not self.hf_client:
+            return False
+        return time.time() >= self.hf_disabled_until
+
+    def _mark_hf_failure(self, error: Exception | str):
+        """Temporarily back off HF after rate limits/server errors to avoid request storms."""
+        message = str(error)
+        self.hf_last_error = message[:300]
+        lower = message.lower()
+        retryable = (
+            '429' in lower or 'rate limit' in lower or 'too many requests' in lower
+            or '503' in lower or '504' in lower or 'timeout' in lower
+        )
+        if retryable:
+            cooldown = getattr(settings, 'HF_RATE_LIMIT_COOLDOWN_SECONDS', 120)
+            self.hf_disabled_until = time.time() + cooldown
+            print(f"☁️ HF temporarily disabled for {cooldown}s: {self.hf_last_error}")
+
+    def _requests_post_hf(self, url: str, headers: Dict, **kwargs):
+        import requests
+
+        timeout = getattr(settings, 'HF_INFERENCE_TIMEOUT_SECONDS', 20)
+        attempts = max(1, getattr(settings, 'HF_INFERENCE_MAX_RETRIES', 1) + 1)
+        last_error = None
+        for _ in range(attempts):
+            try:
+                response = requests.post(url, headers=headers, timeout=timeout, **kwargs)
+                if response.status_code == 429 or response.status_code >= 500:
+                    self._mark_hf_failure(f"{response.status_code}: {response.text[:200]}")
+                return response
+            except requests.RequestException as exc:
+                last_error = exc
+                self._mark_hf_failure(exc)
+        if last_error:
+            raise last_error
+        return None
+
+    def _load_lightweight_specialist_classifier(self) -> bool:
+        """
+        Load only cheap local specialist models for HF fallback.
+        This avoids DistilBERT, embeddings, spaCy, OCR, and FAISS.
+        """
+        if self.specialist_classifier:
+            return True
+        if self.local_fallback_mode not in {'lightweight', 'full'}:
+            return False
+
+        try:
+            import joblib as jl
+            enhanced_model = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn_enhanced.joblib')
+            enhanced_labels = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn_enhanced_labels.joblib')
+            sklearn_model = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn.joblib')
+            sklearn_labels = os.path.join(settings.BASE_DIR, 'ai_models/specialist_clf_sklearn_labels.joblib')
+
+            if os.path.exists(enhanced_model) and os.path.exists(enhanced_labels):
+                from apps.ai.sklearn_classifier_enhanced import EnhancedSklearnSpecialistClassifier
+                self.specialist_classifier = EnhancedSklearnSpecialistClassifier.load(enhanced_model, enhanced_labels)
+                self.specialist_classifier_type = 'local_lightweight_enhanced_sklearn'
+                return True
+
+            if os.path.exists(sklearn_model) and os.path.exists(sklearn_labels):
+                self.specialist_classifier = jl.load(sklearn_model)
+                self.specialist_classifier_labels = jl.load(sklearn_labels)
+                self.specialist_classifier_type = 'local_lightweight_sklearn'
+                return True
+        except Exception as exc:
+            print(f"Lightweight specialist fallback unavailable: {exc}")
+        return False
+
+    def _extract_json(self, text: str) -> any:
+        """Robustly extract JSON from a string that might contain other text."""
+        if not text: return None
+        import json
+        try:
+            # 1. Try direct parse
+            return json.loads(text.strip())
+        except:
+            try:
+                # 2. Try finding JSON-like structure
+                match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
+                if match:
+                    return json.loads(match.group(0))
+            except:
+                pass
+        return None
+
+    def _call_hf_chat(self, prompt: str, system_prompt: str = "You are a helpful medical assistant.", model_id: str = None) -> str:
+        """Call HF Chat Completion API (preferred for Mistral/Llama)."""
+        if not self._hf_available(): return ""
+        if not model_id:
+            model_id = getattr(settings, 'HF_LLM_MODEL', 'openai/gpt-oss-20b')
+            
+        try:
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ]
+            response = self.hf_client.chat_completion(
+                messages, 
+                model=model_id, 
+                max_tokens=800,
+                temperature=0.1
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            self._mark_hf_failure(e)
+            print(f"☁️ HF Chat Error: {e}")
+            return ""
 
     def _call_hf_inference(self, data: any, model_id: str, task: str = "text-generation", **kwargs) -> any:
-        """Call Hugging Face Inference API."""
+        """
+        Call Hugging Face Inference API with intelligent task routing.
+        Supports text-generation, chat-completion, and document-qa.
+        """
+        if not self._hf_available() and self.hf_client:
+            return None
+
         if not self.hf_client:
             # Try to initialize if not yet done
             if self.hf_token:
@@ -157,39 +286,111 @@ class AIService:
                 return None
                 
         try:
+            # 1. Handle Chat/Conversational Models (Mistral, Llama, etc.)
+            chat_model_markers = (
+                "mistral", "llama", "gpt-oss", "deepseek", "qwen",
+                "gemma", "phi", "glm", "olmo", "aya"
+            )
+            is_chat_model = any(marker in model_id.lower() for marker in chat_model_markers)
+            
+            if (task == "text-generation" or task == "conversational") and is_chat_model:
+                return self._call_hf_chat(data, model_id=model_id)
+
             if task == "text-generation":
-                return self.hf_client.text_generation(data, model=model_id, **kwargs)
+                try:
+                    return self.hf_client.text_generation(data, model=model_id, **kwargs)
+                except StopIteration:
+                    import requests, os
+                    hf_ep = os.environ.get("HF_INFERENCE_ENDPOINT", "https://router.huggingface.co/hf-inference")
+                    url = f"{hf_ep}/models/{model_id}"
+                    headers = {"Authorization": f"Bearer {self.hf_token}"}
+                    response = self._requests_post_hf(url, headers=headers, json={"inputs": data})
+                    res_json = response.json()
+                    if isinstance(res_json, list) and len(res_json)>0:
+                        return res_json[0].get('generated_text', '')
+                    return str(res_json)
+            
             elif task == "token-classification":
-                return self.hf_client.token_classification(data, model=model_id)
+                try:
+                    return self.hf_client.token_classification(data, model=model_id)
+                except StopIteration:
+                    import requests, os
+                    hf_ep = os.environ.get("HF_INFERENCE_ENDPOINT", "https://router.huggingface.co/hf-inference")
+                    url = f"{hf_ep}/models/{model_id}"
+                    headers = {"Authorization": f"Bearer {self.hf_token}"}
+                    response = self._requests_post_hf(url, headers=headers, json={"inputs": data})
+                    return response.json()
+            
             elif task == "feature-extraction":
                 return self.hf_client.feature_extraction(data, model=model_id)
+            
             elif task == "text-classification":
                 return self.hf_client.text_classification(data, model=model_id)
+            
             elif task == "image-to-text":
-                # Handle file-like objects or paths
-                if hasattr(data, 'read'):
-                    data.seek(0)
-                    image_bytes = data.read()
-                elif isinstance(data, str) and os.path.exists(data):
-                    with open(data, 'rb') as f:
-                        image_bytes = f.read()
-                else:
-                    image_bytes = data
-                return self.hf_client.image_to_text(image_bytes, model=model_id)
+                image_bytes = self._get_image_bytes(data)
+                if not image_bytes: return None
+                try:
+                    return self.hf_client.image_to_text(image_bytes, model=model_id)
+                except StopIteration:
+                    import requests, os
+                    hf_ep = os.environ.get("HF_INFERENCE_ENDPOINT", "https://router.huggingface.co/hf-inference")
+                    url = f"{hf_ep}/models/{model_id}"
+                    headers = {"Authorization": f"Bearer {self.hf_token}"}
+                    response = self._requests_post_hf(url, headers=headers, data=image_bytes)
+                    res_json = response.json()
+                    if isinstance(res_json, list) and len(res_json) > 0:
+                        return res_json[0].get('generated_text', str(res_json))
+                    elif isinstance(res_json, dict) and 'error' in res_json:
+                        print(f"HF Image-to-Text API Error: {res_json['error']}")
+                        return ""
+                    return str(res_json)
+            
             elif task == "document-question-answering":
-                # Handle file-like objects or paths
-                if hasattr(data, 'read'):
-                    data.seek(0)
-                    image_bytes = data.read()
-                elif isinstance(data, str) and os.path.exists(data):
-                    with open(data, 'rb') as f:
-                        image_bytes = f.read()
-                else:
-                    image_bytes = data
-                return self.hf_client.document_question_answering(image_bytes, kwargs.get('question', ''), model=model_id)
+                image_bytes = self._get_image_bytes(data)
+                if not image_bytes: return None
+                question = kwargs.get('question', 'Extract all text from this medical document.')
+                
+                try:
+                    response = self.hf_client.document_question_answering(image_bytes, question, model=model_id)
+                except StopIteration:
+                    import requests, base64, os
+                    hf_ep = os.environ.get("HF_INFERENCE_ENDPOINT", "https://router.huggingface.co/hf-inference")
+                    url = f"{hf_ep}/models/{model_id}"
+                    headers = {"Authorization": f"Bearer {self.hf_token}"}
+                    img_b64 = base64.b64encode(image_bytes).decode('utf-8')
+                    payload = {"inputs": {"image": img_b64, "question": question}}
+                    resp = self._requests_post_hf(url, headers=headers, json=payload)
+                    response = resp.json()
+
+                if isinstance(response, list) and len(response) > 0:
+                    return response[0].get('answer', '')
+                elif isinstance(response, dict):
+                    if 'error' in response:
+                        print(f"HF DocQA API Error: {response['error']}")
+                        return ""
+                    return response.get('answer', response.get('generated_text', str(response)))
+                return str(response)
+                
             return None
         except Exception as e:
-            print(f"HF Inference API Error ({task}): {e}")
+            self._mark_hf_failure(e)
+            print(f"☁️ HF Inference API Error ({task}): {e}")
+            return None
+
+    def _get_image_bytes(self, data: any) -> bytes:
+        """Helper to extract bytes from various image data formats."""
+        try:
+            if hasattr(data, 'read'):
+                data.seek(0)
+                return data.read()
+            elif isinstance(data, str) and os.path.exists(data):
+                with open(data, 'rb') as f:
+                    return f.read()
+            elif isinstance(data, bytes):
+                return data
+            return None
+        except:
             return None
 
     def _load_models(self):
@@ -383,13 +584,19 @@ class AIService:
             return []
             
         # 1. Try HF Inference API (Cloud Priority)
-        if self.use_hf_api and self.hf_client:
-            model_id = getattr(settings, 'HF_NER_MODEL', 'samrawal/bert-base-uncased_clinical-ner')
+        if self._hf_available():
+            model_id = getattr(settings, 'HF_NER_MODEL', 'd4data/biomedical-ner-all')
             try:
                 entities = self._call_hf_inference(text, model_id, task="token-classification")
                 if entities:
+                    if isinstance(entities, dict) and 'error' in entities:
+                        print(f"HF NER Error from API: {entities['error']}")
+                        return []
+                        
                     serialized = []
-                    for ent in entities:
+                    for ent in (entities if isinstance(entities, list) else []):
+                        if not isinstance(ent, dict):
+                            continue
                         serialized.append({
                             "entity_group": str(ent.get('entity_group', ent.get('entity', 'unknown'))),
                             "score": float(ent.get('score', 0)),
@@ -436,7 +643,7 @@ class AIService:
         cleaned = self.clean_text(text)
         
         # 1. Try HF Inference API (Cloud Priority)
-        if self.use_hf_api and self.hf_client:
+        if self._hf_available():
             entities = self.extract_entities_hf(text)
             if entities:
                 # Map HF entities to standard format
@@ -485,14 +692,15 @@ class AIService:
         Proxies to HF Inference API or Remote Brain if available.
         """
         # 1. Try HF Inference API (Cloud Priority)
-        if self.use_hf_api and self.hf_client:
-            model_id = getattr(settings, 'HF_LLM_MODEL', 'mistralai/Mistral-7B-Instruct-v0.2')
-            prompt = f"""[INST] You are a medical specialist classifier. Given the symptoms, predict the most relevant medical specialist.
+        if self._hf_available():
+            model_id = getattr(settings, 'HF_LLM_MODEL', 'openai/gpt-oss-20b')
+            prompt = f"""You are a medical specialist classifier. Given the symptoms, predict the most relevant medical specialist.
 Possible specialists: Cardiology, Dermatology, Endocrinology, Gastroenterology, General Physician, Neurology, Oncology, Ophthalmology, Orthopedics, Pediatrics, Psychiatry, Pulmonology, Rheumatology, Urology.
 
 Symptoms: {text}
 
-Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternatives' (list of {{'specialist', 'confidence'}}). [/INST]"""
+Return only valid JSON with this schema:
+{{"specialist":"Dermatology","confidence":0.9,"alternatives":[{{"specialist":"General Physician","confidence":0.3}}]}}"""
             
             try:
                 response = self._call_hf_inference(prompt, model_id, task="text-generation", max_new_tokens=100)
@@ -519,6 +727,9 @@ Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternativ
                 self._load_specialist_classifier()
 
         if not self.specialist_classifier:
+            self._load_lightweight_specialist_classifier()
+
+        if not self.specialist_classifier:
             return {
                 'specialist': 'General Physician',
                 'confidence': 0.5,
@@ -534,10 +745,37 @@ Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternativ
                 return result
             
             # Use new classifiers (sklearn, enhanced_sklearn) with predict_single method
-            if self.specialist_classifier_type in ['sklearn', 'pytorch', 'enhanced_sklearn', 'hf_enhanced_sklearn', 'hf_sklearn']:
+            if self.specialist_classifier_type in [
+                'sklearn', 'pytorch', 'enhanced_sklearn', 'hf_enhanced_sklearn',
+                'hf_sklearn', 'local_lightweight_enhanced_sklearn'
+            ]:
                 result = self.specialist_classifier.predict_single(text, top_k=3)
                 result['model_type'] = self.specialist_classifier_type
                 return result
+
+            if self.specialist_classifier_type == 'local_lightweight_sklearn':
+                if hasattr(self.specialist_classifier, 'predict_proba') and hasattr(self, 'specialist_classifier_labels'):
+                    import numpy as local_np
+                    proba = self.specialist_classifier.predict_proba([text])[0]
+                    labels = self.specialist_classifier_labels
+                    classes = getattr(labels, 'classes_', labels)
+                    top_indices = local_np.argsort(proba)[-3:][::-1]
+                    return {
+                        'specialist': str(classes[top_indices[0]]),
+                        'confidence': float(proba[top_indices[0]]),
+                        'alternatives': [
+                            {'specialist': str(classes[idx]), 'confidence': float(proba[idx])}
+                            for idx in top_indices[1:] if proba[idx] > 0.05
+                        ],
+                        'model_type': self.specialist_classifier_type
+                    }
+                prediction = self.specialist_classifier.predict([text])[0]
+                return {
+                    'specialist': str(prediction),
+                    'confidence': 0.65,
+                    'alternatives': [],
+                    'model_type': self.specialist_classifier_type
+                }
             
             # Legacy model handling (old embedding-based approach)
             if not self.embedding_model:
@@ -549,7 +787,7 @@ Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternativ
                 }
             
             # Generate embedding
-            if self.use_hf_api and self.hf_client:
+            if self._hf_available():
                 model_id = getattr(settings, 'HF_EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
                 try:
                     embedding = self._call_hf_inference([text], model_id, task="feature-extraction")[0]
@@ -620,6 +858,14 @@ Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternativ
         """
         Build or update FAISS index for a patient's medical records.
         """
+        global np, faiss
+        if np is None:
+            import numpy as local_np
+            np = local_np
+        if faiss is None:
+            import faiss as local_faiss
+            faiss = local_faiss
+
         if not self.use_hf_api and not self.embedding_model:
             raise Exception("Embedding model not loaded")
         
@@ -665,7 +911,7 @@ Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternativ
             return
         
         # Generate embeddings
-        if self.use_hf_api and self.hf_client:
+        if self._hf_available():
             model_id = getattr(settings, 'HF_EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
             try:
                 # feature_extraction returns embeddings
@@ -728,7 +974,7 @@ Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternativ
             query = "latest medical history summary diagnosis treatment"
             
             # Generate query embedding
-            if self.use_hf_api and self.hf_client:
+            if self._hf_available():
                 model_id = getattr(settings, 'HF_EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
                 try:
                     query_embedding = self._call_hf_inference([query], model_id, task="feature-extraction")[0]
@@ -783,8 +1029,8 @@ Return only a JSON object with 'specialist', 'confidence' (0-1), and 'alternativ
             full_text = ' '.join(retrieved_docs)
             bullets = []
             
-            if self.use_hf_api and self.hf_client:
-                model_id = getattr(settings, 'HF_LLM_MODEL', 'mistralai/Mistral-7B-Instruct-v0.2')
+            if self._hf_available():
+                model_id = getattr(settings, 'HF_LLM_MODEL', 'openai/gpt-oss-20b')
                 prompt = f"""[INST] You are a medical consultant. Based on these record fragments, provide a concise bulleted summary of the patient's status.
 Fragments: {full_text[:4000]}
 
@@ -833,6 +1079,14 @@ Return only a list of strings representing bullet points. [/INST]"""
             return []
         
         try:
+            global PlaintextParser, Tokenizer, TextRankSummarizer
+            if PlaintextParser is None or Tokenizer is None or TextRankSummarizer is None:
+                from sumy.parsers.plaintext import PlaintextParser as pp
+                from sumy.nlp.tokenizers import Tokenizer as tk
+                from sumy.summarizers.text_rank import TextRankSummarizer as trs
+                PlaintextParser = pp
+                Tokenizer = tk
+                TextRankSummarizer = trs
             parser = PlaintextParser.from_string(text, Tokenizer("english"))
             summarizer = TextRankSummarizer()
             summary_sentences = summarizer(parser.document, sentence_count)
@@ -1205,10 +1459,11 @@ Return only a list of strings representing bullet points. [/INST]"""
             }
         
         # 1. Try HF Inference API (Generative LLM)
-        if self.use_hf_api and self.hf_client:
-            model_id = getattr(settings, 'HF_LLM_MODEL', 'mistralai/Mistral-7B-Instruct-v0.2')
+        if self._hf_available():
+            model_id = getattr(settings, 'HF_LLM_MODEL', 'openai/gpt-oss-20b')
+            max_chars = getattr(settings, 'AI_LOCAL_TEXT_MAX_CHARS', 6000)
             prompt = f"""[INST] You are a medical assistant. Summarize the following medical text into a professional summary and a list of key points.
-Text: {text}
+Text: {text[:max_chars]}
 
 Return only a JSON object with 'summary' (string) and 'key_points' (list of strings). [/INST]"""
             
@@ -1422,6 +1677,18 @@ Return only a JSON object with 'summary' (string) and 'key_points' (list of stri
                 'record_count': 0,
             }
 
+        # Initialize all potential result variables
+        summary = "Medical records reviewed; see specific documents for details."
+        bullets = []
+        record_highlights = []
+        insights = []
+        conditions_list = []
+        final_medications = []
+        entities_map = {}
+        manual_medications = []
+        professional_narrative = ''
+        professional_findings = []
+
         # Extractive summary (TextRank) – medical-domain friendly
         # Aggressively filter bullets for noise
         raw_bullets = self._extractive_summary(corpus, sentence_count=8)
@@ -1432,22 +1699,19 @@ Return only a JSON object with 'summary' (string) and 'key_points' (list of stri
             lines = [s.strip() for s in corpus.split('\n') if not self._is_noise(s) and len(s.strip()) > 30][:10]
             bullets = lines
             
-        summary = ' '.join(bullets) if bullets else "Medical records reviewed; see specific documents for details."
-
-        # Entity extraction (spaCy NER; medical models can be plugged here)
-        manual_medications = []
-        entities_map = {}
+        summary = ' '.join(bullets) if bullets else summary
 
         # 1. Try HF Inference API for high-quality clinical insights
-        if self.use_hf_api and self.hf_client:
-            model_id = getattr(settings, 'HF_LLM_MODEL', 'mistralai/Mistral-7B-Instruct-v0.2')
+        if self._hf_available():
+            model_id = getattr(settings, 'HF_LLM_MODEL', 'openai/gpt-oss-20b')
+            max_chars = min(getattr(settings, 'AI_LOCAL_TEXT_MAX_CHARS', 6000), 4000)
             prompt = f"""[INST] You are a senior medical consultant. Analyze these patient records and provide:
 1. A concise professional narrative.
 2. Key clinical findings (max 10).
 3. Predicted conditions with severity and status.
 4. Medications mentioned.
 
-Records: {corpus[:4000]}
+Records: {corpus[:max_chars]}
 
 Return only a JSON object with:
 {{
@@ -1460,9 +1724,8 @@ Return only a JSON object with:
                 response = self._call_hf_inference(prompt, model_id, task="text-generation", max_new_tokens=800)
                 if response:
                     import json
-                    match = re.search(r'\{.*\}', response, re.DOTALL)
-                    if match:
-                        cloud_data = json.loads(match.group(0))
+                    cloud_data = self._extract_json(response)
+                    if isinstance(cloud_data, dict):
                         # Integrate cloud data
                         professional_narrative = cloud_data.get('narrative', '')
                         professional_findings = cloud_data.get('findings', [])
@@ -1481,9 +1744,8 @@ Return only a JSON object with:
 
                         if professional_narrative:
                             summary = professional_narrative
-                            record_highlights = professional_findings or record_highlights
+                            record_highlights = professional_findings
                             
-                            # Skip local heavy NER if cloud succeeded
                             print("✓ Using HF Cloud LLM for health summary")
             except Exception as e:
                 print(f"HF Health Summary Error: {e}")
@@ -1562,21 +1824,21 @@ Return only a JSON object with:
             print(f"Professional summary error: {e}")
         
         # CONVERT CONDITIONS TO OBJECTS WITH INTELLIGENT BADGES
-        conditions_list = []
-        raw_condition_sources = professional_findings if professional_findings else list(dict.fromkeys(manual_findings))[:10]
-        
-        for raw_cond in raw_condition_sources:
-            conditions_list.append(self._analyze_condition(raw_cond))
+        # Only build local conditions if cloud didn't provide them
+        if not conditions_list:
+            raw_condition_sources = professional_findings if professional_findings else list(dict.fromkeys(manual_findings))[:10]
+            for raw_cond in raw_condition_sources:
+                conditions_list.append(self._analyze_condition(raw_cond))
             
         if professional_narrative:
             summary = professional_narrative
 
         # Prefer clean findings for highlights
-        record_highlights = []
-        if professional_findings:
-            record_highlights = list(professional_findings)
-        else:
-            record_highlights = [b for b in bullets if not self._is_noise(b)]
+        if not record_highlights:
+            if professional_findings:
+                record_highlights = list(professional_findings)
+            else:
+                record_highlights = [b for b in bullets if not self._is_noise(b)]
             
         if not record_highlights and summary:
             record_highlights = [summary[:400]]
@@ -1600,8 +1862,9 @@ Return only a JSON object with:
             else:
                 insights.extend([b for b in bullets if not self._is_noise(b)][:4])
 
-            # Medications as objects WITH INTELLIGENT CLINICAL INFERENCE
-            final_medications = []
+        # Medications as objects WITH INTELLIGENT CLINICAL INFERENCE
+        # Only build local medications if cloud didn't provide them
+        if not final_medications:
             # Attempt to find the most recent record date for a better inference
             ref_date = timezone.now()
             first_date_match = re.search(r'\[(\d{4}-\d{2}-\d{2})\]', corpus)
@@ -1708,7 +1971,7 @@ Return only a JSON object with:
 
 class PrescriptionParser:
     @staticmethod
-    def parse_image(file_obj, patient):
+    def parse_image(file_obj, patient, auto_save=True):
         import requests, os, ast, re, io
         from datetime import timedelta, datetime
         from django.utils import timezone
@@ -1725,31 +1988,35 @@ class PrescriptionParser:
         # 1. Try Hugging Face Cloud OCR (Zero Local Load)
         if use_hf_api and not file_name.endswith('.pdf'):
             try:
-                print(f"[CLOUD OCR] Offloading prescription to Hugging Face...")
-                model_id = getattr(settings, 'HF_OCR_MODEL', 'naver-clova-ix/donut-base-finetuned-docvqa')
-                
-                # Seek to start for reading
+                print(f"[Prescription] Offloading to HF Cloud OCR (Model: {getattr(settings, 'HF_OCR_MODEL', 'donut')})...")
                 file_obj.seek(0)
-                # We need a temp file path for HF Inference if it doesn't take file objects directly
-                # InferenceClient.image_to_text takes bytes or path
                 image_data = file_obj.read()
                 
+                model_id = getattr(settings, 'HF_OCR_MODEL', 'naver-clova-ix/donut-base-finetuned-docvqa')
                 if 'donut' in model_id:
-                    response = ai_service._call_hf_inference(image_data, model_id, 
-                                                           task="document-question-answering", 
-                                                           question="What are the medications and dosages in this prescription?")
-                    if response and isinstance(response, list):
-                        raw_ocr = response[0].get('answer', '')
+                    raw_ocr = ai_service._call_hf_inference(
+                        image_data, model_id, 
+                        task="document-question-answering", 
+                        question="What are the medications and dosages in this prescription?"
+                    )
                 else:
                     response = ai_service._call_hf_inference(image_data, model_id, task="image-to-text")
-                    if response:
+                    if isinstance(response, dict):
                         raw_ocr = response.get('generated_text', '')
+                    elif isinstance(response, str):
+                        raw_ocr = response
+                
+                raw_ocr = raw_ocr or ""
                 
                 if raw_ocr:
-                    print(f"[CLOUD OCR] Success: {len(raw_ocr)} chars")
+                    print(f"[Prescription] Cloud OCR Success: {len(raw_ocr)} chars extracted.")
+                else:
+                    print("[Prescription] Cloud OCR returned empty text.")
             except Exception as e:
-                print(f"HF Cloud OCR failed: {e}")
+                print(f"[Prescription] Cloud OCR Error: {e}")
 
+        # 2. Local fallback OCR - ONLY if NOT in HF mode or Cloud OCR returned nothing
+        # In Zero Local Load mode, we strictly avoid heavy local OCR.
         if not raw_ocr:
             # Native PDF extraction is light, so we can keep it as fallback
             if file_name.endswith('.pdf'):
@@ -1779,27 +2046,25 @@ class PrescriptionParser:
                 except Exception as pdf_err:
                     print(f"Local PDF extraction failed: {pdf_err}")
             
-            # For images, we ONLY fall back to Tesseract, NEVER EasyOCR in Zero Local Load mode
-            elif not use_hf_api or not raw_ocr:
-                if use_hf_api:
-                    print("[AI Service] Cloud OCR failed. Avoiding heavy local OCR to prevent crash.")
-                else:
-                    print("[AI Service] Running local OCR...")
-                
+            # For images, if Cloud OCR failed, we only try Tesseract explicitly as a light fallback.
+            elif not raw_ocr:
+                print("[AI Service] Cloud OCR failed. Running lightweight local OCR (Tesseract)...")
                 try:
                     file_obj.seek(0)
                     image_data = file_obj.read()
                     
                     # Try Tesseract (Lightweight)
-                    if globals().get('pytesseract'):
-                        try:
-                            if globals().get('Image') is None:
-                                from PIL import Image as img
-                                globals()['Image'] = img
-                            pil_img = globals()['Image'].open(io.BytesIO(image_data))
-                            raw_ocr = globals()['pytesseract'].image_to_string(pil_img).strip()
-                        except Exception as e:
-                            print(f"Tesseract image error: {e}")
+                    try:
+                        import pytesseract
+                        from PIL import Image as img
+                        pil_img = img.open(io.BytesIO(image_data))
+                        raw_ocr = pytesseract.image_to_string(pil_img).strip()
+                        if raw_ocr:
+                            print(f"[Prescription] Lightweight Local OCR Success: {len(raw_ocr)} chars extracted.")
+                    except ImportError:
+                        print("pytesseract not installed, skipping light OCR.")
+                    except Exception as e:
+                        print(f"Tesseract image error: {e}")
                     
                     # ONLY load EasyOCR if NOT in HF mode
                     if not raw_ocr and not use_hf_api:
@@ -1830,6 +2095,8 @@ class PrescriptionParser:
             print("[AI Service] Offloading NER to Hugging Face...")
             entities = ai_service.extract_entities_hf(raw_ocr)
 
+        raw_ocr = raw_ocr or ""
+
         # Date extraction
         extracted_date = None
         date_match = re.search(r'(\d{1,2}[\./-]\d{1,2}[\./-]\d{2,4})', raw_ocr)
@@ -1838,21 +2105,55 @@ class PrescriptionParser:
             except: pass
         if not extracted_date: extracted_date = timezone.now().date()
 
-        # Medicines
+        # Medicines Extraction (Clinical NER -> LLM Fallback -> Regex Fallback)
         medicines = []
+        
+        # Pre-process raw_ocr to remove excessive whitespace and noisy symbols
+        clean_ocr = re.sub(r'[\s\t\n]+', ' ', raw_ocr).strip()
+        
+        # 1. Try specialized Clinical NER
         if entities:
-            # Handle remote entities (same logic as before)
+            print("[Prescription] Processing Clinical NER entities...")
             current_med = {}
             for ent in entities:
                 if isinstance(ent, dict):
-                    word = ent.get('word', '').replace('##', '')
-                    if 'treatment' in ent.get('entity_group', '').lower():
+                    word = ent.get('word', '').replace('##', '').strip()
+                    label = ent.get('entity_group', '').lower()
+                    if 'treatment' in label or 'medication' in label or 'clinical_drug' in label or 'drug' in label or 'lab_value' in label:
                         if current_med.get('drug_name'): medicines.append(current_med)
                         current_med = {"drug_name": word, "dosage": "?", "frequency": "?", "duration_days": 15, "purpose": "Prescribed medication."}
             if current_med.get('drug_name'): medicines.append(current_med)
-        else:
-            # Use local structured extractor
-            items = ai_service.extract_prescription_items(raw_ocr)
+
+        # 2. Try LLM Extraction (High-priority fallback)
+        if len(medicines) < 1 and clean_ocr and use_hf_api:
+            print("[Prescription] NER empty or failed. Attempting deep LLM extraction (Mistral)...")
+            prompt = f"""[INST] Extract every single medication, drug, or tablet mentioned in this prescription text.
+For each medication found, provide:
+- drug_name (e.g., Amoxicillin, Paracetamol)
+- dosage (e.g., 500mg, 1 tab)
+- frequency (e.g., BD, TDS, daily)
+- duration_days (number of days to take it)
+
+Text to analyze: {clean_ocr[:2500]}
+
+Return ONLY a JSON list of objects. If no medications are found, return []. [/INST]"""
+            
+            system_msg = "You are a precise medical data extraction engine. You specialize in identifying drug names, dosages, and frequencies from noisy OCR text. Only output valid JSON."
+            llm_res = ai_service._call_hf_chat(prompt, system_prompt=system_msg)
+            llm_json = ai_service._extract_json(llm_res)
+            
+            if isinstance(llm_json, list) and len(llm_json) > 0:
+                print(f"[Prescription] LLM extraction success: {len(llm_json)} items")
+                medicines = llm_json
+            elif isinstance(llm_json, dict) and 'medicines' in llm_json:
+                medicines = llm_json['medicines']
+            else:
+                print("[Prescription] LLM extraction returned no items.")
+
+        # 3. Final Fallback: Regex-based extraction (if all else failed)
+        if not medicines and clean_ocr:
+            print("[Prescription] NER and LLM failed. Using Regex fallback...")
+            items = ai_service.extract_prescription_items(raw_ocr) # Use raw text for regex to preserve lines
             for item in items:
                 medicines.append({
                     "drug_name": item['drug'],
@@ -1862,27 +2163,34 @@ class PrescriptionParser:
                     "purpose": ai_service.get_medication_info(item['drug'])['purpose']
                 })
 
-        # Create Prescription record in database
-        try:
-            from apps.records.models import Prescription
-            from apps.reminders.models import MedicationReminder
-            
-            # Create the main prescription record
-            rx = Prescription.objects.create(
-                patient=patient,
-                doctor=None, # AI Generated
-                items=items if not entities else medicines, # items are from structured extractor
-                notes=f"AI Analyzed Prescription from {extracted_date.isoformat()}\n\nRaw Text:\n{raw_ocr[:1000]}",
-                ts=timezone.make_aware(datetime.combine(extracted_date, datetime.min.time())),
-                expires_at=timezone.make_aware(datetime.combine(extracted_date + timedelta(days=15), datetime.min.time()))
-            )
-            
-            # Create reminders
-            PrescriptionParser.create_reminders(rx, medicines)
-            prescription_id = rx.id
-        except Exception as save_err:
-            print(f"Failed to save prescription record: {save_err}")
-            prescription_id = None
+        # Create Prescription record in database ONLY if auto_save is True AND medicines were found
+        prescription_id = None
+        if auto_save and len(medicines) > 0:
+            try:
+                from apps.records.models import Prescription
+                from apps.reminders.models import MedicationReminder
+                
+                # Create the main prescription record
+                rx = Prescription.objects.create(
+                    patient=patient,
+                    doctor=None, # AI Generated
+                    items=medicines, 
+                    notes=f"AI Analyzed Prescription from {extracted_date.isoformat()}\n\nRaw Text:\n{raw_ocr[:1000]}",
+                    ts=timezone.make_aware(datetime.combine(extracted_date, datetime.min.time())),
+                    expires_at=timezone.make_aware(datetime.combine(extracted_date + timedelta(days=15), datetime.min.time()))
+                )
+                
+                # Create reminders
+                PrescriptionParser.create_reminders(rx, medicines)
+                prescription_id = rx.id
+                print(f"[Prescription] Record saved to database: {prescription_id}")
+            except Exception as save_err:
+                print(f"Failed to save prescription record: {save_err}")
+        else:
+            if not auto_save:
+                print("[Prescription] Skip saving: auto_save is False")
+            elif len(medicines) == 0:
+                print("[Prescription] Skip saving: No medicines extracted")
 
         return {
             "id": prescription_id,
@@ -1890,7 +2198,7 @@ class PrescriptionParser:
             "expires_at": (extracted_date + timedelta(days=15)).isoformat(),
             "medicines": medicines,
             "raw_ocr": raw_ocr,
-            "doctor_advice": "Your medications have been saved and reminders synced to your mobile device. Consult your doctor for specific instructions."
+            "doctor_advice": "Your medications have been saved and reminders synced to your mobile device. Consult your doctor for specific instructions." if prescription_id else "No medications were saved. Try a clearer photo for better analysis."
         }
 
     @staticmethod
