@@ -158,6 +158,104 @@ class ConsentListView(generics.ListAPIView):
         return Consent.objects.none()
 
 
+class RequestBookingPermissionView(views.APIView):
+    """Doctor requests permission to book appointments for a patient."""
+    permission_classes = [IsAuthenticated, IsDoctor]
+    
+    def post(self, request):
+        from apps.patients.models import Patient
+        from apps.notifications.models import Notification
+        
+        patient_id = request.data.get('patient_id')
+        if not patient_id:
+            return Response({'error': 'patient_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            patient = Patient.objects.get(id=patient_id)
+            doctor = request.user.doctor_profile
+        except (Patient.DoesNotExist, Exception):
+            return Response({'error': 'Patient or Doctor profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Check for recent identical request (5 minute cooldown)
+        recent_request = Notification.objects.filter(
+            user=patient.user,
+            channel='in_app',
+            status='sent',
+            ts__gte=timezone.now() - timedelta(minutes=5),
+            payload__doctor_id=doctor.id,
+            payload__type='booking_permission_request'
+        ).first()
+
+        if recent_request:
+            return Response(
+                {'error': 'A booking permission request was already sent to this patient recently. Please wait before sending another.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
+        # Create notification for patient
+        notification = Notification.objects.create(
+            user=patient.user,
+            channel='in_app',
+            status='sent',
+            payload={
+                'type': 'booking_permission_request',
+                'title': 'Appointment Booking Request',
+                'body': f'Dr. {doctor.name} is requesting permission to book appointments on your behalf.',
+                'doctor_id': doctor.id,
+                'doctor_name': doctor.name,
+                'actions': [
+                    {'label': 'Approve', 'url': '/api/consent/approve-booking/', 'method': 'POST', 'params': {'doctor_id': doctor.id}},
+                    {'label': 'Deny', 'url': '/api/consent/deny-booking/', 'method': 'POST', 'params': {'doctor_id': doctor.id}}
+                ]
+            }
+        )
+        
+        return Response({
+            'message': 'Booking permission request sent to patient.',
+            'notification_id': notification.id
+        })
+
+
+class ApproveBookingPermissionView(views.APIView):
+    """Patient approves a booking permission request."""
+    permission_classes = [IsAuthenticated, IsPatient]
+    
+    def post(self, request):
+        from apps.notifications.models import Notification
+        
+        doctor_id = request.data.get('doctor_id')
+        notification_id = request.data.get('notification_id')
+        
+        if not doctor_id:
+            return Response({'error': 'doctor_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            doctor = Doctor.objects.get(id=doctor_id)
+            patient = request.user.patient_profile
+        except (Doctor.DoesNotExist, Exception):
+            return Response({'error': 'Doctor or Patient profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Create or update consent
+        consent, created = Consent.objects.update_or_create(
+            patient=patient,
+            doctor=doctor,
+            defaults={
+                'scope': {"write": ["appointments", "scheduling"], "read": ["records"]},
+                'expires_at': timezone.now() + timedelta(days=365), # Long term permission
+                'status': 'active'
+            }
+        )
+        
+        # Mark notification as read if provided
+        if notification_id:
+            Notification.objects.filter(id=notification_id, user=request.user).update(read=True)
+            
+        return Response({
+            'message': f'Permission granted to Dr. {doctor.name}.',
+            'consent_id': consent.id
+        })
+
+
 class AuditLogListView(generics.ListAPIView):
     """View audit logs (admin only)."""
     queryset = AuditLog.objects.all().order_by('-ts')

@@ -12,6 +12,7 @@ import {
   type DoctorPatientDocumentsSummaryResponse,
 } from '@/features/records/api';
 import { requestAccessNotification } from '@/features/notifications/api';
+import { requestBookingPermission } from '@/features/consent/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,6 +35,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import React from 'react';
 import { PrescriptionGenerator } from '@/features/records/components/PrescriptionGenerator';
+import { BookingModal } from '@/features/scheduling/components/BookingModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export function DoctorPatientsPage() {
@@ -55,6 +57,10 @@ export function DoctorPatientsPage() {
   const [prescribePatient, setPrescribePatient] = useState<{ id: number; name: string } | null>(
     null
   );
+  const [bookingPatient, setBookingPatient] = useState<{ id: number; name: string } | null>(
+    null
+  );
+  const [sentBookingRequestIds, setSentBookingRequestIds] = useState<Set<number>>(new Set());
 
   const { data: appointmentsData, isLoading: appointmentsLoading } = useQuery<Appointment[]>({
     queryKey: ['doctor', 'appointments'],
@@ -84,6 +90,18 @@ export function DoctorPatientsPage() {
     onError: (error: any) => {
       const errorMsg = error?.response?.data?.error || error?.message || 'Failed to send request';
       console.error('Error sending request:', errorMsg);
+      toast.error(errorMsg);
+    },
+  });
+
+  const requestBookingMutation = useMutation({
+    mutationFn: (patientId: number) => requestBookingPermission(patientId),
+    onSuccess: (_, patientId) => {
+      setSentBookingRequestIds((prev) => new Set([...prev, patientId]));
+      toast.success('Booking permission request sent to patient');
+    },
+    onError: (error: any) => {
+      const errorMsg = error?.response?.data?.error || error?.message || 'Failed to send booking request';
       toast.error(errorMsg);
     },
   });
@@ -418,7 +436,11 @@ export function DoctorPatientsPage() {
                       key={appointment.patient}
                       appointment={appointment}
                       status="registered"
+                      consents={consents}
                       onPrescribe={(id, name) => setPrescribePatient({ id, name })}
+                      onBook={(id, name) => setBookingPatient({ id, name })}
+                      onRequestBooking={(id) => requestBookingMutation.mutate(id)}
+                      isBookingRequested={(id) => sentBookingRequestIds.has(id)}
                     />
                   ))}
                   {consentOnlyPatients.map((consent: Consent) => (
@@ -426,6 +448,9 @@ export function DoctorPatientsPage() {
                       key={consent.patient} 
                       consent={consent} 
                       onPrescribe={(id, name) => setPrescribePatient({ id, name })}
+                      onBook={(id, name) => setBookingPatient({ id, name })}
+                      onRequestBooking={(id) => requestBookingMutation.mutate(id)}
+                      isBookingRequested={(id) => sentBookingRequestIds.has(id)}
                     />
                   ))}
                 </>
@@ -483,6 +508,13 @@ export function DoctorPatientsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <BookingModal
+        open={!!bookingPatient}
+        onClose={() => setBookingPatient(null)}
+        preselectedPatientId={bookingPatient?.id}
+        preselectedPatientName={bookingPatient?.name}
+      />
     </div>
   );
 }
@@ -509,16 +541,24 @@ function handleRequestAccess({
 interface PatientCardProps {
   appointment: Appointment;
   status: 'registered' | 'unregistered';
+  consents?: Consent[];
   onRequestAccess?: (appointment: Appointment) => void;
   onPrescribe?: (patientId: number, patientName: string) => void;
+  onBook?: (patientId: number, patientName: string) => void;
+  onRequestBooking?: (patientId: number) => void;
+  isBookingRequested?: (patientId: number) => boolean;
   sentRequestPatientIds?: Set<number>;
 }
 
 function PatientCard({
   appointment,
   status,
+  consents,
   onRequestAccess,
   onPrescribe,
+  onBook,
+  onRequestBooking,
+  isBookingRequested,
   sentRequestPatientIds,
 }: PatientCardProps): React.ReactElement {
   const patientName = appointment.patient_name || `Patient #${appointment.patient}`;
@@ -527,6 +567,15 @@ function PatientCard({
     'MMM d, yyyy'
   );
   const hasRequestBeenSent = sentRequestPatientIds?.has(appointment.patient) || false;
+  
+  // Check if doctor has scheduling permission for this patient
+  const hasSchedulingPermission = useMemo(() => {
+    if (!consents) return false;
+    const consent = consents.find(c => c.patient === appointment.patient && c.status === 'active');
+    if (!consent) return false;
+    const writeScope = consent.scope?.write || [];
+    return writeScope.includes('scheduling') || writeScope.includes('appointments') || writeScope.includes('*');
+  }, [consents, appointment.patient]);
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -570,6 +619,23 @@ function PatientCard({
             <Link href={`/patients/${appointment.patient}`}>View Records</Link>
           </Button>
         )}
+        {status === 'registered' && onBook && (
+          hasSchedulingPermission ? (
+            <Button size="sm" variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-50" onClick={() => onBook(appointment.patient, patientName)}>
+              <Calendar className="mr-2 h-4 w-4" />
+              Book
+            </Button>
+          ) : (
+            onRequestBooking && (
+              <Button size="sm" variant="outline" className="border-purple-100 text-purple-500" 
+                onClick={() => onRequestBooking(appointment.patient)}
+                disabled={isBookingRequested?.(appointment.patient)}
+              >
+                {isBookingRequested?.(appointment.patient) ? 'Booking Requested' : 'Enable Booking'}
+              </Button>
+            )
+          )
+        )}
         {status === 'registered' && onPrescribe && (
           <Button size="sm" onClick={() => onPrescribe(appointment.patient, patientName)}>
             <Pill className="mr-2 h-4 w-4" />
@@ -584,14 +650,25 @@ function PatientCard({
 interface ConsentOnlyPatientCardProps {
   consent: Consent;
   onPrescribe?: (patientId: number, patientName: string) => void;
+  onBook?: (patientId: number, patientName: string) => void;
+  onRequestBooking?: (patientId: number) => void;
+  isBookingRequested?: (patientId: number) => boolean;
 }
 
 function ConsentOnlyPatientCard({ 
   consent, 
-  onPrescribe 
+  onPrescribe,
+  onBook,
+  onRequestBooking,
+  isBookingRequested
 }: ConsentOnlyPatientCardProps): React.ReactElement {
   const expiresAt = format(new Date(consent.expires_at), 'MMM d, yyyy h:mm a');
   const patientName = `Patient #${consent.patient}`;
+  
+  const hasSchedulingPermission = useMemo(() => {
+    const writeScope = consent.scope?.write || [];
+    return writeScope.includes('scheduling') || writeScope.includes('appointments') || writeScope.includes('*');
+  }, [consent]);
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -615,6 +692,23 @@ function ConsentOnlyPatientCard({
         <Button asChild size="sm" variant="outline">
           <Link href={`/patients/${consent.patient}`}>View Records</Link>
         </Button>
+        {onBook && (
+          hasSchedulingPermission ? (
+            <Button size="sm" variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-50" onClick={() => onBook(consent.patient, patientName)}>
+              <Calendar className="mr-2 h-4 w-4" />
+              Book
+            </Button>
+          ) : (
+            onRequestBooking && (
+              <Button size="sm" variant="outline" className="border-purple-100 text-purple-500" 
+                onClick={() => onRequestBooking(consent.patient)}
+                disabled={isBookingRequested?.(consent.patient)}
+              >
+                {isBookingRequested?.(consent.patient) ? 'Booking Requested' : 'Enable Booking'}
+              </Button>
+            )
+          )
+        )}
         {onPrescribe && (
           <Button size="sm" onClick={() => onPrescribe(consent.patient, patientName)}>
             <Pill className="mr-2 h-4 w-4" />

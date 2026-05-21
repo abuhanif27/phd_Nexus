@@ -74,9 +74,9 @@ class RequestAccessNotificationView(views.APIView):
             user=patient.user,
             channel='in_app',
             status='sent',
-            ts__gte=timezone.now() - timedelta(minutes=5)
-        ).filter(
-            payload__contains={'from_doctor_id': doctor.id, 'type': 'access_request'}
+            ts__gte=timezone.now() - timedelta(minutes=5),
+            payload__from_doctor_id=doctor.id,
+            payload__type='access_request'
         ).first()
 
         if recent_request:

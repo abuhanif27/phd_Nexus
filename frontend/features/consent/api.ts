@@ -38,3 +38,31 @@ export async function revokeConsent(consentId: number): Promise<{ message: strin
   const { data } = await apiClient.post(`${BASE}/revoke/${consentId}/`);
   return data;
 }
+
+/**
+ * Doctor requests permission to book for a patient
+ */
+export async function requestBookingPermission(patientId: number): Promise<{ 
+  message: string, 
+  notification_id: number 
+}> {
+  const { data } = await apiClient.post(`${BASE}/request-booking/`, { patient_id: patientId });
+  return data;
+}
+
+/**
+ * Patient approves a doctor's booking permission request
+ */
+export async function approveBookingPermission(
+  doctorId: number, 
+  notificationId?: number
+): Promise<{ 
+  message: string, 
+  consent_id: number 
+}> {
+  const { data } = await apiClient.post(`${BASE}/approve-booking/`, { 
+    doctor_id: doctorId, 
+    notification_id: notificationId 
+  });
+  return data;
+}

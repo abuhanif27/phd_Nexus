@@ -62,19 +62,29 @@ interface BookingModalProps {
   open: boolean;
   onClose: () => void;
   preselectedDoctorId?: number;
+  preselectedPatientId?: number;
+  preselectedPatientName?: string;
 }
 
-export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModalProps) {
+export function BookingModal({ 
+  open, 
+  onClose, 
+  preselectedDoctorId,
+  preselectedPatientId,
+  preselectedPatientName
+}: BookingModalProps) {
   const queryClient = useQueryClient();
   const { user: storedUser } = useAuthStore();
   const { data: freshUser } = useCurrentUser();
   // Prefer fresh API data (has patient_profile.id); fall back to store while loading
   const user = freshUser ?? storedUser;
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const isDoctor = user?.role === 'doctor';
+
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(preselectedDoctorId ? 2 : 1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('all');
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(
-    preselectedDoctorId || null
+    preselectedDoctorId || (isDoctor ? (user as any)?.doctor_profile?.id : null) || null
   );
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
@@ -89,12 +99,26 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
   } = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
-      doctor: preselectedDoctorId || 0,
+      doctor: preselectedDoctorId || (isDoctor ? (user as any)?.doctor_profile?.id : 0) || 0,
       date: '',
       time_slot: '',
       notes: '',
     },
   });
+
+  // Automatically update form and step if preselectedDoctorId changes
+  useEffect(() => {
+    if (preselectedDoctorId) {
+      setSelectedDoctorId(preselectedDoctorId);
+      setValue('doctor', preselectedDoctorId);
+      setStep(2);
+    } else if (isDoctor && (user as any)?.doctor_profile?.id) {
+       const docId = (user as any)?.doctor_profile?.id;
+       setSelectedDoctorId(docId);
+       setValue('doctor', docId);
+       setStep(2);
+    }
+  }, [preselectedDoctorId, isDoctor, user, setValue]);
 
   // Fetch doctors
   const { data: doctorsData, isLoading: loadingDoctors } = useQuery({
@@ -181,14 +205,14 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
 
     bookMutation.mutate({
       doctor: data.doctor,
-      // patient is auto-assigned server-side from the JWT token;
-      // sending it here too keeps the serializer happy as a fallback.
-      patient: (user as any)?.patient_profile?.id,
+      // patient is auto-assigned server-side from the JWT token for patients;
+      // for doctors, we MUST provide the preselected patient ID.
+      patient: preselectedPatientId || (user as any)?.patient_profile?.id,
       date: data.date,
       start_time: startTime,
       end_time: endTime,
       notes: data.notes || '',
-      grant_consent: grantConsent,
+      grant_consent: isDoctor ? false : grantConsent, // Only patients grant consent this way
     });
   };
 
@@ -227,11 +251,11 @@ export function BookingModal({ open, onClose, preselectedDoctorId }: BookingModa
         <div className="border-b bg-white px-6 py-6 dark:bg-gray-900">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white">
-              <Sparkles className="h-6 w-6 text-blue-600" />
-              Book Your Appointment
+              {isDoctor ? <CalendarIcon className="h-6 w-6 text-purple-600" /> : <Sparkles className="h-6 w-6 text-blue-600" />}
+              {isDoctor ? `Book Appointment for ${preselectedPatientName || 'Patient'}` : 'Book Your Appointment'}
             </DialogTitle>
             <DialogDescription className="text-gray-600 dark:text-gray-400">
-              Find your doctor, pick a time, and get the care you need
+              {isDoctor ? 'Select a slot to schedule a consultation' : 'Find your doctor, pick a time, and get the care you need'}
             </DialogDescription>
           </DialogHeader>
 

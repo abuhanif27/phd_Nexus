@@ -16,9 +16,10 @@ import {
   markNotificationsRead,
   type BackendNotification,
 } from '@/features/notifications/api';
+import { approveBookingPermission } from '@/features/consent/api';
 import React from 'react';
 
-type NotificationCategory = 'access_request' | 'all';
+type NotificationCategory = 'access_request' | 'booking_request' | 'all';
 
 export function NotificationsPage(): React.ReactElement {
   const [selectedCategory, setSelectedCategory] = useState<NotificationCategory>('all');
@@ -81,25 +82,47 @@ export function NotificationsPage(): React.ReactElement {
     },
   });
 
+  const approveBookingMutation = useMutation({
+    mutationFn: (data: { doctorId: number; notificationId: number }) => {
+      return approveBookingPermission(data.doctorId, data.notificationId);
+    },
+    onSuccess: (_data, variables) => {
+      setAcceptedDoctors((prev) => new Set([...prev, variables.doctorId]));
+      toast.success('Booking permission granted to doctor');
+      setTimeout(() => {
+        refetch();
+      }, 500);
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['doctor', 'consents'] });
+    },
+    onError: (error: any) => {
+      const errorMsg = error?.response?.data?.error || error?.message || 'Failed to grant booking permission';
+      toast.error(errorMsg);
+    },
+  });
+
   const filteredNotifications = useMemo(() => {
     let filtered = notifications;
 
     if (selectedCategory === 'access_request') {
       filtered = notifications.filter((n) => n.payload?.type === 'access_request');
+    } else if (selectedCategory === 'booking_request') {
+      filtered = notifications.filter((n) => n.payload?.type === 'booking_permission_request');
     }
 
     // Deduplicate by doctor_id - keep only the most recent request per doctor
     const deduped = new Map<number, BackendNotification>();
     filtered.forEach((n) => {
-      const doctorId = n.payload?.from_doctor_id;
+      const doctorId = n.payload?.from_doctor_id || n.payload?.doctor_id;
       if (doctorId) {
-        const existing = deduped.get(doctorId);
+        const key = `${n.payload.type}-${doctorId}`;
+        const existing = deduped.get(key as any);
         if (!existing || new Date(n.ts) > new Date(existing.ts)) {
-          deduped.set(doctorId, n);
+          deduped.set(key as any, n);
         }
       } else {
         // Non-access-request notifications, add them with fake id
-        deduped.set(-n.id, n);
+        deduped.set(-n.id as any, n);
       }
     });
 
@@ -110,6 +133,11 @@ export function NotificationsPage(): React.ReactElement {
 
   const accessRequestCount = useMemo(
     () => notifications.filter((n) => n.payload?.type === 'access_request').length,
+    [notifications]
+  );
+
+  const bookingRequestCount = useMemo(
+    () => notifications.filter((n) => n.payload?.type === 'booking_permission_request').length,
     [notifications]
   );
 
@@ -146,6 +174,13 @@ export function NotificationsPage(): React.ReactElement {
           Access Requests ({accessRequestCount})
         </Button>
         <Button
+          variant={selectedCategory === 'booking_request' ? 'default' : 'outline'}
+          onClick={() => setSelectedCategory('booking_request')}
+          className="w-full sm:w-auto"
+        >
+          Booking Requests ({bookingRequestCount})
+        </Button>
+        <Button
           variant="outline"
           size="sm"
           onClick={() => refetch()}
@@ -162,7 +197,7 @@ export function NotificationsPage(): React.ReactElement {
           <CardContent className="py-12 text-center text-muted-foreground">
             <Clock className="mx-auto mb-3 h-8 w-8 opacity-50" />
             <p>
-              No {selectedCategory === 'access_request' ? 'access request ' : ''}notifications yet
+              No {selectedCategory === 'access_request' ? 'access request ' : selectedCategory === 'booking_request' ? 'booking request ' : ''}notifications yet
             </p>
           </CardContent>
         </Card>
@@ -175,8 +210,11 @@ export function NotificationsPage(): React.ReactElement {
               onAccept={(doctorId: number, doctorUserId?: number) =>
                 acceptMutation.mutate({ doctorId, doctorUserId })
               }
-              isAccepting={acceptMutation.isPending}
-              isAlreadyAccepted={acceptedDoctors.has(notification.payload?.from_doctor_id || 0)}
+              onApproveBooking={(doctorId: number, notificationId: number) =>
+                approveBookingMutation.mutate({ doctorId, notificationId })
+              }
+              isAccepting={acceptMutation.isPending || approveBookingMutation.isPending}
+              isAlreadyAccepted={acceptedDoctors.has(notification.payload?.from_doctor_id || notification.payload?.doctor_id || 0)}
             />
           ))}
         </div>
@@ -188,6 +226,7 @@ export function NotificationsPage(): React.ReactElement {
 interface AccessRequestCardProps {
   notification: BackendNotification;
   onAccept: (doctorId: number, doctorUserId?: number) => void;
+  onApproveBooking?: (doctorId: number, notificationId: number) => void;
   isAccepting: boolean;
   isAlreadyAccepted?: boolean;
 }
@@ -195,18 +234,19 @@ interface AccessRequestCardProps {
 function AccessRequestCard({
   notification,
   onAccept,
+  onApproveBooking,
   isAccepting,
   isAlreadyAccepted,
 }: AccessRequestCardProps): React.ReactElement | null {
   const payload = notification.payload;
 
-  if (payload?.type !== 'access_request') {
+  if (payload?.type !== 'access_request' && payload?.type !== 'booking_permission_request') {
     return (
       <Card className="overflow-hidden">
         <CardContent className="pt-6">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <p className="text-sm font-semibold">{payload?.message || 'System Notification'}</p>
+              <p className="text-sm font-semibold">{payload?.message || payload?.body || payload?.title || 'System Notification'}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(notification.ts), { addSuffix: true })}
               </p>
@@ -220,27 +260,34 @@ function AccessRequestCard({
     );
   }
 
-  const doctorId = payload.from_doctor_id;
-  const doctorEmail = payload.from_doctor_email;
+  const doctorId = payload.from_doctor_id || payload.doctor_id;
+  const doctorEmail = payload.from_doctor_email || payload.doctor_name || 'Doctor';
+  const isBookingRequest = payload.type === 'booking_permission_request';
 
   return (
-    <Card className="overflow-hidden border-l-4 border-l-blue-500 bg-white dark:bg-slate-950">
+    <Card className={cn("overflow-hidden border-l-4 bg-white dark:bg-slate-950", isBookingRequest ? "border-l-purple-500" : "border-l-blue-500")}>
       <CardContent className="pt-6">
         <div className="space-y-4">
           {/* Header */}
           <div className="flex items-start gap-3">
-            <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900">
-              <CheckCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className={cn("rounded-full p-2", isBookingRequest ? "bg-purple-100 dark:bg-purple-900" : "bg-blue-100 dark:bg-blue-900")}>
+              {isBookingRequest ? (
+                <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              ) : (
+                <CheckCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              )}
             </div>
             <div className="flex-1">
-              <h3 className="text-base font-semibold">Access Request from Doctor</h3>
+              <h3 className="text-base font-semibold">
+                {isBookingRequest ? 'Booking Permission Request' : 'Access Request from Doctor'}
+              </h3>
               <p className="mt-1 text-sm text-muted-foreground">{doctorEmail}</p>
             </div>
           </div>
 
           {/* Message */}
           <div className="ml-10 space-y-2">
-            <p className="text-sm leading-relaxed text-foreground">{payload.message}</p>
+            <p className="text-sm leading-relaxed text-foreground">{payload.message || payload.body}</p>
             <p className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(notification.ts), { addSuffix: true })}
             </p>
@@ -248,7 +295,7 @@ function AccessRequestCard({
 
           {/* Actions */}
           <div className="ml-10 flex gap-2 pt-2">
-            {doctorId && (
+            {doctorId && !isBookingRequest && (
               <Button
                 size="sm"
                 onClick={() => onAccept(doctorId, payload.from_doctor_user_id)}
@@ -264,6 +311,24 @@ function AccessRequestCard({
                     : 'Grant Access'}
               </Button>
             )}
+            
+            {doctorId && isBookingRequest && onApproveBooking && (
+              <Button
+                size="sm"
+                onClick={() => onApproveBooking(doctorId, notification.id)}
+                disabled={isAccepting || isAlreadyAccepted}
+                className="gap-2 bg-purple-600 hover:bg-purple-700"
+                variant={isAlreadyAccepted ? 'outline' : 'default'}
+              >
+                <CheckCheck className="h-4 w-4" />
+                {isAccepting
+                  ? 'Approving...'
+                  : isAlreadyAccepted
+                    ? 'Permission Granted'
+                    : 'Approve Booking'}
+              </Button>
+            )}
+            
             <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
               <X className="h-4 w-4" />
             </Button>

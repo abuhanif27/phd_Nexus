@@ -154,6 +154,46 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     {'error': 'Patient profile not found. Please complete your profile first.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+        elif request.user.role == 'doctor':
+            # Doctors must provide patient ID
+            patient_id = data.get('patient')
+            if not patient_id:
+                return Response(
+                    {'error': 'Patient ID is required for doctor-initiated booking.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                patient_obj = PatientModel.objects.get(id=patient_id)
+                doctor_obj = request.user.doctor_profile
+                
+                # Verify consent
+                consent = Consent.objects.filter(
+                    patient=patient_obj,
+                    doctor=doctor_obj,
+                    status='active',
+                    expires_at__gt=timezone.now()
+                ).first()
+                
+                if not consent:
+                    return Response(
+                        {'error': 'No active consent from this patient. Please request booking permission first.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                
+                # Check if scheduling is allowed in scope
+                scope = consent.scope or {}
+                write_scope = scope.get('write', [])
+                if 'scheduling' not in write_scope and 'appointments' not in write_scope and '*' not in write_scope:
+                    return Response(
+                        {'error': 'Consent does not include scheduling permissions.'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                    
+            except PatientModel.DoesNotExist:
+                return Response({'error': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)
+            except Exception:
+                return Response({'error': 'Doctor profile not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
