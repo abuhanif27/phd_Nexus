@@ -46,6 +46,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [nextPage, setNextPage] = useState<string | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
   const socketRef = useRef<WebSocket | null>(null);
+  const wsConnected = useRef(false);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const activeConvRef = useRef<Conversation | null>(null);
+
+  // Keep ref in sync with state
+  useEffect(() => { activeConvRef.current = activeConversation; }, [activeConversation]);
 
   const fetchConversations = useCallback(async () => {
     if (!token) return;
@@ -56,32 +62,29 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (Array.isArray(results)) {
         setConversations(results);
         
-        // Auto-select based on query param
         const convId = searchParams?.get('id');
         const userId = searchParams?.get('user');
         
         if (convId) {
-          const found = results.find(c => c.id === Number(convId));
+          const found = results.find((c: Conversation) => c.id === Number(convId));
           if (found) {
             setActiveConversation(found);
-            // Fetch messages for it
             const msgResponse = await apiClient.get(`/api/chat/conversations/${found.id}/messages/`);
             const msgData: any = msgResponse.data;
-            setMessages(msgData.results?.reverse() || msgData.reverse() || []);
+            setMessages(msgData.results?.reverse() || (Array.isArray(msgData) ? msgData.reverse() : []));
             setNextPage(msgData.next || null);
           }
         } else if (userId) {
-          const found = results.find(c => c.participants.some((p: any) => p.id === Number(userId)));
+          const found = results.find((c: Conversation) => c.participants.some((p: any) => p.id === Number(userId)));
           if (found) {
             setActiveConversation(found);
             const msgResponse = await apiClient.get(`/api/chat/conversations/${found.id}/messages/`);
             const msgData: any = msgResponse.data;
-            setMessages(msgData.results?.reverse() || msgData.reverse() || []);
+            setMessages(msgData.results?.reverse() || (Array.isArray(msgData) ? msgData.reverse() : []));
             setNextPage(msgData.next || null);
           }
         }
       } else {
-        console.error('Conversations data is not an array:', results);
         setConversations([]);
       }
     } catch (error) {
@@ -95,7 +98,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await apiClient.get(`/api/chat/conversations/${conversationId}/messages/`);
       const data: any = response.data;
-      setMessages(data.results?.reverse() || data.reverse() || []);
+      setMessages(data.results?.reverse() || (Array.isArray(data) ? data.reverse() : []));
       setNextPage(data.next || null);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
@@ -115,37 +118,69 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [token, nextPage]);
 
+  // Poll for new messages when WebSocket is not connected
+  const startPolling = useCallback(() => {
+    if (pollRef.current) return;
+    pollRef.current = setInterval(async () => {
+      if (wsConnected.current) return; // WS reconnected, skip polling
+      const conv = activeConvRef.current;
+      if (!conv || !token) return;
+      try {
+        const response = await apiClient.get(`/api/chat/conversations/${conv.id}/messages/`);
+        const data: any = response.data;
+        const fetched: Message[] = data.results?.reverse() || (Array.isArray(data) ? data.reverse() : []);
+        setMessages((prev) => {
+          if (fetched.length === 0) return prev;
+          // Merge: keep any messages not in fetched, add new ones
+          const ids = new Set(prev.map(m => m.id));
+          const newMsgs = fetched.filter(m => !ids.has(m.id));
+          if (newMsgs.length === 0) return prev;
+          return [...prev, ...newMsgs];
+        });
+      } catch { /* ignore polling errors */ }
+    }, 3000);
+  }, [token]);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
-    if (user && token) {
-      fetchConversations();
-      
-      let socket: WebSocket | null = null;
-      let reconnectTimer: NodeJS.Timeout;
+    if (!user || !token) return;
 
-      const connect = () => {
-        let baseUrl = env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-        baseUrl = baseUrl.replace(/\/+$/, '');
-        
-        // If we are on a network IP but API is localhost, adjust automatically
-        if (typeof window !== 'undefined') {
-          const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-          const apiIsLocalhost = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
-          
-          if (!isLocalhost && apiIsLocalhost) {
-            baseUrl = `http://${window.location.hostname}:8000`;
-            console.log('Adjusted API Base URL for network access:', baseUrl);
-          }
+    fetchConversations();
+
+    let socket: WebSocket | null = null;
+    let reconnectTimer: NodeJS.Timeout;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
+
+    const connect = () => {
+      let baseUrl = env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      baseUrl = baseUrl.replace(/\/+$/, '');
+
+      if (typeof window !== 'undefined') {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const apiIsLocalhost = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
+        if (!isLocalhost && apiIsLocalhost) {
+          baseUrl = `http://${window.location.hostname}:8000`;
         }
+      }
 
-        const wsUrlBase = baseUrl.replace('http', 'ws');
-        const wsUrl = `${wsUrlBase}/ws/chat/?token=${token}`;
-        
-        console.log('Connecting to WebSocket:', wsUrl);
+      const wsUrlBase = baseUrl.replace('http', 'ws');
+      const wsUrl = `${wsUrlBase}/ws/chat/?token=${token}`;
+
+      try {
         socket = new WebSocket(wsUrl);
         socketRef.current = socket;
 
         socket.onopen = () => {
-          console.log('WebSocket Connected');
+          wsConnected.current = true;
+          reconnectAttempts = 0;
+          stopPolling();
         };
 
         socket.onmessage = (event) => {
@@ -160,7 +195,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
             } else if (data.type === 'new_message') {
               const newMessage = data.message;
-              
+
               setActiveConversation((currentActive) => {
                 if (currentActive?.id === newMessage.conversation) {
                   setMessages((prev) => {
@@ -173,14 +208,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
               setConversations((prev) => {
                 if (!Array.isArray(prev)) return [];
-                const exists = prev.some(c => c.id === newMessage.conversation);
-                if (!exists) {
-                  // If it's a new conversation from someone else, we might need to fetch it
-                  fetchConversations();
-                  return prev;
-                }
-                return prev.map(c => c.id === newMessage.conversation 
-                  ? { ...c, last_message: newMessage, updated_at: newMessage.timestamp } 
+                return prev.map(c => c.id === newMessage.conversation
+                  ? { ...c, last_message: newMessage, updated_at: newMessage.timestamp }
                   : c
                 ).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
               });
@@ -190,51 +219,72 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         };
 
-        socket.onclose = (e) => {
-          console.log('WebSocket Disconnected:', {
-            code: e.code,
-            reason: e.reason,
-            wasClean: e.wasClean
-          });
+        socket.onclose = () => {
+          wsConnected.current = false;
           socketRef.current = null;
-          // Reconnect after 3 seconds
-          reconnectTimer = setTimeout(connect, 3000);
+          // Start polling as fallback
+          startPolling();
+          // Attempt reconnect with backoff
+          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            const delay = Math.min(3000 * reconnectAttempts, 15000);
+            reconnectTimer = setTimeout(connect, delay);
+          }
         };
 
-        socket.onerror = (err) => {
-          console.error('WebSocket Error URL:', socket?.url);
-          console.error('WebSocket Error ReadyState:', socket?.readyState);
-          console.error('WebSocket Error Event:', err);
-          
+        socket.onerror = () => {
+          // Will trigger onclose, which handles fallback
           if (socket?.readyState !== WebSocket.CLOSED && socket?.readyState !== WebSocket.CLOSING) {
             socket?.close();
           }
         };
-      };
-
-      connect();
-
-      return () => {
-        if (socket) socket.close();
-        clearTimeout(reconnectTimer);
-      };
-    }
-  }, [user, token, fetchConversations]);
-
-  const sendMessage = (content: string) => {
-    if (activeConversation && content.trim()) {
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({
-          type: 'chat_message',
-          conversation_id: activeConversation.id,
-          content: content.trim(),
-        }));
-      } else {
-        console.error('Cannot send message: WebSocket is not open');
-        // Fallback or retry?
+      } catch {
+        // WebSocket constructor failed (e.g. invalid URL)
+        wsConnected.current = false;
+        startPolling();
       }
+    };
+
+    connect();
+
+    return () => {
+      if (socket) socket.close();
+      clearTimeout(reconnectTimer);
+      stopPolling();
+    };
+  }, [user, token, fetchConversations, startPolling, stopPolling]);
+
+  // Send message via WebSocket or HTTP fallback
+  const sendMessage = useCallback((content: string) => {
+    if (!activeConversation || !content.trim()) return;
+
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({
+        type: 'chat_message',
+        conversation_id: activeConversation.id,
+        content: content.trim(),
+      }));
+    } else {
+      // HTTP fallback
+      apiClient.post(`/api/chat/conversations/${activeConversation.id}/send/`, {
+        content: content.trim(),
+      }).then((response) => {
+        const newMessage = response.data;
+        setMessages((prev) => {
+          if (prev.some(m => m.id === newMessage.id)) return prev;
+          return [...prev, newMessage];
+        });
+        setConversations((prev) =>
+          prev.map(c => c.id === activeConversation.id
+            ? { ...c, last_message: newMessage, updated_at: newMessage.timestamp }
+            : c
+          ).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+        );
+      }).catch((err) => {
+        console.error('Failed to send message:', err);
+      });
     }
-  };
+  }, [activeConversation]);
 
   return (
     <ChatContext.Provider value={{
@@ -260,4 +310,3 @@ export const useChat = () => {
   }
   return context;
 };
-

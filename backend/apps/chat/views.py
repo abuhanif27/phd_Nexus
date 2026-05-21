@@ -51,6 +51,25 @@ class ConversationViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
+    def send(self, request, pk=None):
+        """Send a message via REST API (fallback when WebSocket is unavailable)."""
+        conversation = self.get_object()
+        content = request.data.get('content', '').strip()
+        if not content:
+            return Response({"error": "content is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        message = Message.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            content=content,
+        )
+        conversation.updated_at = message.timestamp
+        conversation.save(update_fields=['updated_at'])
+        
+        serializer = MessageSerializer(message)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
     def mark_as_read(self, request, pk=None):
         conversation = self.get_object()
         conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
