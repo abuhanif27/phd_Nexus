@@ -39,6 +39,7 @@ class SymptomCheckerService:
         self.all_symptoms = []
         self.symptom_idx = {}
         self.disease_info = {}
+        self.disease_symptom_map = {}
         self.severity_map = {}
         self.use_hf_api = getattr(settings, 'USE_HF_INFERENCE_API', False)
         self.model_source = 'none'
@@ -87,8 +88,7 @@ class SymptomCheckerService:
         """Load datasets and model (Dataset Driven -> Cloud Fallback)."""
         # Always load standard symptom list from the project's local CSV (Very light)
         try:
-            base_dir = settings.BASE_DIR
-            dataset_path = os.path.join(base_dir, 'chating system', 'Dataset', 'Symptom Severity.csv')
+            dataset_path = os.path.join(self.DATA_DIR, 'Symptom Severity.csv')
             if os.path.exists(dataset_path):
                 with open(dataset_path, mode='r', encoding='utf-8') as f:
                     reader = csv.DictReader(f)
@@ -97,13 +97,41 @@ class SymptomCheckerService:
                     print(f"✅ Loaded {len(self.all_symptoms)} symptoms from dataset.")
             
             # Populate disease_info for mapping
-            spec_path = os.path.join(base_dir, 'chating system', 'Dataset', 'Disease Specialist.csv')
+            spec_path = os.path.join(self.DATA_DIR, 'Disease Specialist.csv')
             if os.path.exists(spec_path):
                 with open(spec_path, mode='r', encoding='utf-8') as f:
                     reader = csv.DictReader(f)
                     for row in reader:
                         disease = row['Disease'].strip()
-                        self.disease_info[disease] = {'specialist': row['Specialist'], 'description': '', 'precautions': []}
+                        self.disease_info[disease] = {
+                            'specialist': row['Specialist'],
+                            'description': '',
+                            'precautions': []
+                        }
+
+            symptom_path = os.path.join(self.DATA_DIR, 'Symptom.csv')
+            if os.path.exists(symptom_path):
+                with open(symptom_path, mode='r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        disease = row.get('Disease', '').strip()
+                        if not disease:
+                            continue
+                        symptom_values = []
+                        for key, value in row.items():
+                            if not key.lower().startswith('symptom'):
+                                continue
+                            if value:
+                                symptom_values.append(value.strip())
+                        if not symptom_values:
+                            continue
+                        normalized = {self._normalize_symptom(s) for s in symptom_values if s}
+                        if disease in self.disease_symptom_map:
+                            self.disease_symptom_map[disease].update(normalized)
+                        else:
+                            self.disease_symptom_map[disease] = normalized
+                        if not self.all_symptoms:
+                            self.all_symptoms = sorted(list({s.replace('_', ' ').title() for s in normalized}))
         except Exception as e:
             print(f"Error loading lightweight symptoms: {e}")
 
@@ -132,7 +160,7 @@ class SymptomCheckerService:
 
         # 1. Use Reinforced Engine (Zero CPU, Dataset Driven)
         specialist_result = self.ai_service.predict_specialist(text or ", ".join(manual_symptoms or []))
-        
+
         disease = specialist_result.get('disease_prediction', 'Undetermined')
         specialist = specialist_result.get('specialist', 'General Physician')
         
@@ -142,12 +170,15 @@ class SymptomCheckerService:
         severity_level = "Moderate"
         severity_score = 4
         
+        detected_symptoms = specialist_result.get('symptoms_detected', manual_symptoms or [])
+        if not detected_symptoms:
+            detected_symptoms = manual_symptoms or []
+
         try:
-            # Use data from the 'chating system' datasets
-            base_dir = settings.BASE_DIR
+            # Use data from the symptom_checker datasets
             
             # Map description
-            desc_path = os.path.join(base_dir, 'chating system', 'Dataset', 'Symptom Description.csv')
+            desc_path = os.path.join(self.DATA_DIR, 'Symptom Description.csv')
             with open(desc_path, mode='r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
@@ -156,7 +187,7 @@ class SymptomCheckerService:
                         break
             
             # Map precautions
-            prec_path = os.path.join(base_dir, 'chating system', 'Dataset', 'Symptom Precaution.csv')
+            prec_path = os.path.join(self.DATA_DIR, 'Symptom Precaution.csv')
             with open(prec_path, mode='r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
@@ -165,8 +196,7 @@ class SymptomCheckerService:
                         break
                         
             # Map severity (average weight of detected symptoms)
-            sev_path = os.path.join(base_dir, 'chating system', 'Dataset', 'Symptom Severity.csv')
-            detected_symptoms = specialist_result.get('symptoms_detected', manual_symptoms or [])
+            sev_path = os.path.join(self.DATA_DIR, 'Symptom Severity.csv')
             total_sev = 0
             found_sev = 0
             with open(sev_path, mode='r', encoding='utf-8') as f:
@@ -185,22 +215,85 @@ class SymptomCheckerService:
         except Exception as e:
             print(f"Error fetching dataset info: {e}")
 
+        if not detected_symptoms and text:
+            detected_symptoms = self._extract_symptom_terms(text)
+
+        dataset_disease, dataset_score = self._predict_disease_from_dataset(detected_symptoms)
+        if dataset_disease:
+            confidence = specialist_result.get('confidence', 0.5)
+            if disease == 'Undetermined' or confidence < 0.65:
+                disease = dataset_disease
+                specialist = self.disease_info.get(disease, {}).get('specialist', specialist)
+
+        recommended = self._get_recommended_doctors(specialist, patient=patient)
+
+        alternatives = []
+        raw_alternatives = specialist_result.get('alternatives', [])
+        disease_lookup = {name.lower(): name for name in self.disease_info.keys()}
+
+        for alt in raw_alternatives:
+            if isinstance(alt, dict):
+                alt_disease = alt.get('disease') or alt.get('condition') or alt.get('name')
+                alt_specialist = alt.get('specialist')
+                if not alt_specialist and alt_disease:
+                    alt_specialist = self.ai_service._map_disease_to_specialist(alt_disease)
+                alternatives.append({
+                    "disease": alt_disease or "Undetermined",
+                    "specialist": alt_specialist or "General Physician",
+                    "confidence": float(alt.get('confidence', 0.35))
+                })
+                continue
+
+            if isinstance(alt, str):
+                key = alt.strip().lower()
+                if key in disease_lookup:
+                    alt_disease = disease_lookup[key]
+                    alt_specialist = self.ai_service._map_disease_to_specialist(alt_disease)
+                    alternatives.append({
+                        "disease": alt_disease,
+                        "specialist": alt_specialist,
+                        "confidence": 0.35
+                    })
+                else:
+                    alternatives.append({
+                        "disease": "Undetermined",
+                        "specialist": alt.strip(),
+                        "confidence": 0.3
+                    })
+
         return {
             "disease": disease,
             "specialist": specialist,
             "confidence": specialist_result.get('confidence', 0.5),
-            "alternatives": [
-                {"disease": d, "specialist": self.ai_service._map_disease_to_specialist(d), "confidence": 0.4} 
-                for d in specialist_result.get('alternatives', [])
-            ],
+            "alternatives": alternatives[:3],
             "detected_symptoms": detected_symptoms,
             "severity_score": severity_score,
             "severity_level": severity_level,
             "description": description,
             "precautions": precautions,
-            "recommended_doctors": self._get_recommended_doctors(specialist, patient=patient),
+            "recommended_doctors": recommended,
+            "specialist_available": len(recommended) > 0,
+            "availability_message": "Available" if recommended else "Currently not available",
             "model_source": "reinforced_knowledge"
         }
+
+    def _normalize_symptom(self, value: str) -> str:
+        return value.strip().replace('_', ' ').lower()
+
+    def _predict_disease_from_dataset(self, symptoms: List[str]) -> tuple[Optional[str], int]:
+        if not symptoms or not self.disease_symptom_map:
+            return None, 0
+        normalized = {self._normalize_symptom(s) for s in symptoms if s}
+        best_disease = None
+        best_score = 0
+        for disease, disease_symptoms in self.disease_symptom_map.items():
+            score = len(normalized.intersection(disease_symptoms))
+            if score > best_score:
+                best_score = score
+                best_disease = disease
+        if best_score < 1:
+            return None, 0
+        return best_disease, best_score
 
     def _extract_symptom_terms(self, text: str) -> List[str]:
         """Small no-model symptom term extractor for degraded mode."""

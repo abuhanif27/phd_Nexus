@@ -1137,12 +1137,16 @@ Return only a list of strings representing bullet points. [/INST]"""
     def _map_disease_to_specialist(self, disease: str) -> str:
         """Map disease name to a specialist using the CSV dataset."""
         try:
-            path = os.path.join(settings.BASE_DIR, 'chating system', 'Dataset', 'Disease Specialist.csv')
-            with open(path, mode='r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if row['Disease'].strip().lower() == disease.strip().lower():
-                        return row['Specialist'].strip()
+            primary = os.path.join(settings.BASE_DIR, 'data', 'symptom_checker', 'Disease Specialist.csv')
+            fallback = os.path.join(settings.BASE_DIR, 'chating system', 'Dataset', 'Disease Specialist.csv')
+            for path in (primary, fallback):
+                if not os.path.exists(path):
+                    continue
+                with open(path, mode='r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        if row['Disease'].strip().lower() == disease.strip().lower():
+                            return row['Specialist'].strip()
         except Exception as e:
             print(f"Mapping error: {e}")
         return "General Physician"
