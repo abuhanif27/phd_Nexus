@@ -73,6 +73,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const msgData: any = msgResponse.data;
             setMessages(msgData.results?.reverse() || (Array.isArray(msgData) ? msgData.reverse() : []));
             setNextPage(msgData.next || null);
+            apiClient.post(`/api/chat/conversations/${found.id}/mark_as_read/`).catch(() => {});
+            window.dispatchEvent(new Event('chat:read'));
           }
         } else if (userId) {
           const found = results.find((c: Conversation) => c.participants.some((p: any) => p.id === Number(userId)));
@@ -82,6 +84,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const msgData: any = msgResponse.data;
             setMessages(msgData.results?.reverse() || (Array.isArray(msgData) ? msgData.reverse() : []));
             setNextPage(msgData.next || null);
+            apiClient.post(`/api/chat/conversations/${found.id}/mark_as_read/`).catch(() => {});
+            window.dispatchEvent(new Event('chat:read'));
           }
         }
       } else {
@@ -100,6 +104,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data: any = response.data;
       setMessages(data.results?.reverse() || (Array.isArray(data) ? data.reverse() : []));
       setNextPage(data.next || null);
+      // Mark messages as read
+      apiClient.post(`/api/chat/conversations/${conversationId}/mark_as_read/`).catch(() => {});
+      window.dispatchEvent(new Event('chat:read'));
     } catch (error) {
       console.error('Failed to fetch messages:', error);
     }

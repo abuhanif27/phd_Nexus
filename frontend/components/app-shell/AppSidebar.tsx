@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useAuthStore } from '@/features/auth/store';
+import { apiClient } from '@/lib/api/axios';
 
 interface AppSidebarProps {
   isOpen: boolean;
@@ -128,10 +129,25 @@ export function AppSidebar({ isOpen, onNavigate }: AppSidebarProps) {
   const pathname = usePathname();
   const { user } = useAuthStore();
   const [mounted, setMounted] = React.useState(false);
+  const [unreadCount, setUnreadCount] = React.useState(0);
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  React.useEffect(() => {
+    if (!user) return;
+    const fetchUnread = () => {
+      apiClient.get('/api/chat/conversations/unread_count/').then(res => {
+        setUnreadCount(res.data.count || 0);
+      }).catch(() => {});
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    const onRead = () => fetchUnread();
+    window.addEventListener('chat:read', onRead);
+    return () => { clearInterval(interval); window.removeEventListener('chat:read', onRead); };
+  }, [user]);
 
   // Select navigation based on user role
   const navigation =
@@ -182,6 +198,11 @@ export function AppSidebar({ isOpen, onNavigate }: AppSidebarProps) {
                       <span className="line-clamp-1 text-xs opacity-70">{item.description}</span>
                     )}
                   </div>
+                  {item.href === '/messages' && unreadCount > 0 && (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
               );
             })

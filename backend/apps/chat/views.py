@@ -74,3 +74,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conversation = self.get_object()
         conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
         return Response({"status": "marked as read"})
+
+    @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        """Return total unread messages for the current user across all conversations."""
+        count = Message.objects.filter(
+            conversation__participants=request.user,
+            is_read=False,
+        ).exclude(sender=request.user).count()
+        return Response({"count": count})
