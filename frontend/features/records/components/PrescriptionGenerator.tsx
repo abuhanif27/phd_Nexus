@@ -67,7 +67,6 @@ export function PrescriptionGenerator({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate
     const validItems = items.filter(item => item.drug.trim() !== '');
     if (validItems.length === 0) {
       toast({
@@ -88,8 +87,8 @@ export function PrescriptionGenerator({
       });
 
       toast({
-        title: 'Prescription Created',
-        description: `Prescription successfully assigned to ${patientName}.`
+        title: '✅ Prescription Issued',
+        description: `Prescription saved to ${patientName}'s records and notification sent.`
       });
       
       if (onSuccess) onSuccess();
@@ -105,129 +104,137 @@ export function PrescriptionGenerator({
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
-      <Card className="border-2 shadow-lg overflow-hidden bg-slate-50">
-        {/* Prescription Header - "The Beautiful Part" */}
-        <div className="bg-white border-b-4 border-primary/20 p-8 flex justify-between items-start">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center gap-2">
-              <Stethoscope className="w-8 h-8" />
-              NexusCare Medical
-            </h1>
-            <p className="text-muted-foreground font-medium">Digital Prescription Service</p>
-          </div>
-          <div className="text-right">
-            <div className="font-bold text-lg">Dr. {user?.doctor_profile?.name || user?.email}</div>
-            <div className="text-sm text-muted-foreground">{user?.doctor_profile?.specialty}</div>
-            <div className="text-xs text-muted-foreground mt-1">{format(new Date(), 'PPP')}</div>
+    <div className="w-full max-w-4xl mx-auto p-2 sm:p-4">
+      <Card className="border shadow-xl overflow-hidden rounded-2xl">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4 sm:p-6 text-white">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="bg-white/20 p-2 rounded-lg">
+                <Stethoscope className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold">NexusCare Prescription</h1>
+                <p className="text-blue-100 text-xs sm:text-sm">Digital Medical Prescription</p>
+              </div>
+            </div>
+            <div className="text-left sm:text-right text-sm">
+              <div className="font-semibold">Dr. {user?.doctor_profile?.name || user?.email}</div>
+              <div className="text-blue-200 text-xs">{user?.doctor_profile?.specialty}</div>
+              <div className="text-blue-200 text-xs mt-0.5">{format(new Date(), 'PPP')}</div>
+            </div>
           </div>
         </div>
 
-        <CardContent className="p-8 space-y-8 bg-white/50">
-          {/* Patient Info Section */}
-          <div className="flex items-center gap-4 p-4 rounded-xl bg-blue-50/50 border border-blue-100">
-            <div className="bg-blue-600 p-3 rounded-full text-white">
-              <User className="w-6 h-6" />
+        <CardContent className="p-4 sm:p-6 space-y-5 bg-white">
+          {/* Patient Info */}
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 border border-blue-100">
+            <div className="bg-blue-600 p-2 rounded-full text-white shrink-0">
+              <User className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Patient</p>
-              <h3 className="text-xl font-bold text-slate-900">{patientName}</h3>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-blue-600">Patient</p>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">{patientName}</h3>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b pb-2">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                  <Pill className="w-5 h-5 text-blue-600" />
-                  Rx - Medications
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Medications */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm sm:text-base font-bold flex items-center gap-2 text-slate-800">
+                  <Pill className="w-4 h-4 text-blue-600" />
+                  Medications
                 </h3>
                 <Button 
                   type="button" 
                   variant="outline" 
                   size="sm" 
                   onClick={addItem}
-                  className="bg-white hover:bg-blue-50 border-blue-200 text-blue-700"
+                  className="h-8 text-xs bg-white hover:bg-blue-50 border-blue-200 text-blue-700"
                 >
-                  <Plus className="w-4 h-4 mr-1" /> Add Medication
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add
                 </Button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {items.map((item, index) => (
                   <div 
                     key={index} 
-                    className="group relative grid grid-cols-1 md:grid-cols-12 gap-4 p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-all"
+                    className="relative p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-blue-200 transition-colors"
                   >
-                    <div className="md:col-span-4 space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-500 uppercase">Drug Name</Label>
-                      <Input 
-                        placeholder="e.g. Amoxicillin 500mg" 
-                        value={item.drug}
-                        onChange={(e) => updateItem(index, 'drug', e.target.value)}
-                        className="bg-slate-50/50 border-slate-200 focus:bg-white transition-colors"
-                        required
-                      />
-                    </div>
-                    <div className="md:col-span-2 space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-500 uppercase">Dosage</Label>
-                      <Input 
-                        placeholder="1-0-1" 
-                        value={item.dosage}
-                        onChange={(e) => updateItem(index, 'dosage', e.target.value)}
-                        className="bg-slate-50/50 border-slate-200 focus:bg-white"
-                      />
-                    </div>
-                    <div className="md:col-span-2 space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-500 uppercase">Duration</Label>
-                      <Input 
-                        placeholder="7 days" 
-                        value={item.duration}
-                        onChange={(e) => updateItem(index, 'duration', e.target.value)}
-                        className="bg-slate-50/50 border-slate-200 focus:bg-white"
-                      />
-                    </div>
-                    <div className="md:col-span-3 space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-500 uppercase">Instructions</Label>
-                      <Input 
-                        placeholder="After food" 
-                        value={item.instructions}
-                        onChange={(e) => updateItem(index, 'instructions', e.target.value)}
-                        className="bg-slate-50/50 border-slate-200 focus:bg-white"
-                      />
-                    </div>
-                    <div className="md:col-span-1 flex items-end pb-0.5">
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => removeItem(index)}
-                        disabled={items.length === 1}
-                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                      >
-                        <Trash className="w-4 h-4" />
-                      </Button>
+                    <div className="grid grid-cols-2 sm:grid-cols-12 gap-2 sm:gap-3">
+                      <div className="col-span-2 sm:col-span-4 space-y-1">
+                        <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Drug Name</Label>
+                        <Input 
+                          placeholder="e.g. Amoxicillin 500mg" 
+                          value={item.drug}
+                          onChange={(e) => updateItem(index, 'drug', e.target.value)}
+                          className="h-9 text-sm bg-white"
+                          required
+                        />
+                      </div>
+                      <div className="col-span-1 sm:col-span-2 space-y-1">
+                        <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Dosage</Label>
+                        <Input 
+                          placeholder="1-0-1" 
+                          value={item.dosage}
+                          onChange={(e) => updateItem(index, 'dosage', e.target.value)}
+                          className="h-9 text-sm bg-white"
+                        />
+                      </div>
+                      <div className="col-span-1 sm:col-span-2 space-y-1">
+                        <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Duration</Label>
+                        <Input 
+                          placeholder="7 days" 
+                          value={item.duration}
+                          onChange={(e) => updateItem(index, 'duration', e.target.value)}
+                          className="h-9 text-sm bg-white"
+                        />
+                      </div>
+                      <div className="col-span-2 sm:col-span-3 space-y-1">
+                        <Label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Instructions</Label>
+                        <Input 
+                          placeholder="After food" 
+                          value={item.instructions}
+                          onChange={(e) => updateItem(index, 'instructions', e.target.value)}
+                          className="h-9 text-sm bg-white"
+                        />
+                      </div>
+                      <div className="absolute top-2 right-2 sm:static sm:col-span-1 sm:flex sm:items-end sm:pb-0.5">
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => removeItem(index)}
+                          disabled={items.length === 1}
+                          className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                        >
+                          <Trash className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-3">
+            {/* Notes & Expiry */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label className="text-sm font-bold flex items-center gap-2 text-slate-700">
                   <FileText className="w-4 h-4 text-blue-600" />
                   Additional Notes
                 </Label>
                 <Textarea 
-                  placeholder="Additional advice or instructions for the patient..."
+                  placeholder="Additional advice or instructions..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="min-h-[120px] bg-slate-50/50 border-slate-200 focus:bg-white resize-none"
+                  className="min-h-[100px] text-sm bg-slate-50 border-slate-200 focus:bg-white resize-none"
                 />
               </div>
-              <div className="space-y-6">
-                <div className="space-y-3">
+              <div className="space-y-4">
+                <div className="space-y-2">
                   <Label className="text-sm font-bold flex items-center gap-2 text-slate-700">
                     <Calendar className="w-4 h-4 text-blue-600" />
                     Valid Until
@@ -236,33 +243,34 @@ export function PrescriptionGenerator({
                     type="date"
                     value={expiresAt}
                     onChange={(e) => setExpiresAt(e.target.value)}
-                    className="bg-slate-50/50 border-slate-200 focus:bg-white"
+                    className="h-9 text-sm bg-slate-50 border-slate-200 focus:bg-white"
                   />
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                     <Clock className="w-3 h-3" /> Default: 1 month from today
                   </p>
                 </div>
                 
-                <div className="p-4 rounded-lg bg-orange-50 border border-orange-100 space-y-2">
-                  <h4 className="text-xs font-bold text-orange-800 uppercase flex items-center gap-2">
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
+                  <h4 className="text-[10px] font-bold text-amber-800 uppercase flex items-center gap-1.5">
                     <ShieldAlert className="w-3 h-3" />
                     Medical Notice
                   </h4>
-                  <p className="text-[10px] text-orange-700 leading-relaxed">
-                    This is a digitally generated prescription. By submitting, you confirm the medical necessity and correctness of the prescribed medications for the identified patient.
+                  <p className="text-[10px] text-amber-700 leading-relaxed mt-1">
+                    By submitting, you confirm the medical necessity and correctness of the prescribed medications. This will be saved to the patient&apos;s records automatically.
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-6 border-t">
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-4 border-t">
               {onCancel && (
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={onCancel}
                   disabled={loading}
-                  className="border-slate-300"
+                  className="h-9 text-sm"
                 >
                   Discard
                 </Button>
@@ -270,16 +278,16 @@ export function PrescriptionGenerator({
               <Button 
                 type="submit" 
                 disabled={loading}
-                className="px-8 bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200"
+                className="h-9 px-5 text-sm bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200"
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Generating...
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
-                    <Send className="w-4 h-4" />
+                    <Send className="w-3.5 h-3.5" />
                     Issue Prescription
                   </span>
                 )}

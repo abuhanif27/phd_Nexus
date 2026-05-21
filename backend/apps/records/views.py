@@ -312,7 +312,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        """Set doctor automatically and trigger AI reinforcement learning."""
+        """Set doctor automatically, save as patient file record, send notification, and trigger AI reinforcement."""
         prescription = None
         if self.request.user.role == 'doctor':
             try:
@@ -322,6 +322,61 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
                 prescription = serializer.save()
         else:
             prescription = serializer.save()
+
+        # Auto-save prescription as a File record for the patient
+        if prescription and prescription.patient:
+            try:
+                items_text = '\n'.join(
+                    f"  • {item.get('drug', '')} — {item.get('dosage', '')} — {item.get('duration', '')} ({item.get('instructions', '')})"
+                    for item in (prescription.items or [])
+                )
+                doctor_name = prescription.doctor.name if prescription.doctor else 'Unknown'
+                content = (
+                    f"PRESCRIPTION — Dr. {doctor_name}\n"
+                    f"Date: {prescription.ts.strftime('%Y-%m-%d')}\n"
+                    f"Patient: {prescription.patient.name}\n\n"
+                    f"Medications:\n{items_text}\n\n"
+                    f"Notes: {prescription.notes or 'N/A'}\n"
+                    f"Valid Until: {prescription.expires_at.strftime('%Y-%m-%d') if prescription.expires_at else 'N/A'}"
+                )
+                filename = f"prescription_{prescription.id}_{prescription.ts.strftime('%Y%m%d')}.txt"
+                patient_dir = os.path.join(settings.MEDIA_ROOT, str(prescription.patient.id))
+                os.makedirs(patient_dir, exist_ok=True)
+                file_path = os.path.join(patient_dir, filename)
+                with open(file_path, 'w') as f:
+                    f.write(content)
+                File.objects.create(
+                    patient=prescription.patient,
+                    kind='prescription',
+                    filename=filename,
+                    storage_path=file_path,
+                    mime='text/plain',
+                    size=len(content.encode('utf-8')),
+                    extracted_text=content,
+                    clinical_date=prescription.ts.date(),
+                )
+            except Exception as e:
+                print(f"[Prescription] Error saving as file record: {e}")
+
+        # Send professional notification to patient
+        if prescription and prescription.patient:
+            try:
+                from apps.notifications.models import Notification
+                doctor_name = prescription.doctor.name if prescription.doctor else 'Your doctor'
+                drug_list = ', '.join(item.get('drug', '') for item in (prescription.items or []) if item.get('drug'))
+                Notification.objects.create(
+                    user=prescription.patient.user,
+                    channel='in_app',
+                    status='sent',
+                    payload={
+                        'type': 'prescription_created',
+                        'title': 'New Prescription',
+                        'body': f"Dr. {doctor_name} has prescribed: {drug_list}. Please review your records for full details.",
+                        'prescription_id': prescription.id,
+                    }
+                )
+            except Exception as e:
+                print(f"[Prescription] Error sending notification: {e}")
 
         # Reinforcement Learning: Reward the AI for this diagnosis
         if prescription and prescription.doctor and prescription.patient:
@@ -336,9 +391,6 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
                 ).order_by('-ts').first()
 
                 if recent_symptoms:
-                    # We assume the doctor's prescription notes or status contains the diagnosis
-                    # or we can use the 'disease_prediction' if it was recently logged.
-                    # For now, we'll use the notes as the diagnosis source
                     diagnosis = prescription.notes or prescription.status
                     if diagnosis and len(diagnosis) > 3:
                         ai_service = AIService()
