@@ -66,7 +66,6 @@ class ServiceBookingViewSet(viewsets.ModelViewSet):
         return self.queryset.none()
 
     def create(self, request, *args, **kwargs):
-        from apps.consent.models import Consent
         from apps.patients.models import Patient as PatientModel
         
         data = request.data.copy()
@@ -96,35 +95,9 @@ class ServiceBookingViewSet(viewsets.ModelViewSet):
                 else:
                     patient_obj = PatientModel.objects.get(id=patient_id)
                 data['patient'] = patient_obj.id
-                provider_obj = user.service_provider_profile
-                
-                # Verify consent
-                consent = Consent.objects.filter(
-                    patient=patient_obj,
-                    service_provider=provider_obj,
-                    status='active',
-                    expires_at__gt=timezone.now()
-                ).first()
-                
-                if not consent:
-                    return Response(
-                        {'error': 'No active consent from this patient. Please request booking permission first.'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-                
-                # Check if scheduling is allowed in scope
-                scope = consent.scope or {}
-                write_scope = scope.get('write', [])
-                if 'scheduling' not in write_scope and 'appointments' not in write_scope and '*' not in write_scope:
-                    return Response(
-                        {'error': 'Consent does not include scheduling permissions.'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
                     
             except PatientModel.DoesNotExist:
                 return Response({'error': 'Patient not found.'}, status=status.HTTP_404_NOT_FOUND)
-            except ServiceProviderOrganization.DoesNotExist:
-                return Response({'error': 'Provider profile not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)

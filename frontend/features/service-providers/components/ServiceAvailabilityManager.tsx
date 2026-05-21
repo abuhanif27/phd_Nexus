@@ -60,9 +60,10 @@ function fmtTime(timeStr: string): string {
 
 interface ServiceAvailabilityManagerProps {
   activeServices: ProviderService[];
+  refreshTrigger?: number;
 }
 
-export function ServiceAvailabilityManager({ activeServices }: ServiceAvailabilityManagerProps) {
+export function ServiceAvailabilityManager({ activeServices, refreshTrigger }: ServiceAvailabilityManagerProps) {
   const { toast } = useToast();
   const [viewDate, setViewDate] = React.useState(() => new Date());
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
@@ -77,6 +78,26 @@ export function ServiceAvailabilityManager({ activeServices }: ServiceAvailabili
     slots_per_session: 10,
   });
 
+  // Reset form with smart defaults when dialog opens
+  React.useEffect(() => {
+    if (!dialogOpen) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    let startMins = 9 * 60; // default 9:00 AM
+    if (selectedDate === today) {
+      const now = new Date();
+      startMins = Math.ceil((now.getHours() * 60 + now.getMinutes()) / 30) * 30;
+    }
+    const h = Math.floor(startMins / 60) % 24;
+    const m = startMins % 60;
+    const startTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    // End time = start + 8 hours (capped at 23:59)
+    const endMins = Math.min(startMins + 480, 23 * 60 + 59);
+    const eh = Math.floor(endMins / 60);
+    const em = endMins % 60;
+    const endTime = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+    setAvailForm({ service: 'all', start_time: startTime, end_time: endTime, slots_per_session: 10 });
+  }, [dialogOpen, selectedDate]);
+
   const loadAvailabilities = async () => {
     try {
       const data = await serviceProvidersApi.listAvailability();
@@ -89,6 +110,10 @@ export function ServiceAvailabilityManager({ activeServices }: ServiceAvailabili
   React.useEffect(() => {
     loadAvailabilities();
   }, []);
+
+  React.useEffect(() => {
+    if (refreshTrigger) loadAvailabilities();
+  }, [refreshTrigger]);
 
   const gridDays = eachDayOfInterval({
     start: startOfWeek(startOfMonth(viewDate), { weekStartsOn: 1 }),
@@ -235,8 +260,15 @@ export function ServiceAvailabilityManager({ activeServices }: ServiceAvailabili
                       </div>
                       <div className="mt-1 flex flex-wrap gap-2">
                         <Badge variant="outline" className="text-[10px] bg-white">
-                          {slot.slots_per_session} Patients
+                          {slot.booked_count ?? 0} / {slot.slots_per_session} booked
                         </Badge>
+                        {(slot.booked_count ?? 0) >= slot.slots_per_session ? (
+                          <Badge variant="destructive" className="text-[10px]">FULL</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] bg-green-50 text-green-700 border-green-200">
+                            {slot.slots_per_session - (slot.booked_count ?? 0)} open
+                          </Badge>
+                        )}
                         {slot.service ? (
                           <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700 border-blue-100">
                             {activeServices.find(s => s.id === slot.service)?.name || 'Service'}

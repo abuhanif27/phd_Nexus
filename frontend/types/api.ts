@@ -111,6 +111,7 @@ export interface ServiceAvailability {
   start_time: string;
   end_time: string;
   slots_per_session: number;
+  booked_count: number;
   is_active: boolean;
 }
 

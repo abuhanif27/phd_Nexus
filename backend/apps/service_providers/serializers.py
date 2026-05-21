@@ -4,13 +4,26 @@ from .models import ProviderService, ServiceProviderOrganization, ServiceAvailab
 
 
 class ServiceAvailabilitySerializer(serializers.ModelSerializer):
+    booked_count = serializers.SerializerMethodField()
+
     class Meta:
         model = ServiceAvailability
         fields = '__all__'
-        read_only_fields = ['id', 'organization']
+        read_only_fields = ['id', 'organization', 'booked_count']
         extra_kwargs = {
             'service': {'required': False, 'allow_null': True}
         }
+
+    def get_booked_count(self, obj):
+        """Count active bookings for this availability slot."""
+        qs = ServiceBooking.objects.filter(
+            date=obj.date,
+            service__organization=obj.organization,
+            status__in=['pending', 'confirmed'],
+        )
+        if obj.service:
+            qs = qs.filter(service=obj.service)
+        return qs.count()
 
 
 class ServiceBookingSerializer(serializers.ModelSerializer):

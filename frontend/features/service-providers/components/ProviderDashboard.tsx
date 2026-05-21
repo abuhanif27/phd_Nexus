@@ -56,6 +56,7 @@ export function ProviderDashboard() {
   const [bookings, setBookings] = useState<ServiceBooking[]>([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [availabilities, setAvailabilities] = useState<any[]>([]);
+  const [bookingRefresh, setBookingRefresh] = useState(0);
 
   const activeServices = useMemo(() => services.filter(s => s.approval_status === 'approved'), [services]);
   const pendingServices = useMemo(() => services.filter(s => s.approval_status === 'pending'), [services]);
@@ -87,6 +88,7 @@ export function ProviderDashboard() {
       ]);
       setBookings(bookingData);
       setAvailabilities(availData);
+      setBookingRefresh(n => n + 1);
     } catch (err) {
       console.error('Failed to load bookings', err);
     }
@@ -395,7 +397,7 @@ export function ProviderDashboard() {
               </Button>
             </div>
             
-            <ServiceAvailabilityManager activeServices={activeServices} />
+            <ServiceAvailabilityManager activeServices={activeServices} refreshTrigger={bookingRefresh} />
 
             <Card>
               <CardHeader>
