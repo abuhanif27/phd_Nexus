@@ -705,7 +705,12 @@ class AIService:
         """
         # Extract symptoms from text for the RL engine
         analysis = self.analyze_symptoms(text)
-        found_symptoms = [ent['text'] for ent in analysis.get('entities', []) if ent['label'].lower() in ('symptom', 'condition')]
+        found_symptoms = []
+        for ent in analysis.get('entities', []):
+            label = ent.get('label', ent.get('entity_group', '')).lower()
+            if label in ('symptom', 'condition', 'sign_symptom', 'disease_disorder'):
+                found_symptoms.append(ent.get('text', ent.get('word', '')))
+        found_symptoms = [s for s in found_symptoms if s]
         
         # If no specific symptoms found via NER, use the keyword containment fallback
         if not found_symptoms:
