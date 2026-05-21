@@ -111,7 +111,7 @@ export function ServiceAvailabilityManager({ activeServices }: ServiceAvailabili
       const payload = {
         ...availForm,
         date: selectedDate,
-        service: availForm.service === '' ? null : Number(availForm.service),
+        service: availForm.service === 'all' ? null : Number(availForm.service),
       };
       await serviceProvidersApi.createAvailability(payload);
       toast({ title: 'Success', description: 'Availability slot added.' });
@@ -279,7 +279,7 @@ export function ServiceAvailabilityManager({ activeServices }: ServiceAvailabili
                   <SelectValue placeholder="All Services" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">General (All Services)</SelectItem>
+                  <SelectItem value="all">General (All Services)</SelectItem>
                   {activeServices.map(s => (
                     <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
                   ))}
