@@ -106,6 +106,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setNextPage(data.next || null);
       // Mark messages as read
       apiClient.post(`/api/chat/conversations/${conversationId}/mark_as_read/`).catch(() => {});
+      setConversations((prev) =>
+        prev.map(c => c.id === conversationId ? { ...c, unread_count: 0 } : c)
+      );
       window.dispatchEvent(new Event('chat:read'));
     } catch (error) {
       console.error('Failed to fetch messages:', error);
@@ -164,6 +167,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let reconnectTimer: NodeJS.Timeout;
     let reconnectAttempts = 0;
     const MAX_RECONNECT_ATTEMPTS = 5;
+
+    // Suppress WebSocket connection errors from Next.js dev error overlay.
+    // Must use capture phase to intercept before Next.js error overlay does.
+    const suppressWsError = (e: Event) => {
+      if (e.target instanceof WebSocket) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('error', suppressWsError, true);
 
     const connect = () => {
       let baseUrl = env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
@@ -240,7 +253,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         socket.onerror = () => {
-          // Will trigger onclose, which handles fallback
+          // Error suppression handled by capture-phase window listener
           if (socket?.readyState !== WebSocket.CLOSED && socket?.readyState !== WebSocket.CLOSING) {
             socket?.close();
           }
@@ -258,6 +271,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (socket) socket.close();
       clearTimeout(reconnectTimer);
       stopPolling();
+      window.removeEventListener('error', suppressWsError, true);
     };
   }, [user, token, fetchConversations, startPolling, stopPolling]);
 
