@@ -67,9 +67,14 @@ class SymptomCheckerService:
         from django.db.models import Q
         
         clean_spec = specialist_name.split('(')[0].strip()
-        doctors = Doctor.objects.filter(
-            Q(specialty__icontains=clean_spec) | Q(specialty__icontains=clean_spec.replace('ist', ''))
-        ).select_related('user')
+        # Build flexible query to match variations (e.g. Dermatology/Dermatologist/Dermatolog)
+        root = clean_spec.rstrip('y').rstrip('ist').rstrip('olog')
+        q = Q(specialty__icontains=clean_spec) | Q(specialty__icontains=root)
+        # For multi-word specialties like "General Physician", also match first word
+        first_word = clean_spec.split()[0]
+        if len(first_word) > 3:
+            q |= Q(specialty__icontains=first_word)
+        doctors = Doctor.objects.filter(q).select_related('user')
 
         doc_list = []
         for d in doctors:
@@ -81,7 +86,7 @@ class SymptomCheckerService:
                 'location': d.location,
                 'is_verified': d.is_verified
             })
-        return doc_list[:5]
+        return doc_list[:10]
 
     def _load_resources(self):
         """Load datasets and model (Dataset Driven -> Cloud Fallback)."""

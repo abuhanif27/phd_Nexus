@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   BadgeCheck,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Info,
   Loader2,
@@ -280,49 +281,113 @@ export function SymptomChecker() {
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Available Doctors</p>
-                    <div className="grid gap-4">
-                      {result.recommended_doctors && result.recommended_doctors.length > 0 ? (
-                        result.recommended_doctors.map((doc: any) => (
-                          <div key={doc.id} className="flex items-center gap-4 p-4 rounded-xl border bg-white dark:bg-gray-950">
-                            <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center">
-                              <User className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="font-semibold truncate">Dr. {doc.name}</p>
-                                {doc.is_verified && <Badge variant="outline">Verified</Badge>}
-                              </div>
-                              <p className="text-xs text-muted-foreground">{doc.specialty}</p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                                <MapPin className="h-3 w-3" />
-                                {doc.location || "Location not specified"}
-                              </div>
-                            </div>
-                            <Link href={`/doctors/${doc.id}`}>
-                              <Button size="sm" className="bg-blue-600 hover:bg-blue-700">Book</Button>
-                            </Link>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-6 text-center text-sm text-muted-foreground border border-dashed rounded-xl">
-                          No {result.specialist}s available at the moment.
-                          <div className="mt-2">
-                            <Button variant="outline" size="sm" asChild>
-                              <Link href="/doctors">Browse all doctors</Link>
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <DoctorResults doctors={result.recommended_doctors || []} specialist={result.specialist} />
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+const DOCS_PER_PAGE = 3;
+
+function DoctorResults({ doctors, specialist }: { doctors: any[]; specialist: string }) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  const filtered = doctors.filter((doc) =>
+    !search || doc.name.toLowerCase().includes(search.toLowerCase()) || doc.location?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filtered.length / DOCS_PER_PAGE);
+  const paginated = filtered.slice((page - 1) * DOCS_PER_PAGE, page * DOCS_PER_PAGE);
+
+  // Reset page when search changes
+  const handleSearch = (val: string) => { setSearch(val); setPage(1); };
+
+  if (doctors.length === 0) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Available Doctors</p>
+        <div className="p-6 text-center text-sm text-muted-foreground border border-dashed rounded-xl">
+          <AlertTriangle className="mx-auto h-8 w-8 text-amber-400 mb-2" />
+          No {specialist}s available at the moment.
+          <div className="mt-3">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/doctors">Browse All Doctors</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+          Available {specialist}s ({filtered.length})
+        </p>
+        <Button variant="outline" size="sm" asChild className="h-7 text-xs">
+          <Link href="/doctors">Browse All</Link>
+        </Button>
+      </div>
+
+      {doctors.length > 3 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search by name or location..."
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="h-9 pl-9 text-sm rounded-lg"
+          />
+        </div>
+      )}
+
+      <div className="grid gap-3">
+        {paginated.map((doc: any) => (
+          <div key={doc.id} className="flex items-center gap-4 p-4 rounded-xl border bg-white dark:bg-gray-950 hover:border-blue-200 transition-colors">
+            <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+              <User className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold truncate">Dr. {doc.name}</p>
+                {doc.is_verified && <Badge variant="outline" className="text-[10px]">Verified</Badge>}
+              </div>
+              <p className="text-xs text-muted-foreground">{doc.specialty}</p>
+              {doc.location && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                  <MapPin className="h-3 w-3" />
+                  {doc.location}
+                </div>
+              )}
+            </div>
+            <Link href={`/doctors/${doc.id}`}>
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700">Book</Button>
+            </Link>
+          </div>
+        ))}
+        {filtered.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground py-4">No doctors match your search.</p>
+        )}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-1">
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+            <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Prev
+          </Button>
+          <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+            Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
