@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Download NLTK data needed for text summarization
+python -m nltk.downloader -d $HOME/nltk_data punkt punkt_tab stopwords

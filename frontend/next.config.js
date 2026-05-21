@@ -2,6 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  output: 'standalone',
 
   images: {
     formats: ['image/avif', 'image/webp'],
@@ -10,6 +11,11 @@ const nextConfig = {
         protocol: 'http',
         hostname: 'localhost',
         port: '8000',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**',
         pathname: '/media/**',
       },
     ],

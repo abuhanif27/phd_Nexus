@@ -1,0 +1,15 @@
+.venv
+__pycache__
+*.pyc
+.env
+.env.local
+db.sqlite3
+db.sqlite3-journal
+.pytest_cache
+*.log
+pip-*.log
+nohup.out
+media/
+ai_models/*.pt
+tests/
+.git

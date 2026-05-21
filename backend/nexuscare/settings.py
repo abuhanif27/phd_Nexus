@@ -41,6 +41,8 @@ IS_WINDOWS = CURRENT_OS == 'Windows'
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET', 'dev-secret-change-in-production')
+if not os.getenv('DJANGO_SECRET') and os.getenv('DEBUG', '1') != '1':
+    raise ValueError("DJANGO_SECRET must be set in production. Generate with: python -c \"import secrets; print(secrets.token_urlsafe(64))\"")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', '1') == '1'
@@ -82,6 +84,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -133,18 +136,28 @@ CHANNEL_LAYERS = {
 }
 
 # Use in-memory channel layer for testing or if Redis is not running locally
-if 'pytest' in sys.modules or 'test' in sys.argv or not is_redis_running():
+if 'pytest' in sys.modules or 'test' in sys.argv:
+    CHANNEL_LAYERS['default'] = {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    }
+elif not os.getenv('REDIS_URL') and not is_redis_running():
     CHANNEL_LAYERS['default'] = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     }
 
 # Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if os.getenv('DATABASE_URL'):
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.config(default=os.getenv('DATABASE_URL'), conn_max_age=600)
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -176,10 +189,37 @@ USE_TZ = True  # Store UTC in DB, convert to TIME_ZONE for display
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+if os.getenv('USE_CLOUD_STORAGE', '0') != '1':
+    STORAGES = {
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage" if not DEBUG else "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 
 # Media files
 MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
 MEDIA_ROOT = BASE_DIR / os.getenv('MEDIA_ROOT', 'media')
+
+# Cloud file storage (Cloudflare R2 / AWS S3 / Supabase Storage)
+# Set USE_CLOUD_STORAGE=1 in production to store patient records in the cloud
+if os.getenv('USE_CLOUD_STORAGE', '0') == '1':
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage" if not DEBUG else "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', 'nexuscare-records')
+    AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL')  # For R2/Supabase
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'auto')
+    AWS_DEFAULT_ACL = 'private'
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = True  # Signed URLs for private files
+    AWS_QUERYSTRING_EXPIRE = 300  # 5 min signed URL expiry
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -300,3 +340,53 @@ if IS_WINDOWS:
 
 # File signing settings
 FILE_LINK_EXPIRY_SECONDS = 300  # 5 minutes
+
+# --- Production Security Settings ---
+if not DEBUG:
+    # HTTPS/SSL
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # HSTS
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # Other security headers
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
+
+    # CSRF trusted origins
+    CSRF_TRUSTED_ORIGINS = [o for o in CORS_ALLOWED_ORIGINS if o.startswith('https')]
+
+    # Logging
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '{levelname} {asctime} {module} {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'verbose',
+            },
+        },
+        'root': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+        },
+        'loggers': {
+            'django': {
+                'handlers': ['console'],
+                'level': 'WARNING',
+                'propagate': False,
+            },
+        },
+    }

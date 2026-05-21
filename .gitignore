@@ -42,6 +42,7 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+.env.production.local
 
 # Node modules (if any)
 node_modules/
@@ -74,3 +75,11 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Test/debug scripts (root level)
+test_*.py
+check_*.py
+*.log
+pip_install.log
+tsc_errors*.log
+temp_payload.json
