@@ -10,8 +10,20 @@ export interface SavedSummary {
 }
 
 // Get health summary for the current patient
-export async function getHealthSummary(fileIds?: number[]): Promise<HealthSummary & { selected_source_ids?: number[] }> {
-  const params = fileIds ? { file_ids: fileIds.join(',') } : {};
+export async function getHealthSummary(
+  fileIds?: number[],
+  options?: { strict?: boolean; labOnly?: boolean }
+): Promise<HealthSummary & { selected_source_ids?: number[] }> {
+  const params: Record<string, string> = {};
+  if (fileIds && fileIds.length > 0) {
+    params.file_ids = fileIds.join(',');
+  }
+  if (options?.strict) {
+    params.strict = 'true';
+  }
+  if (options?.labOnly) {
+    params.lab_only = 'true';
+  }
   const response = await apiClient.get('/api/health/summary/', { params });
   return response.data;
 }
@@ -35,8 +47,18 @@ export async function deleteSavedSummary(id: number): Promise<{ message: string 
 }
 
 // Get health summary by share token (public access)
-export async function getSharedHealthSummary(shareToken: string): Promise<HealthSummary> {
-  const response = await apiClient.get(`/api/health/summary/?share_token=${shareToken}`);
+export async function getSharedHealthSummary(
+  shareToken: string,
+  options?: { strict?: boolean; labOnly?: boolean }
+): Promise<HealthSummary> {
+  const params: Record<string, string> = { share_token: shareToken };
+  if (options?.strict) {
+    params.strict = 'true';
+  }
+  if (options?.labOnly) {
+    params.lab_only = 'true';
+  }
+  const response = await apiClient.get('/api/health/summary/', { params });
   return response.data;
 }
 
@@ -86,6 +108,16 @@ export async function toggleHealthSummaryShareStatus(
     share_token: shareToken,
     is_active: isActive,
   });
+  return response.data;
+}
+
+// Submit feedback on health summary accuracy (reward/penalty for AI)
+export async function submitHealthSummaryFeedback(data: {
+  is_helpful: boolean;
+  wrong_info?: string;
+  summary_text?: string;
+}): Promise<{ message: string; is_helpful: boolean }> {
+  const response = await apiClient.post('/api/health/summary/feedback/', data);
   return response.data;
 }
 

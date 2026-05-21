@@ -15,7 +15,7 @@ export default function SharedHealthSummaryPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['shared-health-summary', shareToken],
-    queryFn: () => getSharedHealthSummary(shareToken),
+    queryFn: () => getSharedHealthSummary(shareToken, { strict: true, labOnly: true }),
     enabled: !!shareToken,
   });
 

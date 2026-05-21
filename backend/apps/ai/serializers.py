@@ -39,3 +39,11 @@ class HealthSummaryShareSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField(read_only=True)
     expires_at = serializers.DateTimeField(required=False, allow_null=True)
     is_active = serializers.BooleanField(read_only=True)
+
+
+class HealthSummaryFeedbackSerializer(serializers.Serializer):
+    """Serializer for health summary feedback (reward/penalty)."""
+    is_helpful = serializers.BooleanField()
+    summary_id = serializers.IntegerField(required=False, allow_null=True)
+    wrong_info = serializers.CharField(required=False, allow_blank=True)
+    summary_text = serializers.CharField(required=False, allow_blank=True)

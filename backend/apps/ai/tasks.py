@@ -206,7 +206,7 @@ def process_file_ocr(file_id: int) -> Dict:
             
         # --- DOCUMENT CLASSIFICATION & CORRECTION ---
         from apps.ai.services import ai_service
-        classified_kind = ai_service.classify_document(raw_text)
+        classified_kind = ai_service.classify_document(raw_text, filename=file_obj.filename)
         
         if classified_kind != 'other' and classified_kind != file_obj.kind:
             print(f"[OCR] Category mismatch for {file_obj.filename}: User selected '{file_obj.kind}', AI detected '{classified_kind}'. Correcting...")
@@ -346,8 +346,12 @@ def get_or_extract_file_text(file_obj: File) -> str:
     """
     if getattr(file_obj, 'extracted_text', None) and (file_obj.extracted_text or '').strip():
         return (file_obj.extracted_text or '').strip()
-    
-    if not os.path.exists(file_obj.storage_path):
+
+    storage_path = getattr(file_obj, 'storage_path', None)
+    if not storage_path or not isinstance(storage_path, str):
+        return ''
+
+    if not os.path.exists(storage_path):
         return ''
     
     use_hf_api = getattr(settings, 'USE_HF_INFERENCE_API', False)
@@ -363,13 +367,13 @@ def get_or_extract_file_text(file_obj: File) -> str:
             # For general OCR, let's try to ask a broad question if using Donut
             if 'donut' in model_id:
                 raw_text = ai_service._call_hf_inference(
-                    file_obj.storage_path, model_id, 
+                    storage_path, model_id, 
                     task="document-question-answering", 
                     question="What is the text content of this document?"
                 )
             else:
                 # Regular image-to-text
-                response = ai_service._call_hf_inference(file_obj.storage_path, model_id, task="image-to-text")
+                response = ai_service._call_hf_inference(storage_path, model_id, task="image-to-text")
                 if isinstance(response, dict):
                     raw_text = response.get('generated_text', '')
                 elif isinstance(response, str):
@@ -384,7 +388,7 @@ def get_or_extract_file_text(file_obj: File) -> str:
     if not raw_text:
         # PDF (Native text extraction is usually light)
         if _is_pdf_file(file_obj):
-            raw_text = extract_pdf_text(file_obj.storage_path)
+            raw_text = extract_pdf_text(storage_path)
         
         # Image (Local OCR - CAUTION: Heavy)
         elif _is_image_file(file_obj):
@@ -397,7 +401,7 @@ def get_or_extract_file_text(file_obj: File) -> str:
                         reader = ai_service._ocr_reader
                     
                     if reader:
-                        result = reader.readtext(file_obj.storage_path)
+                        result = reader.readtext(storage_path)
                         raw_text = '\n'.join([text[1] for text in result]).strip()
                 except: pass
             elif use_hf_api:
@@ -405,7 +409,7 @@ def get_or_extract_file_text(file_obj: File) -> str:
             
             if not raw_text and Image and pytesseract:
                 try:
-                    image = Image.open(file_obj.storage_path)
+                    image = Image.open(storage_path)
                     raw_text = (pytesseract.image_to_string(image) or '').strip()
                 except: pass
     

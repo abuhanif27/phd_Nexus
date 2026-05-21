@@ -7,11 +7,12 @@ from .views import (
     PatientSummaryView, TextSummaryView,
     HealthSummaryView, HealthInsightsView, HealthSummaryShareView,
     SavedSummaryListView, SymptomCheckView, SymptomListView,
-    AIStatusView
+    AIStatusView, HealthSummaryFeedbackView
 )
 
 urlpatterns = [
     path('health/summary/', HealthSummaryView.as_view(), name='health_summary'),
+    path('health/summary/feedback/', HealthSummaryFeedbackView.as_view(), name='health_summary_feedback'),
     path('health/summary/share/', HealthSummaryShareView.as_view(), name='health_summary_share'),
     path('health/insights/', HealthInsightsView.as_view(), name='health_insights'),
     path('health/saved-summaries/', SavedSummaryListView.as_view(), name='saved_summaries'),

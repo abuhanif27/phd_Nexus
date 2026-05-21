@@ -11,7 +11,8 @@ from .models import AISummary, HealthSummaryShare
 from .serializers import (
     SymptomAnalyzeSerializer, SpecialistPredictSerializer,
     SummaryRequestSerializer, TextSummarySerializer, AISummarySerializer,
-    HealthSummaryShareSerializer, SymptomCheckSerializer
+    HealthSummaryShareSerializer, SymptomCheckSerializer,
+    HealthSummaryFeedbackSerializer
 )
 from .services import ai_service
 from django.utils import timezone
@@ -25,6 +26,63 @@ def _get_patient_or_403(request):
             status=status.HTTP_404_NOT_FOUND
         )
     return request.user.patient_profile, None
+
+
+class HealthSummaryFeedbackView(views.APIView):
+    """
+    POST: Submit feedback on health summary quality.
+    Rewards or penalizes the AI's reinforcement knowledge base.
+
+    When the user says the summary is CORRECT (is_helpful=True):
+      - Extracts symptoms from the summary context
+      - Queries the RL engine for top disease predictions
+      - Rewards those symptom→disease associations
+
+    When the user says the summary is INCORRECT (is_helpful=False):
+      - Extracts symptoms from the flagged summary text or wrong_info
+      - Queries the RL engine for top disease predictions
+      - Penalizes those symptom→disease associations
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = HealthSummaryFeedbackSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        is_helpful = serializer.validated_data['is_helpful']
+        wrong_info = serializer.validated_data.get('wrong_info', '')
+        summary_text = serializer.validated_data.get('summary_text', '')
+        feedback_text = wrong_info or summary_text
+
+        # Extract symptoms from the feedback text
+        found_symptoms = ai_service.rl_engine.get_contained_symptoms(feedback_text) if feedback_text else []
+
+        if not is_helpful:
+            # User flagged the summary as wrong — penalize top disease predictions
+            if found_symptoms:
+                predictions = ai_service.rl_engine.predict(found_symptoms, top_k=3)
+                for disease, score in predictions:
+                    if score > 0:
+                        ai_service.rl_engine.penalize(found_symptoms, disease, penalty_value=0.05)
+                        print(f"[FEEDBACK] Penalized '{disease}' (score={score:.2f}) for unhelpful summary")
+
+            print(f"[FEEDBACK] User reported unhelpful summary. Symptoms: {found_symptoms[:5]}. Context: {feedback_text[:200]}")
+
+        elif is_helpful:
+            # User confirmed summary was helpful — reinforce top predictions
+            if found_symptoms:
+                predictions = ai_service.rl_engine.predict(found_symptoms, top_k=2)
+                for disease, score in predictions:
+                    if score > 0:
+                        ai_service.rl_engine.reward(found_symptoms, disease, reward_value=0.08)
+                        print(f"[FEEDBACK] Rewarded '{disease}' (score={score:.2f}) for helpful summary")
+
+            print(f"[FEEDBACK] User confirmed helpful summary. Symptoms: {found_symptoms[:5]}")
+
+        return Response({
+            'message': 'Feedback recorded. Thank you for helping improve the AI.',
+            'is_helpful': is_helpful
+        }, status=status.HTTP_200_OK)
 
 
 class SymptomAnalyzeView(views.APIView):
@@ -129,8 +187,32 @@ class HealthSummaryView(views.APIView):
                 file_ids = [int(x) for x in file_ids_raw.split(',') if x.strip()]
             except ValueError: pass
 
+        strict_param = request.query_params.get('strict', 'false').lower() in ('1', 'true', 'yes')
+        lab_only_param = request.query_params.get('lab_only', 'false').lower() in ('1', 'true', 'yes')
+        lab_only_fallback = False
+        lab_only_message = ''
+
+        if lab_only_param:
+            if file_ids:
+                lab_count = File.objects.filter(id__in=file_ids, patient=patient, kind='lab').count()
+                if lab_count == 0:
+                    lab_only_param = False
+                    lab_only_fallback = True
+                    lab_only_message = 'No lab reports found in your selection. Using other records instead.'
+            else:
+                lab_count = File.objects.filter(patient=patient, kind='lab').count()
+                if lab_count == 0:
+                    lab_only_param = False
+                    lab_only_fallback = True
+                    lab_only_message = 'No lab reports found. Using other records instead.'
+
         try:
-            result = ai_service.generate_health_summary_from_records(patient.id, file_ids=file_ids)
+            result = ai_service.generate_health_summary_from_records(
+                patient.id,
+                file_ids=file_ids,
+                strict=strict_param,
+                lab_only=lab_only_param,
+            )
             
             # Map results to frontend shape
             conditions = []
@@ -157,7 +239,7 @@ class HealthSummaryView(views.APIView):
                 source_files = File.objects.filter(id__in=used_file_ids, patient=patient)
                 source_files_data = FileSerializer(source_files, many=True).data
 
-            return Response({
+            response_payload = {
                 'vital_signs': [],
                 'conditions': conditions,
                 'medications': medications,
@@ -173,8 +255,14 @@ class HealthSummaryView(views.APIView):
                 'date_range': result.get('date_range', {}),
                 'extracted_vitals': result.get('extracted_vitals', {}),
                 'selected_source_ids': used_file_ids,
-                'source_files': source_files_data
-            })
+                'source_files': source_files_data,
+                'biobert_entities': result.get('biobert_entities', []),
+            }
+            if lab_only_fallback:
+                response_payload['lab_only_fallback'] = True
+                response_payload['lab_only_message'] = lab_only_message
+
+            return Response(response_payload)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
@@ -318,6 +406,7 @@ class HealthSummaryShareView(views.APIView):
             return Response({'error': 'Link not found'}, status=404)
 
 from .symptom_checker import SymptomCheckerService
+
 
 symptom_checker_service = SymptomCheckerService()
 

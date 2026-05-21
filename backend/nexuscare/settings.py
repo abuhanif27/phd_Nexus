@@ -268,8 +268,16 @@ HF_INFERENCE_MAX_RETRIES = int(os.getenv('HF_INFERENCE_MAX_RETRIES', '1'))
 HF_RATE_LIMIT_COOLDOWN_SECONDS = int(os.getenv('HF_RATE_LIMIT_COOLDOWN_SECONDS', '120'))
 HF_LLM_MODEL = os.getenv('HF_LLM_MODEL', 'openai/gpt-oss-20b')
 HF_EMBEDDING_MODEL = os.getenv('HF_EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
-HF_NER_MODEL = os.getenv('HF_NER_MODEL', 'samrawal/bert-base-uncased_clinical-ner')
-HF_OCR_MODEL = os.getenv('HF_OCR_MODEL', 'naver-clova-ix/donut-base-finetuned-docvqa')
+HF_NER_MODEL = os.getenv('HF_NER_MODEL', 'd4data/biomedical-ner-all')
+HF_OCR_MODEL = os.getenv('HF_OCR_MODEL', 'microsoft/trocr-base-printed')
+
+# BioBERT / clinical-NER tuning (used by the report summary feature).
+# Free-tier HF safe defaults: small chunk count, generous cache TTL.
+BIOBERT_MIN_SCORE = float(os.getenv('BIOBERT_MIN_SCORE', '0.5'))         # confidence floor
+BIOBERT_MAX_CHUNKS = int(os.getenv('BIOBERT_MAX_CHUNKS', '5'))           # chunks per request
+BIOBERT_CHUNK_CHARS = int(os.getenv('BIOBERT_CHUNK_CHARS', '1500'))      # chars per chunk
+BIOBERT_CORPUS_MAX_CHARS = int(os.getenv('BIOBERT_CORPUS_MAX_CHARS', '6000'))
+BIOBERT_CACHE_TTL_SECONDS = int(os.getenv('BIOBERT_CACHE_TTL_SECONDS', '86400'))
 
 # Windows-specific: Tesseract OCR path
 if IS_WINDOWS:

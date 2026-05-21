@@ -73,4 +73,8 @@ export interface HealthSummary {
   };
   /** Detailed source files used for this summary. */
   source_files?: MedicalFile[];
+  /** Indicates lab-only summary fallback to non-lab files. */
+  lab_only_fallback?: boolean;
+  /** Message for lab-only fallback. */
+  lab_only_message?: string;
 }

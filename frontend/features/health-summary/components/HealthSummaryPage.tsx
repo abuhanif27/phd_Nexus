@@ -48,7 +48,8 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
-import { getHealthSummary, createHealthSummaryShare, saveHealthSummary } from '../api';
+import { getHealthSummary, createHealthSummaryShare, saveHealthSummary, submitHealthSummaryFeedback } from '../api';
+import { useAuthStore } from '@/features/auth/store';
 import { getMyAppointments } from '@/features/scheduling/api';
 import { getMedicalFiles, getMedicalFileBlob } from '@/features/records/api';
 import { exportHealthSummaryPdf } from '../exportHealthSummaryPdf';
@@ -85,11 +86,15 @@ export function ReportSummaryPage({
   isSharedView = false,
 }: ReportSummaryPageProps = {}) {
   const { toast } = useToast();
+  const { user } = useAuthStore();
+  const isDoctor = user?.role === 'doctor';
   const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
   const [activeFileIds, setActiveFileIds] = useState<number[]>([]);
   const [hasSetDefaults, setHasSetDefaults] = useState(false);
   const [manualTriggered, setManualTriggered] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<'helpful' | 'unhelpful' | null>(null);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
 
   // Document viewing state
   const [viewFile, setViewFile] = useState<{ id: number; filename: string; mime?: string } | null>(
@@ -131,34 +136,45 @@ export function ReportSummaryPage({
     enabled: !isSharedView,
   });
 
-  const files = useMemo(() => {
-    return (filesData?.results || [])
-      .filter((f: any) => f.kind === 'lab')
-      .sort((a, b) => {
-        const dateA = new Date(a.clinical_date || a.created_at).getTime();
-        const dateB = new Date(b.clinical_date || b.created_at).getTime();
-        return dateB - dateA;
-      });
-  }, [filesData]);
+  const allFiles = useMemo(() => filesData?.results || [], [filesData]);
+  const allFilesSorted = useMemo(() => {
+    return [...allFiles].sort((a: any, b: any) => {
+      const dateA = new Date(a.clinical_date || a.created_at).getTime();
+      const dateB = new Date(b.clinical_date || b.created_at).getTime();
+      return dateB - dateA;
+    });
+  }, [allFiles]);
+  const labFiles = useMemo(() => allFilesSorted.filter((f: any) => f.kind === 'lab'), [allFilesSorted]);
+  const otherFiles = useMemo(() => allFilesSorted.filter((f: any) => f.kind !== 'lab'), [allFilesSorted]);
 
   useEffect(() => {
-    if (files.length > 0 && !hasSetDefaults && !isSharedView) {
-      const threeMonthsAgo = subMonths(new Date(), 3);
-      const within3Months = files.filter(f => {
-        const d = new Date(f.clinical_date || f.created_at);
-        return isAfter(d, threeMonthsAgo);
-      });
+    if (!hasSetDefaults && !isSharedView) {
+      const defaults = labFiles.length > 0 ? labFiles : otherFiles;
+      if (defaults.length > 0) {
+        const threeMonthsAgo = subMonths(new Date(), 3);
+        const within3Months = defaults.filter((f) => {
+          const d = new Date(f.clinical_date || f.created_at);
+          return isAfter(d, threeMonthsAgo);
+        });
 
-      // Default logic: include all from last 3 months, AND at least latest 5 if available
-      const defaultIds = new Set(within3Months.map(f => f.id));
-      files.slice(0, 5).forEach(f => defaultIds.add(f.id));
-      
-      const ids = Array.from(defaultIds);
-      setSelectedFileIds(ids);
-      setActiveFileIds(ids);
+        // Default logic: include all from last 3 months, AND at least latest 5 if available
+        const defaultIds = new Set(within3Months.map((f) => f.id));
+        defaults.slice(0, 5).forEach((f) => defaultIds.add(f.id));
+
+        const ids = Array.from(defaultIds);
+        setSelectedFileIds(ids);
+        setActiveFileIds(ids);
+      }
       setHasSetDefaults(true);
     }
-  }, [files, hasSetDefaults, isSharedView]);
+  }, [labFiles, otherFiles, hasSetDefaults, isSharedView]);
+
+  const activeFiles = useMemo(() => {
+    return allFiles.filter(f => activeFileIds.includes(f.id));
+  }, [allFiles, activeFileIds]);
+
+  const labOnly = activeFiles.length > 0 ? activeFiles.every((f: any) => f.kind === 'lab') : labFiles.length > 0;
+  const strictMode = true;
 
   const {
     data: summaryData,
@@ -167,14 +183,14 @@ export function ReportSummaryPage({
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['health-summary', activeFileIds],
-    queryFn: () => getHealthSummary(activeFileIds.length > 0 ? activeFileIds : undefined),
+    queryKey: ['health-summary', activeFileIds, labOnly],
+    queryFn: () =>
+      getHealthSummary(activeFileIds.length > 0 ? activeFileIds : undefined, {
+        strict: strictMode,
+        labOnly,
+      }),
     enabled: !sharedData && (isSharedView || manualTriggered), // Only fetch if shared view or manually triggered
   });
-
-  const activeFiles = useMemo(() => {
-    return files.filter(f => activeFileIds.includes(f.id));
-  }, [files, activeFileIds]);
 
   const [minLoadingUntil, setMinLoadingUntil] = useState<number | null>(null);
   const isSummarizing = isFetching || minLoadingUntil !== null;
@@ -195,6 +211,7 @@ export function ReportSummaryPage({
     setActiveFileIds(selectedFileIds);
     setManualTriggered(true);
     setMinLoadingUntil(Date.now() + 2500);
+    setFeedbackSubmitted(null); // Reset feedback for the new summary
     // refetch is not strictly necessary if activeFileIds changes, but good for safety
     if (activeFileIds.length === selectedFileIds.length && activeFileIds.every(id => selectedFileIds.includes(id))) {
       refetch();
@@ -228,6 +245,32 @@ export function ReportSummaryPage({
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleFeedback = async (isHelpful: boolean) => {
+    if (feedbackSubmitted) return;
+    setFeedbackSubmitting(true);
+    try {
+      await submitHealthSummaryFeedback({
+        is_helpful: isHelpful,
+        summary_text: aiSummary || contentFromRecords.slice(0, 3).join('. '),
+      });
+      setFeedbackSubmitted(isHelpful ? 'helpful' : 'unhelpful');
+      toast({
+        title: isHelpful ? 'Thanks for your feedback!' : 'Feedback recorded',
+        description: isHelpful
+          ? 'Your confirmation helps improve future summaries.'
+          : 'We\'ll use this to make the AI more accurate.',
+      });
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to submit feedback',
+        description: 'Please try again later.',
+      });
+    } finally {
+      setFeedbackSubmitting(false);
     }
   };
 
@@ -530,20 +573,20 @@ export function ReportSummaryPage({
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
                   <FileText className="h-4 w-4" />
-                  Select Documents ({selectedFileIds.length})
+                  Select Reports ({selectedFileIds.length})
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel>Select documents for summary</DropdownMenuLabel>
+                <DropdownMenuLabel>Select reports for summary</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <div className="max-h-64 overflow-y-auto">
-                  {files.length === 0 ? (
+                  {labFiles.length === 0 ? (
                     <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                      No documents found
+                      No lab reports found. Showing other files below.
                     </div>
                   ) : (
-                    files.map(file => (
+                    labFiles.map(file => (
                       <DropdownMenuCheckboxItem
                         key={file.id}
                         checked={selectedFileIds.includes(file.id)}
@@ -552,13 +595,36 @@ export function ReportSummaryPage({
                       >
                         <span className="font-medium">{file.filename}</span>
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(file.clinical_date || file.created_at), 'MMM d, yyyy')} •{' '}
-                          {file.kind.toUpperCase()}
+                          {format(new Date(file.clinical_date || file.created_at), 'MMM d, yyyy')} • Lab
                         </span>
                       </DropdownMenuCheckboxItem>
                     ))
                   )}
                 </div>
+                {otherFiles.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      Other files
+                    </DropdownMenuLabel>
+                    <div className="max-h-40 overflow-y-auto">
+                      {otherFiles.slice(0, 12).map(file => (
+                        <DropdownMenuCheckboxItem
+                          key={file.id}
+                          checked={selectedFileIds.includes(file.id)}
+                          onCheckedChange={() => toggleFileSelection(file.id)}
+                          className="flex flex-col items-start gap-1 py-2"
+                        >
+                          <span className="font-medium">{file.filename}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(file.clinical_date || file.created_at), 'MMM d, yyyy')} •{' '}
+                            {file.kind.toUpperCase()}
+                          </span>
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </div>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <div className="p-2">
                   <Button
@@ -695,6 +761,14 @@ export function ReportSummaryPage({
         </Card>
       )}
 
+      {actualData?.lab_only_fallback && (
+        <Card className="border-2 border-amber-200 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="p-4 text-sm text-amber-900 dark:text-amber-200">
+            {actualData.lab_only_message || 'No lab reports found. Showing other files instead.'}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Loading: beautiful animation while summarizing */}
       {isSummarizing && (
         <Card className="overflow-hidden border-2 border-purple-200 bg-gradient-to-br from-purple-50/90 to-indigo-50/90 shadow-lg dark:from-purple-950/30 dark:to-indigo-950/30">
@@ -760,7 +834,48 @@ export function ReportSummaryPage({
         </Card>
       ) : null}
 
-      {/* Removed Health Score Card */}
+      {/* Feedback: Was this summary helpful? */}
+      {!isSummarizing && actualData && !feedbackSubmitted && isDoctor && (
+        <Card className="border-2 border-purple-100 bg-gradient-to-r from-purple-50/50 to-indigo-50/50 dark:from-purple-950/10 dark:to-indigo-950/10">
+          <CardContent className="flex items-center justify-between p-4">
+            <p className="text-sm font-medium text-muted-foreground">
+              Was this summary helpful?
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/20"
+                onClick={() => handleFeedback(true)}
+                disabled={feedbackSubmitting}
+              >
+                <Activity className="h-4 w-4" />
+                Yes, accurate
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20"
+                onClick={() => handleFeedback(false)}
+                disabled={feedbackSubmitting}
+              >
+                No, incorrect
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Feedback: Already submitted */}
+      {!isSummarizing && feedbackSubmitted && isDoctor && (
+        <Card className="border-2">
+          <CardContent className="p-4 text-center text-sm text-muted-foreground">
+            {feedbackSubmitted === 'helpful'
+              ? 'Thanks for your feedback! Your confirmation helps improve future summaries.'
+              : 'Feedback recorded. We\'ll use this to make the AI more accurate.'}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column - Vitals & Conditions */}

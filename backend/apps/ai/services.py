@@ -1168,16 +1168,21 @@ Return only a list of strings representing bullet points. [/INST]"""
         else:
             self.rl_engine.penalize(symptoms, disease)
 
-    def classify_document(self, text: str) -> str:
-        """Classify document type (lab, prescription, other) based on text content."""
-        if not text:
+    def classify_document(self, text: str, filename: str | None = None) -> str:
+        """Classify document type (lab, prescription, other) based on text or filename."""
+        if not text and not filename:
             return 'other'
-        
-        text = text.lower()
+
+        text = (text or '').lower()
+        name = (filename or '').lower()
         
         # 1. Lab keywords
-        lab_keywords = ['report', 'result', 'test', 'laboratory', 'blood', 'urine', 'analysis', 'serum', 'plasma', 'clinical pathology', 'hb', 'hba1c']
-        if any(kw in text for kw in lab_keywords):
+        lab_keywords = [
+            'report', 'result', 'test', 'laboratory', 'blood', 'urine', 'analysis',
+            'serum', 'plasma', 'clinical pathology', 'hb', 'hba1c', 'ecg', 'ekg',
+            'electrocardiogram', 'cardiology', 'st segment', 'qt interval', 'qrs'
+        ]
+        if any(kw in text for kw in lab_keywords) or any(kw in name for kw in lab_keywords):
             return 'lab'
             
         # 2. Prescription keywords
@@ -1208,22 +1213,27 @@ Return only a list of strings representing bullet points. [/INST]"""
             
         return False
 
-    def _has_medical_context(self, text: str) -> bool:
+    def _has_medical_context(self, text: str, filename: str | None = None) -> bool:
         """Holistically determine if a block of text has legitimate medical relevance."""
-        if not text:
+        if not text and not filename:
             return False
             
         # 1. Check for medical keywords
         for keyword in self.MEDICAL_KEYWORDS:
-            if re.search(keyword, text, re.IGNORECASE):
+            if text and re.search(keyword, text, re.IGNORECASE):
+                return True
+
+        if filename:
+            name = filename.lower()
+            if any(k in name for k in ('ecg', 'ekg', 'cardio', 'lab', 'report', 'result', 'test')):
                 return True
                 
         # 2. Check for numeric values with units (common in vitals/labs)
-        if re.search(r'\d+(\.\d+)?\s*(mg|ml|kg|lb|bpm|c|f|%|g/dl|mmol/l)', text, re.IGNORECASE):
+        if text and re.search(r'\d+(\.\d+)?\s*(mg|ml|kg|lb|bpm|c|f|%|g/dl|mmol/l)', text, re.IGNORECASE):
             return True
             
         # 3. Check for specific medical formatting like BP (120/80)
-        if re.search(r'\d{2,3}\s*/\s*\d{2,3}', text):
+        if text and re.search(r'\d{2,3}\s*/\s*\d{2,3}', text):
             return True
             
         return False
@@ -1367,6 +1377,308 @@ Return only a list of strings representing bullet points. [/INST]"""
             'expires_at': expires_at.isoformat(),
             'is_active': status == 'active'
         }
+
+    # ------------------------------------------------------------------ #
+    # BioBERT / clinical-NER helpers
+    # ------------------------------------------------------------------ #
+    # These call a small (~110M) transformer NER model to extract clinical
+    # entities (DISEASE_DISORDER, MEDICATION, SIGN_SYMPTOM, DOSAGE, ...).
+    #
+    # Free-tier friendly:
+    #   - text is chunked to fit BERT's 512 token limit,
+    #   - per-request chunk count is capped (BIOBERT_MAX_CHUNKS),
+    #   - results are cached in Django's cache backend by content hash
+    #     so re-running the same files costs zero HF credits.
+    #
+    # Two execution modes:
+    #   1. HF Inference API (default, requires HF_TOKEN, runs on HF servers).
+    #   2. Local transformers pipeline (USE_LOCAL_AI_MODELS=True; downloads the
+    #      model on first use and runs it on this machine).
+    # ------------------------------------------------------------------ #
+
+    # Local pipeline cache so we don't reload the model on every call.
+    _local_ner_pipeline = None
+    _local_ner_model_id = None
+
+    def _chunk_for_bert(self, text: str, max_chars: int = 1500) -> List[str]:
+        """
+        Split ``text`` into chunks <= ``max_chars`` chars, preferring sentence
+        boundaries. ``max_chars=1500`` keeps us safely under BERT's 512-token
+        limit (~4 chars per token is a conservative upper bound for OCR text).
+        """
+        if not text:
+            return []
+        text = text.strip()
+        if len(text) <= max_chars:
+            return [text]
+
+        # Prefer sentence-level splits, fall back to whitespace.
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        chunks: List[str] = []
+        current: List[str] = []
+        current_len = 0
+        for sent in sentences:
+            sent = sent.strip()
+            if not sent:
+                continue
+            # If a single sentence is itself too big, hard-split it.
+            if len(sent) > max_chars:
+                if current:
+                    chunks.append(' '.join(current))
+                    current, current_len = [], 0
+                for i in range(0, len(sent), max_chars):
+                    chunks.append(sent[i:i + max_chars])
+                continue
+
+            if current_len + len(sent) + 1 > max_chars:
+                chunks.append(' '.join(current))
+                current = [sent]
+                current_len = len(sent)
+            else:
+                current.append(sent)
+                current_len += len(sent) + 1
+        if current:
+            chunks.append(' '.join(current))
+        return chunks
+
+    def _normalize_ner_response(self, response) -> List[Dict]:
+        """Normalize HF / local pipeline NER responses to a uniform shape."""
+        if not response:
+            return []
+        if not isinstance(response, list):
+            return []
+        normalized = []
+        for ent in response:
+            # huggingface_hub.InferenceClient returns objects with attrs;
+            # the requests fallback returns plain dicts. Support both.
+            if isinstance(ent, dict):
+                group = ent.get('entity_group') or ent.get('entity') or ''
+                word = ent.get('word', '')
+                score = ent.get('score', 0)
+                start = ent.get('start', 0)
+                end = ent.get('end', 0)
+            else:
+                group = getattr(ent, 'entity_group', '') or getattr(ent, 'entity', '') or ''
+                word = getattr(ent, 'word', '')
+                score = getattr(ent, 'score', 0)
+                start = getattr(ent, 'start', 0)
+                end = getattr(ent, 'end', 0)
+
+            word = (word or '').replace('##', '').strip()
+            if not word or not group:
+                continue
+            try:
+                score = float(score)
+            except (TypeError, ValueError):
+                score = 0.0
+
+            normalized.append({
+                'entity_group': str(group).upper(),
+                'word': word,
+                'score': score,
+                'start': int(start) if isinstance(start, (int, float)) else 0,
+                'end': int(end) if isinstance(end, (int, float)) else 0,
+            })
+        return normalized
+
+    def _get_local_ner_pipeline(self, model_id: str):
+        """Lazily build a local transformers pipeline for the NER model."""
+        if AIService._local_ner_pipeline is not None and AIService._local_ner_model_id == model_id:
+            return AIService._local_ner_pipeline
+        if globals().get('pipeline') is None:
+            try:
+                _import_heavy_deps()
+            except Exception:
+                pass
+        pl = globals().get('pipeline')
+        at = globals().get('AutoTokenizer')
+        am = globals().get('AutoModelForTokenClassification')
+        if not (pl and at and am):
+            print("BioBERT local pipeline unavailable: transformers not installed.")
+            return None
+        try:
+            kwargs = {}
+            if self.hf_token:
+                # Allows pulling gated models with the user's HF token.
+                kwargs['token'] = self.hf_token
+            tokenizer = at.from_pretrained(model_id, **kwargs)
+            model = am.from_pretrained(model_id, **kwargs)
+            ner = pl(
+                'token-classification',
+                model=model,
+                tokenizer=tokenizer,
+                aggregation_strategy='simple',
+            )
+            AIService._local_ner_pipeline = ner
+            AIService._local_ner_model_id = model_id
+            print(f"🏠 BioBERT local pipeline ready: {model_id}")
+            return ner
+        except Exception as e:
+            print(f"BioBERT local pipeline init failed: {e}")
+            return None
+
+    def _call_biobert_ner(self, text: str, model_id: str = None) -> List[Dict]:
+        """
+        Run clinical NER on ``text`` and return a list of entity dicts.
+
+        Tries HF Inference API first (free tier compatible). If HF is
+        unavailable / disabled, falls back to a local transformers pipeline
+        when ``USE_LOCAL_AI_MODELS=True``. Returns ``[]`` on any failure.
+        """
+        text = (text or '').strip()
+        if not text:
+            return []
+
+        if not model_id:
+            model_id = getattr(settings, 'HF_NER_MODEL', 'd4data/biomedical-ner-all')
+
+        # Cache lookup keyed by model + content hash. Costs zero credits on
+        # re-runs of the same corpus (typical when the user clicks Generate
+        # Summary multiple times without changing files).
+        import hashlib
+        cache_key = None
+        django_cache = None
+        try:
+            from django.core.cache import cache as _cache
+            django_cache = _cache
+            digest = hashlib.sha1(f"{model_id}::{text}".encode('utf-8', 'ignore')).hexdigest()
+            cache_key = f"biobert_ner:{digest}"
+            cached = django_cache.get(cache_key)
+            if cached is not None:
+                return cached
+        except Exception:
+            django_cache = None
+
+        max_chunks = max(1, int(getattr(settings, 'BIOBERT_MAX_CHUNKS', 5)))
+        chunk_chars = max(200, int(getattr(settings, 'BIOBERT_CHUNK_CHARS', 1500)))
+        chunks = self._chunk_for_bert(text, max_chars=chunk_chars)[:max_chunks]
+        if not chunks:
+            return []
+
+        all_entities: List[Dict] = []
+
+        use_local = (
+            (not self._hf_available())
+            and getattr(settings, 'USE_LOCAL_AI_MODELS', False)
+        )
+
+        if use_local:
+            ner = self._get_local_ner_pipeline(model_id)
+            if ner is not None:
+                for chunk in chunks:
+                    try:
+                        result = ner(chunk)
+                        all_entities.extend(self._normalize_ner_response(result))
+                    except Exception as e:
+                        print(f"BioBERT local NER chunk error: {e}")
+        else:
+            for chunk in chunks:
+                try:
+                    response = self._call_hf_inference(
+                        chunk, model_id, task='token-classification'
+                    )
+                    all_entities.extend(self._normalize_ner_response(response))
+                except Exception as e:
+                    # _call_hf_inference already records HF backoff; just log.
+                    print(f"BioBERT HF NER chunk error: {e}")
+                # If HF entered cooldown mid-loop, stop early to save credits.
+                if not self._hf_available():
+                    break
+
+        # Cache successful (or partial) results for 24h. We cache even empty
+        # lists when HF is unreachable to avoid hammering during outages.
+        if django_cache is not None and cache_key:
+            try:
+                ttl = int(getattr(settings, 'BIOBERT_CACHE_TTL_SECONDS', 86400))
+                django_cache.set(cache_key, all_entities, timeout=ttl)
+            except Exception:
+                pass
+
+        return all_entities
+
+    # Mapping of NER label families -> internal field. Different NER models use
+    # slightly different label inventories so we pool them.
+    _BIOBERT_DISEASE_LABELS = {
+        'DISEASE_DISORDER', 'DISEASE', 'DISORDER', 'CONDITION',
+        'SIGN_SYMPTOM', 'SYMPTOM', 'PROBLEM', 'DIAGNOSIS',
+    }
+    _BIOBERT_MED_LABELS = {
+        'MEDICATION', 'DRUG', 'CHEMICAL', 'TREATMENT',
+    }
+
+    def _entities_to_conditions(self, entities: List[Dict],
+                                min_score: float = None) -> List[Dict]:
+        """Filter NER entities into condition dicts shaped like ``_analyze_condition``."""
+        if min_score is None:
+            min_score = float(getattr(settings, 'BIOBERT_MIN_SCORE', 0.5))
+        seen = set()
+        conditions: List[Dict] = []
+        for ent in entities or []:
+            if (ent.get('score') or 0) < min_score:
+                continue
+            group = (ent.get('entity_group') or '').upper()
+            if group not in self._BIOBERT_DISEASE_LABELS:
+                continue
+            word = (ent.get('word') or '').strip()
+            if len(word) < 3:
+                continue
+            if self._is_noise(word):
+                continue
+            key = word.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                cond = self._analyze_condition(word)
+            except Exception:
+                cond = {
+                    'name': word.capitalize(),
+                    'severity': 'moderate',
+                    'status': 'active',
+                    'diagnosed_date': timezone.now().isoformat(),
+                }
+            cond['source'] = 'biobert'
+            cond['confidence'] = round(float(ent.get('score') or 0.0), 3)
+            conditions.append(cond)
+        return conditions
+
+    def _entities_to_medications(self, entities: List[Dict],
+                                 min_score: float = None) -> List[Dict]:
+        """Filter NER entities into medication dicts shaped like ``_analyze_medication``."""
+        if min_score is None:
+            min_score = float(getattr(settings, 'BIOBERT_MIN_SCORE', 0.5))
+        seen = set()
+        meds: List[Dict] = []
+        for ent in entities or []:
+            if (ent.get('score') or 0) < min_score:
+                continue
+            group = (ent.get('entity_group') or '').upper()
+            if group not in self._BIOBERT_MED_LABELS:
+                continue
+            word = (ent.get('word') or '').strip()
+            if len(word) < 3:
+                continue
+            if self._is_noise(word):
+                continue
+            key = word.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                med = self._analyze_medication(word)
+            except Exception:
+                med = {
+                    'name': word.capitalize(),
+                    'status': 'active',
+                    'dosage': '',
+                    'frequency': '',
+                    'expires_at': (timezone.now() + timedelta(days=30)).isoformat(),
+                    'is_active': True,
+                }
+            med['source'] = 'biobert'
+            med['confidence'] = round(float(ent.get('score') or 0.0), 3)
+            meds.append(med)
+        return meds
 
     def _build_professional_summary(self, corpus: str) -> Tuple[str, List[str]]:
         """
@@ -1618,8 +1930,98 @@ Return only a JSON object with 'summary' (string) and 'key_points' (list of stri
                 'medications': []
             }
 
+    def _extract_prescription_findings(self, corpus: str) -> List[str]:
+        """
+        Extract meaningful findings from prescriptions/encounters when no lab data exists.
+        Pulls drug names, dosages, diagnoses, and clinical notes.
+        """
+        findings = []
+        seen = set()
+
+        for line in corpus.split('\n'):
+            line = line.strip()
+            if not line or self._is_noise(line):
+                continue
+            # Strip the metadata prefix like [2026-05-20] [prescription:13]
+            cleaned = re.sub(r'^\[\d{4}-\d{2}-\d{2}\]\s*\[\w+:\d+\]\s*', '', line)
+            if not cleaned or len(cleaned) < 10:
+                continue
+            # Extract drug entries from prescription lines
+            if cleaned.lower().startswith('prescription:'):
+                body = cleaned[13:].strip()
+                # Skip lines that are just titles like "AI Analyzed Prescription from ..."
+                if re.match(r'^AI Analyzed Prescription', body, re.IGNORECASE):
+                    continue
+                # Look for drug patterns: CapitalizedWord optionally followed by dosage
+                non_drug_words = {'patient', 'take', 'after', 'before', 'with', 'meals',
+                                  'doctor', 'note', 'prescription', 'for', 'the'}
+                drugs = re.findall(
+                    r'([A-Z][a-zA-Z]+(?:\s+\d+\s*m?g)?(?:\s+\d+\s*(?:days?|weeks?))?)',
+                    body
+                )
+                for drug in drugs:
+                    drug = drug.strip()
+                    if len(drug) > 4 and drug.split()[0].lower() not in non_drug_words and drug.lower() not in seen:
+                        seen.add(drug.lower())
+                        findings.append(f"Medication: {drug}")
+                # If no drugs found via regex, use the whole body if it has content
+                if not drugs and len(body) > 15 and not self._is_noise(body):
+                    key = body.lower()[:80]
+                    if key not in seen:
+                        seen.add(key)
+                        findings.append(body[:120])
+            # Extract encounter diagnoses/plans
+            elif cleaned.lower().startswith('encounter:'):
+                diag_match = re.search(r'Diagnosis:\s*([^.]+)', cleaned)
+                if diag_match and diag_match.group(1).strip():
+                    val = diag_match.group(1).strip()
+                    if val.lower() not in seen:
+                        seen.add(val.lower())
+                        findings.append(f"Diagnosis: {val}")
+                plan_match = re.search(r'Plan:\s*([^.]+)', cleaned)
+                if plan_match and plan_match.group(1).strip():
+                    val = plan_match.group(1).strip()
+                    if val.lower() not in seen:
+                        seen.add(val.lower())
+                        findings.append(f"Plan: {val}")
+
+        return findings[:12]
+
+    def _extract_lab_observations(self, corpus: str) -> List[str]:
+        """
+        Extract lab-like observations from text without interpretation.
+        Only returns lines with numeric values and common lab units or flags.
+        """
+        if not corpus:
+            return []
+
+        unit_pattern = r'(?:mg/dl|g/dl|mmol/l|umol/l|u/l|iu/l|ng/ml|pg/ml|%|bpm|mmhg|cells/\w+|x10\^\d+/l)'
+        flag_pattern = r'\b(H|L|HIGH|LOW)\b'
+
+        observations = []
+        lines = [line.strip() for line in corpus.split('\n') if line.strip()]
+        for line in lines:
+            if self._is_noise(line):
+                continue
+            if not re.search(r'\d', line):
+                continue
+            if re.search(unit_pattern, line, re.IGNORECASE) or re.search(flag_pattern, line):
+                cleaned = re.sub(r'\s+', ' ', line).strip()
+                observations.append(cleaned)
+
+        # De-duplicate and cap
+        unique = []
+        seen = set()
+        for obs in observations:
+            key = obs.lower()[:120]
+            if key not in seen:
+                seen.add(key)
+                unique.append(obs)
+        return unique[:12]
+
     def get_recent_records_corpus(self, patient_id: int, max_items: int = 80,
-                                   max_days: int = 365, file_ids: List[int] = None) -> Tuple[str, Dict]:
+                                   max_days: int = 365, file_ids: List[int] = None,
+                                   lab_only: bool = False) -> Tuple[str, Dict]:
         """
         Aggregate all medical records for a patient (most recent by date), build a single text corpus.
         Returns (corpus_text, meta) with meta: source_counts, date_range, record_count.
@@ -1630,28 +2032,29 @@ Return only a JSON object with 'summary' (string) and 'key_points' (list of stri
         # Collect (timestamp, type, text) for unified sorting
         items = []
 
-        for lab in patient.lab_results.filter(ts__gte=cutoff).order_by('-ts')[:max_items]:
-            text = f"Lab: {lab.title}. {lab.summary or ''}"
-            if lab.data:
-                text += " " + " ".join(f"{k}: {v}" for k, v in list(lab.data.items())[:10])
-            items.append((lab.ts, 'lab', lab.id, text))
+        if not lab_only:
+            for lab in patient.lab_results.filter(ts__gte=cutoff).order_by('-ts')[:max_items]:
+                text = f"Lab: {lab.title}. {lab.summary or ''}"
+                if lab.data:
+                    text += " " + " ".join(f"{k}: {v}" for k, v in list(lab.data.items())[:10])
+                items.append((lab.ts, 'lab', lab.id, text))
 
-        for rx in patient.prescriptions.filter(ts__gte=cutoff).order_by('-ts')[:max_items]:
-            parts = ["Prescription:"]
-            for item in (rx.items or [])[:15]:
-                if isinstance(item, dict):
-                    parts.append(
-                        f"{item.get('drug', '')} {item.get('dosage', '')} "
-                        f"{item.get('duration', '')} {item.get('instructions', '')}"
-                    )
-                else:
-                    parts.append(str(item))
-            parts.append(rx.notes or "")
-            items.append((rx.ts, 'prescription', rx.id, " ".join(parts)))
+            for rx in patient.prescriptions.filter(ts__gte=cutoff).order_by('-ts')[:max_items]:
+                parts = ["Prescription:"]
+                for item in (rx.items or [])[:15]:
+                    if isinstance(item, dict):
+                        parts.append(
+                            f"{item.get('drug', '')} {item.get('dosage', '')} "
+                            f"{item.get('duration', '')} {item.get('instructions', '')}"
+                        )
+                    else:
+                        parts.append(str(item))
+                parts.append(rx.notes or "")
+                items.append((rx.ts, 'prescription', rx.id, " ".join(parts)))
 
-        for enc in patient.encounters.filter(ts__gte=cutoff).order_by('-ts')[:max_items]:
-            text = f"Encounter: {enc.notes}. Diagnosis: {enc.diagnosis}. Plan: {enc.plan}"
-            items.append((enc.ts, 'encounter', enc.id, text))
+            for enc in patient.encounters.filter(ts__gte=cutoff).order_by('-ts')[:max_items]:
+                text = f"Encounter: {enc.notes}. Diagnosis: {enc.diagnosis}. Plan: {enc.plan}"
+                items.append((enc.ts, 'encounter', enc.id, text))
 
         # Handle Files with customization support
         file_qs = patient.files.all()
@@ -1669,12 +2072,19 @@ Return only a JSON object with 'summary' (string) and 'key_points' (list of stri
                 models.Q(clinical_date__isnull=True, created_at__gte=three_months_ago)
             ).order_by('-clinical_date', '-created_at')[:5]
 
+        if lab_only:
+            file_qs = file_qs.filter(kind='lab')
+
         for f in file_qs:
-            extracted = get_or_extract_file_text(f)
+            try:
+                extracted = get_or_extract_file_text(f)
+            except Exception as exc:
+                print(f"[SUMMARY] Failed to read file text for {f.id}: {exc}")
+                extracted = ''
             
             # Quietly skip documents that have NO medical context or are pure noise
             # unless they were explicitly labeled as labs/prescriptions by the user
-            if f.kind == 'other' and not self._has_medical_context(extracted):
+            if f.kind == 'other' and file_ids is None and not self._has_medical_context(extracted, filename=f.filename):
                 print(f"[RELEVANCE] Skipping non-medical file: {f.filename}")
                 continue
                 
@@ -1727,13 +2137,19 @@ Return only a JSON object with 'summary' (string) and 'key_points' (list of stri
     def generate_health_summary_from_records(self, patient_id: int,
                                              max_items: int = 80,
                                              max_days: int = 365,
-                                             file_ids: List[int] = None) -> Dict:
+                                             file_ids: List[int] = None,
+                                             strict: bool = False,
+                                             lab_only: bool = False) -> Dict:
         """
         Generate AI health summary from records.
         Supports custom document selection via file_ids.
         """
         corpus, meta = self.get_recent_records_corpus(
-            patient_id, max_items=max_items, max_days=max_days, file_ids=file_ids
+            patient_id,
+            max_items=max_items,
+            max_days=max_days,
+            file_ids=file_ids,
+            lab_only=lab_only,
         )
         if not corpus.strip():
             return {
@@ -1772,8 +2188,21 @@ Return only a JSON object with 'summary' (string) and 'key_points' (list of stri
             
         summary = ' '.join(bullets) if bullets else summary
 
+        # ---------- BioBERT / clinical-NER pass (works in strict mode) -----
+        # We always try BioBERT NER because it gives reliable, domain-trained
+        # entity extraction even when the LLM path is disabled (strict=True
+        # is the default from the frontend).  Free-tier safe: chunked, cached.
+        biobert_entities: List[Dict] = []
+        try:
+            ner_corpus_max = int(getattr(settings, 'BIOBERT_CORPUS_MAX_CHARS', 6000))
+            biobert_entities = self._call_biobert_ner(corpus[:ner_corpus_max])
+        except Exception as e:
+            print(f"BioBERT NER skipped: {e}")
+        biobert_conditions = self._entities_to_conditions(biobert_entities)
+        biobert_medications = self._entities_to_medications(biobert_entities)
+
         # 1. Try HF Inference API for high-quality clinical insights
-        if self._hf_available():
+        if self._hf_available() and not strict:
             model_id = getattr(settings, 'HF_LLM_MODEL', 'openai/gpt-oss-20b')
             max_chars = min(getattr(settings, 'AI_LOCAL_TEXT_MAX_CHARS', 6000), 4000)
             prompt = f"""[INST] You are a senior medical consultant. Analyze these patient records and provide:
@@ -1821,7 +2250,7 @@ Return only a JSON object with:
             except Exception as e:
                 print(f"HF Health Summary Error: {e}")
 
-        if not conditions_list: # If cloud failed or not enabled
+        if not conditions_list and not strict: # If cloud failed or not enabled
             if self.spacy_model:
                 # Local fallback
                 doc = self.spacy_model(corpus)
@@ -1889,14 +2318,53 @@ Return only a JSON object with:
         # Professional summary: clean narrative + key findings (no raw OCR dump)
         professional_narrative = ''
         professional_findings = []
-        try:
-            professional_narrative, professional_findings = self._build_professional_summary(corpus)
-        except Exception as e:
-            print(f"Professional summary error: {e}")
+        if strict:
+            observations = self._extract_lab_observations(corpus)
+            if lab_only:
+                professional_narrative = (
+                    f"Summary based on {meta['source_counts'].get('file', 0)} lab report(s). "
+                    "Findings below are extracted verbatim from reports."
+                )
+            if observations:
+                professional_findings = observations
+                record_highlights = observations
+            else:
+                # No lab observations found – extract meaningful content from
+                # prescriptions/encounters instead of showing raw metadata.
+                sc = meta['source_counts']
+                rx_findings = self._extract_prescription_findings(corpus)
+                professional_findings = rx_findings
+                record_highlights = rx_findings
+                # Build a short narrative describing what records are available
+                parts = []
+                if sc.get('prescription'):
+                    parts.append(f"{sc['prescription']} prescription(s)")
+                if sc.get('encounter'):
+                    parts.append(f"{sc['encounter']} encounter note(s)")
+                if sc.get('file'):
+                    parts.append(f"{sc['file']} uploaded document(s)")
+                if parts:
+                    professional_narrative = (
+                        f"Health summary based on {', '.join(parts)}. "
+                        "Key medications and clinical notes are listed below."
+                    )
+                if not rx_findings:
+                    # Even extraction found nothing useful — provide clean fallback
+                    professional_narrative = (
+                        f"You have {meta['record_count']} medical record(s) on file. "
+                        "Upload lab reports with numeric results for a more detailed analysis."
+                    )
+                    # Prevent fallback to noisy TextRank bullets
+                    record_highlights = [professional_narrative]
+        else:
+            try:
+                professional_narrative, professional_findings = self._build_professional_summary(corpus)
+            except Exception as e:
+                print(f"Professional summary error: {e}")
         
         # CONVERT CONDITIONS TO OBJECTS WITH INTELLIGENT BADGES
         # Only build local conditions if cloud didn't provide them
-        if not conditions_list:
+        if not conditions_list and not strict:
             raw_condition_sources = professional_findings if professional_findings else list(dict.fromkeys(manual_findings))[:10]
             for raw_cond in raw_condition_sources:
                 conditions_list.append(self._analyze_condition(raw_cond))
@@ -1935,7 +2403,7 @@ Return only a JSON object with:
 
         # Medications as objects WITH INTELLIGENT CLINICAL INFERENCE
         # Only build local medications if cloud didn't provide them
-        if not final_medications:
+        if not final_medications and not strict:
             # Attempt to find the most recent record date for a better inference
             ref_date = timezone.now()
             first_date_match = re.search(r'\[(\d{4}-\d{2}-\d{2})\]', corpus)
@@ -1948,22 +2416,65 @@ Return only a JSON object with:
             for med in list(dict.fromkeys(manual_medications))[:12]:
                 final_medications.append(self._analyze_medication(med, record_date=ref_date))
 
-            return {
-                'summary': summary,
-                'bullets': bullets,
-                'professional_summary': professional_narrative or summary,
-                'professional_findings': professional_findings,
-                'record_highlights': record_highlights,
-                'insights': insights[:10],
-                'conditions': conditions_list,
-                'medications': final_medications,
-                'entities': entities_map,
-                'source_counts': meta['source_counts'],
-                'date_range': meta['date_range'],
-                'record_count': meta['record_count'],
-                'extracted_vitals': vitals,
-                'selected_source_ids': meta.get('selected_source_ids', []),
-            }
+        # ---------- Merge BioBERT NER results --------------------------------
+        # Append any conditions / medications discovered by BioBERT that are
+        # not already present (case-insensitive name match). This is what
+        # makes strict mode actually return data instead of an empty list.
+        def _norm_name(d):
+            n = (d.get('name') if isinstance(d, dict) else str(d)) or ''
+            return n.strip().lower()
+
+        existing_cond_names = {_norm_name(c) for c in conditions_list}
+        for c in biobert_conditions:
+            n = _norm_name(c)
+            if n and n not in existing_cond_names:
+                conditions_list.append(c)
+                existing_cond_names.add(n)
+
+        existing_med_names = {_norm_name(m) for m in final_medications}
+        for m in biobert_medications:
+            n = _norm_name(m)
+            if n and n not in existing_med_names:
+                final_medications.append(m)
+                existing_med_names.add(n)
+
+        # Surface BioBERT findings in insights too (top 3 unique strings)
+        if biobert_entities:
+            ner_findings = []
+            seen_lower = set()
+            for ent in biobert_entities:
+                w = (ent.get('word') or '').strip()
+                if not w or w.lower() in seen_lower:
+                    continue
+                seen_lower.add(w.lower())
+                if (ent.get('entity_group') or '') in (
+                    self._BIOBERT_DISEASE_LABELS | self._BIOBERT_MED_LABELS
+                ):
+                    ner_findings.append(w)
+                if len(ner_findings) >= 3:
+                    break
+            if ner_findings:
+                insights.append(
+                    "BioBERT detected: " + ", ".join(ner_findings) + "."
+                )
+
+        return {
+            'summary': summary,
+            'bullets': bullets,
+            'professional_summary': professional_narrative or summary,
+            'professional_findings': professional_findings,
+            'record_highlights': record_highlights,
+            'insights': insights[:10],
+            'conditions': conditions_list,
+            'medications': final_medications,
+            'entities': entities_map,
+            'biobert_entities': biobert_entities,
+            'source_counts': meta['source_counts'],
+            'date_range': meta['date_range'],
+            'record_count': meta['record_count'],
+            'extracted_vitals': vitals,
+            'selected_source_ids': meta.get('selected_source_ids', []),
+        }
 
     def extract_prescription_items(self, text: str) -> List[Dict]:
         """
