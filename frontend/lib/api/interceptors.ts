@@ -12,6 +12,24 @@ let failedQueue: Array<{
 }> = [];
 
 /**
+ * Redirect to login without full page reload.
+ * Uses a custom event so the app can handle it via Next.js router.
+ * Falls back to soft navigation if no listener handles it.
+ */
+let redirecting = false;
+function redirectToLogin() {
+  if (redirecting) return;
+  if (typeof window === 'undefined') return;
+  // Skip if already on login page
+  if (window.location.pathname === '/login') return;
+  redirecting = true;
+  // Dispatch event for app-level listener to handle via router.push
+  window.dispatchEvent(new CustomEvent('auth:logout'));
+  // Reset flag after a short delay to allow future redirects if needed
+  setTimeout(() => { redirecting = false; }, 2000);
+}
+
+/**
  * Process queued requests after token refresh
  */
 const processQueue = (error: AxiosError | null, token: string | null = null) => {
@@ -90,10 +108,7 @@ apiClient.interceptors.response.use(
       processQueue(error, null);
       isRefreshing = false;
 
-      // Redirect to login (client-side)
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+      redirectToLogin();
 
       return Promise.reject(error);
     }
@@ -124,10 +139,7 @@ apiClient.interceptors.response.use(
       clearTokens();
       isRefreshing = false;
 
-      // Redirect to login (client-side)
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+      redirectToLogin();
 
       return Promise.reject(refreshError);
     }
