@@ -49,6 +49,7 @@ export function ProviderBookingModal({
   const [selectedService, setSelectedService] = React.useState<string>('');
   const [selectedDate, setSelectedDate] = React.useState<string>('');
   const [selectedTime, setSelectedTime] = React.useState<string>('');
+  const [selectedAvailabilityId, setSelectedAvailabilityId] = React.useState<number | null>(null);
   const [notes, setNotes] = React.useState('');
 
   // Search patients
@@ -66,14 +67,24 @@ export function ProviderBookingModal({
     return [...new Set(availabilities.map(a => a.date).filter(d => d >= today))].sort();
   }, [availabilities]);
 
-  // Slots for selected date + service
+  // Slots for selected date + service (filter out expired slots for today)
   const slotsForDate = React.useMemo(() => {
     if (!selectedDate) return [];
-    return availabilities.filter(a => {
-      if (a.date !== selectedDate) return false;
-      if (selectedService && a.service && a.service !== Number(selectedService)) return false;
-      return true;
-    });
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const now = new Date();
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+
+    return availabilities
+      .filter(a => {
+        if (a.date !== selectedDate) return false;
+        if (selectedService && a.service && a.service !== Number(selectedService)) return false;
+        // If today, mark slots whose end_time has passed as expired
+        if (a.date === today) {
+          const [eh, em] = a.end_time.split(':').map(Number);
+          if (eh * 60 + em <= nowMins) return false;
+        }
+        return true;
+      });
   }, [availabilities, selectedDate, selectedService]);
 
   const bookMutation = useMutation({
@@ -84,6 +95,7 @@ export function ProviderBookingModal({
         date: selectedDate,
         preferred_time: selectedTime || undefined,
         notes: notes || undefined,
+        availability: selectedAvailabilityId || undefined,
       }),
     onSuccess: () => {
       toast({ title: 'Success', description: 'Patient booked successfully.' });
@@ -102,6 +114,7 @@ export function ProviderBookingModal({
     setSelectedService('');
     setSelectedDate('');
     setSelectedTime('');
+    setSelectedAvailabilityId(null);
     setNotes('');
     onClose();
   };
@@ -170,7 +183,7 @@ export function ProviderBookingModal({
               <Label className="flex items-center gap-2 font-semibold">
                 <Clock className="h-4 w-4" /> 2. Service & Date
               </Label>
-              <Select value={selectedService} onValueChange={(v) => { setSelectedService(v); setSelectedDate(''); setSelectedTime(''); }}>
+              <Select value={selectedService} onValueChange={(v) => { setSelectedService(v); setSelectedDate(''); setSelectedTime(''); setSelectedAvailabilityId(null); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a service" />
                 </SelectTrigger>
@@ -225,7 +238,7 @@ export function ProviderBookingModal({
                       type="button"
                       size="sm"
                       variant={selectedTime === slot.start_time ? 'default' : 'outline'}
-                      onClick={() => setSelectedTime(slot.start_time)}
+                      onClick={() => { setSelectedTime(slot.start_time); setSelectedAvailabilityId(slot.id); }}
                     >
                       {fmtTime(slot.start_time)} – {fmtTime(slot.end_time)}
                       <Badge variant="secondary" className="ml-2 text-[10px]">{slot.slots_per_session} cap</Badge>

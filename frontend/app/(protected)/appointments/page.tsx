@@ -23,7 +23,7 @@ import {
 import { BookingModal } from '@/features/scheduling/components/BookingModal';
 import { apiClient } from '@/lib/api/axios';
 import { useCurrentUser } from '@/features/auth/hooks';
-import type { Appointment, AppointmentStatus } from '@/types/api';
+import type { Appointment, AppointmentStatus, ServiceBooking } from '@/types/api';
 import { format } from 'date-fns';
 
 function AppointmentsContent() {
@@ -60,14 +60,28 @@ function AppointmentsContent() {
     },
   });
 
+  const { data: serviceBookingsRaw } = useQuery({
+    queryKey: ['service-bookings'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/service-providers/bookings/');
+      return Array.isArray(data) ? data : data?.results || [];
+    },
+    enabled: !isDoctor,
+  });
+
   const invalidateAfterChange = () => {
     qc.invalidateQueries({ queryKey: ['appointments'] });
+    qc.invalidateQueries({ queryKey: ['service-bookings'] });
     qc.invalidateQueries({ queryKey: ['doctor', 'availability'] });
   };
 
   const cancelMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiClient.patch(`/api/scheduling/appointments/${id}/cancel/`);
+    mutationFn: async (apt: Appointment) => {
+      if ((apt as any)._isServiceBooking) {
+        await apiClient.patch(`/api/service-providers/bookings/${(apt as any)._serviceBookingId}/`, { status: 'canceled' });
+      } else {
+        await apiClient.patch(`/api/scheduling/appointments/${apt.id}/cancel/`);
+      }
     },
     onSuccess: invalidateAfterChange,
   });
@@ -93,7 +107,52 @@ function AppointmentsContent() {
     onSuccess: invalidateAfterChange,
   });
 
-  const rawAppointments: Appointment[] = Array.isArray(data) ? data : data?.results || [];
+  const deleteMutation = useMutation({
+    mutationFn: async (apt: Appointment) => {
+      if ((apt as any)._isServiceBooking) {
+        await apiClient.delete(`/api/service-providers/bookings/${(apt as any)._serviceBookingId}/`);
+      } else {
+        await apiClient.delete(`/api/scheduling/appointments/${apt.id}/`);
+      }
+    },
+    onSuccess: invalidateAfterChange,
+  });
+
+  const rawAppointments: Appointment[] = (() => {
+    const doctorAppts: Appointment[] = Array.isArray(data) ? data : data?.results || [];
+    if (isDoctor || !serviceBookingsRaw) return doctorAppts;
+
+    // Map service bookings to Appointment shape for unified display
+    const statusMap: Record<string, AppointmentStatus> = {
+      pending: 'scheduled',
+      confirmed: 'scheduled',
+      completed: 'done',
+      canceled: 'canceled',
+      no_show: 'canceled',
+    };
+    const serviceAppts: Appointment[] = (serviceBookingsRaw as ServiceBooking[]).map((b) => ({
+      id: b.id + 1000000, // offset to avoid id collision
+      doctor: 0,
+      patient: b.patient,
+      doctor_name: b.organization_name,
+      specialty: b.service_name,
+      patient_name: b.patient_name,
+      date: b.date,
+      start_time: b.preferred_time || '00:00',
+      end_time: b.preferred_time || '00:00',
+      scheduled_at: b.created_at,
+      status: statusMap[b.status] || 'scheduled',
+      notes: b.notes || undefined,
+      consent_granted: false,
+      consent: null,
+      created_at: b.created_at,
+      _isServiceBooking: true,
+      _originalStatus: b.status,
+      _serviceBookingId: b.id,
+    } as any));
+
+    return [...doctorAppts, ...serviceAppts];
+  })();
 
   const searchLower = searchQuery.toLowerCase().trim();
   const filteredRawAppointments = rawAppointments.filter((a) => {
@@ -104,18 +163,29 @@ function AppointmentsContent() {
         a.patient_code?.toLowerCase().includes(searchLower)
       );
     } else {
-      return a.doctor_name?.toLowerCase().includes(searchLower);
+      return (
+        a.doctor_name?.toLowerCase().includes(searchLower) ||
+        a.specialty?.toLowerCase().includes(searchLower)
+      );
     }
   });
 
   const appointments = filteredRawAppointments.map((a) => {
     if (a.status === 'scheduled') {
+      const now = new Date();
+      // Service bookings with no specific time: expire after the date passes
+      if ((a as any)._isServiceBooking && a.end_time === '00:00') {
+        const endOfDay = new Date(`${a.date}T23:59:59`);
+        if (now > endOfDay) {
+          return { ...a, status: 'expired' as AppointmentStatus };
+        }
+        return a;
+      }
       let endDateTime = new Date(`${a.date}T${a.end_time}`);
       // Cross-midnight: if end_time <= start_time, end is next day
       if (a.end_time <= a.start_time) {
         endDateTime = new Date(endDateTime.getTime() + 24 * 60 * 60 * 1000);
       }
-      const now = new Date();
       if (now > endDateTime) {
         const hoursOver = (now.getTime() - endDateTime.getTime()) / (1000 * 60 * 60);
         if (hoursOver > 24) {
@@ -214,7 +284,7 @@ function AppointmentsContent() {
                   appointment={apt}
                   isDoctor={isDoctor}
                   statusColor={statusColor(apt.status)}
-                  onCancel={() => cancelMutation.mutate(apt.id)}
+                  onCancel={() => cancelMutation.mutate(apt)}
                   onComplete={isDoctor ? () => completeMutation.mutate(apt.id) : undefined}
                   onHold={
                     isDoctor && (apt as any)._isMissed && apt.status === 'scheduled'
@@ -304,6 +374,7 @@ function AppointmentsContent() {
                   isDoctor={isDoctor}
                   statusColor={statusColor(apt.status)}
                   dimmed
+                  onDelete={apt.status === 'expired' ? () => deleteMutation.mutate(apt) : undefined}
                 />
               ))}
             </div>
@@ -376,6 +447,7 @@ function AppointmentCard({
   onComplete,
   onHold,
   onFree,
+  onDelete,
 }: {
   appointment: Appointment;
   isDoctor: boolean;
@@ -385,10 +457,14 @@ function AppointmentCard({
   onComplete?: () => void;
   onHold?: () => void;
   onFree?: () => void;
+  onDelete?: () => void;
 }) {
+  const isServiceBooking = (apt as any)._isServiceBooking;
   const personName = isDoctor
     ? apt.patient_name || 'Patient'
-    : `Dr. ${apt.doctor_name || 'Doctor'}`;
+    : isServiceBooking
+      ? apt.doctor_name || 'Service Provider'
+      : `Dr. ${apt.doctor_name || 'Doctor'}`;
 
   const subtitle = isDoctor ? apt.patient_phone || '' : apt.specialty || '';
 
@@ -411,6 +487,11 @@ function AppointmentCard({
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold">{personName}</h3>
+            {isServiceBooking && (
+              <Badge variant="secondary" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">
+                Service
+              </Badge>
+            )}
             {subtitle && (
               <Badge variant="outline" className="text-xs">
                 {subtitle}
@@ -424,7 +505,9 @@ function AppointmentCard({
             </span>
             <span className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
-              {formatTime(apt.start_time)} – {formatTime(apt.end_time)}
+              {isServiceBooking && apt.start_time === '00:00'
+                ? 'Time to be confirmed'
+                : `${formatTime(apt.start_time)} – ${formatTime(apt.end_time)}`}
             </span>
           </div>
           {apt.notes && (
@@ -480,6 +563,16 @@ function AppointmentCard({
               </Button>
             )}
           </div>
+        )}
+        {onDelete && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 border-red-300 text-xs text-red-600 hover:bg-red-50"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Delete
+          </Button>
         )}
       </div>
     </div>

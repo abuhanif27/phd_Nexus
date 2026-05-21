@@ -49,13 +49,40 @@ export function PatientDashboard() {
   const upcomingAppointments = React.useMemo(() => {
     const results = appointmentsData?.results || [];
     const now = new Date();
-    return results
+    const doctorAppts = results
       .filter((appointment) => {
         const appointmentDate = parseISO(appointment.date);
         return isAfter(appointmentDate, now) || isSameDay(appointmentDate, now);
+      });
+
+    // Include upcoming service bookings as appointment-like entries
+    const serviceAppts: Appointment[] = (serviceBookings || [])
+      .filter(b => b.status !== 'completed' && b.status !== 'canceled')
+      .filter(b => {
+        const d = parseISO(b.date);
+        return isAfter(d, now) || isSameDay(d, now);
       })
+      .map(b => ({
+        id: b.id + 1000000,
+        doctor: 0,
+        patient: b.patient,
+        doctor_name: b.organization_name,
+        specialty: b.service_name,
+        patient_name: b.patient_name,
+        date: b.date,
+        start_time: b.preferred_time || '00:00',
+        end_time: b.preferred_time || '00:00',
+        scheduled_at: b.created_at,
+        status: 'scheduled' as const,
+        consent_granted: false,
+        consent: null,
+        created_at: b.created_at,
+        _isServiceBooking: true,
+      } as any));
+
+    return [...doctorAppts, ...serviceAppts]
       .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-  }, [appointmentsData]);
+  }, [appointmentsData, serviceBookings]);
 
   const insights = insightsData?.insights || [];
 
@@ -96,7 +123,7 @@ export function PatientDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Upcoming Appointments"
-          value={stats?.upcoming_appointments}
+          value={(stats?.upcoming_appointments ?? 0) + (upcomingServiceBookings?.length ?? 0)}
           icon={Calendar}
           loading={statsLoading}
           href="/appointments"
@@ -316,24 +343,28 @@ function StatCard({
 // ========================================
 function AppointmentCard({ appointment, onMessage }: { appointment: Appointment; onMessage: () => void }) {
   const appointmentDate = parseISO(appointment.date);
+  const isServiceBooking = (appointment as any)._isServiceBooking;
   const doctorName = appointment.doctor_name;
   const specialty = appointment.specialty;
 
   return (
     <div className="group relative">
-      <Link href={`/dashboard/appointments/${appointment.id}`}>
+      <Link href={isServiceBooking ? '/appointments' : `/dashboard/appointments/${appointment.id}`}>
         <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-accent pr-12">
           <div className="flex-shrink-0">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Calendar className="h-6 w-6 text-primary" />
+            <div className={`flex h-12 w-12 items-center justify-center rounded-full ${isServiceBooking ? 'bg-blue-500/10' : 'bg-primary/10'}`}>
+              {isServiceBooking ? <Building2 className="h-6 w-6 text-blue-600" /> : <Calendar className="h-6 w-6 text-primary" />}
             </div>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold">{doctorName ? `Dr. ${doctorName}` : 'Doctor Appointment'}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold">{isServiceBooking ? (doctorName || 'Service Provider') : (doctorName ? `Dr. ${doctorName}` : 'Doctor Appointment')}</p>
+              {isServiceBooking && <Badge variant="secondary" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">Service</Badge>}
+            </div>
             <p className="text-sm text-muted-foreground">{specialty}</p>
             <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-3 w-3" />
-              {format(appointmentDate, 'MMM d, yyyy')} at {appointment.start_time}
+              {format(appointmentDate, 'MMM d, yyyy')}{appointment.start_time && appointment.start_time !== '00:00' ? ` at ${appointment.start_time}` : ''}
             </div>
           </div>
         </div>

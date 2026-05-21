@@ -97,6 +97,21 @@ export function PatientServiceMarketplace() {
       return;
     }
 
+    // Block if selected date/time has already passed
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    if (bookingDate < today) {
+      toast({ title: 'Expired', description: 'Please try again with the next day.', variant: 'destructive' });
+      return;
+    }
+    if (bookingDate === today && bookingTime) {
+      const [h, m] = bookingTime.split(':').map(Number);
+      if (h * 60 + m <= now.getHours() * 60 + now.getMinutes()) {
+        toast({ title: 'Expired', description: 'Please try again with the next day.', variant: 'destructive' });
+        return;
+      }
+    }
+
     try {
       setIsBooking(true);
       await serviceProvidersApi.createBooking({
@@ -281,7 +296,7 @@ export function PatientServiceMarketplace() {
                       <div className="space-y-4 py-4">
                         <div className="space-y-2">
                           <label className="text-sm font-medium">Preferred Date</label>
-                          <Input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} />
+                          <Input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium">Preferred Time (Optional)</label>

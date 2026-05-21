@@ -1,3 +1,4 @@
+from django.db import models
 from rest_framework import serializers
 
 from .models import ProviderService, ServiceProviderOrganization, ServiceAvailability, ServiceBooking
@@ -15,15 +16,46 @@ class ServiceAvailabilitySerializer(serializers.ModelSerializer):
         }
 
     def get_booked_count(self, obj):
-        """Count active bookings for this availability slot."""
-        qs = ServiceBooking.objects.filter(
-            date=obj.date,
-            service__organization=obj.organization,
+        """Count active bookings for this specific availability slot."""
+        return ServiceBooking.objects.filter(
+            availability=obj,
             status__in=['pending', 'confirmed'],
-        )
-        if obj.service:
-            qs = qs.filter(service=obj.service)
-        return qs.count()
+        ).count()
+
+    def validate(self, data):
+        request = self.context.get('request')
+        if not request:
+            return data
+
+        org = getattr(request.user, 'service_provider_profile', None)
+        if not org:
+            raise serializers.ValidationError('Provider profile not found.')
+
+        date = data.get('date')
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        service = data.get('service')
+
+        # Check for overlapping sessions on the same date for the same service (or general)
+        existing = ServiceAvailability.objects.filter(organization=org, date=date)
+        if self.instance:
+            existing = existing.exclude(pk=self.instance.pk)
+
+        # Match service scope: if new slot is for a specific service, check against
+        # same-service slots AND general slots. If general, check against all.
+        if service:
+            existing = existing.filter(models.Q(service=service) | models.Q(service__isnull=True))
+
+        for s in existing:
+            # Overlap: new starts before existing ends AND new ends after existing starts
+            if start_time < s.end_time and end_time > s.start_time:
+                raise serializers.ValidationError(
+                    f'This slot overlaps with an existing session '
+                    f'({s.start_time.strftime("%I:%M %p")} – {s.end_time.strftime("%I:%M %p")}). '
+                    f'Sessions cannot overlap on the same date.'
+                )
+
+        return data
 
 
 class ServiceBookingSerializer(serializers.ModelSerializer):

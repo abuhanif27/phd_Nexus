@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import {
   format,
+  addDays,
   addMonths,
   subMonths,
   startOfMonth,
@@ -70,6 +71,7 @@ export function ServiceAvailabilityManager({ activeServices, refreshTrigger }: S
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<number | null>(null);
   const [availabilities, setAvailabilities] = React.useState<ServiceAvailability[]>([]);
+  const [formError, setFormError] = React.useState('');
 
   const [availForm, setAvailForm] = React.useState({
     service: 'all' as string | number,
@@ -80,21 +82,41 @@ export function ServiceAvailabilityManager({ activeServices, refreshTrigger }: S
 
   // Reset form with smart defaults when dialog opens
   React.useEffect(() => {
-    if (!dialogOpen) return;
+    if (!dialogOpen || !selectedDate) return;
+    setFormError('');
     const today = format(new Date(), 'yyyy-MM-dd');
     let startMins = 9 * 60; // default 9:00 AM
+
+    // If today, start from current time (rounded to next 30 min)
     if (selectedDate === today) {
       const now = new Date();
       startMins = Math.ceil((now.getHours() * 60 + now.getMinutes()) / 30) * 30;
     }
+
+    // Advance past any existing slot's end time on this date
+    const existingSlots = availabilities.filter(a => a.date === selectedDate);
+    for (const slot of existingSlots) {
+      const [eh, em] = slot.end_time.split(':').map(Number);
+      const endMins = eh * 60 + em;
+      if (endMins > startMins) startMins = endMins;
+    }
+
+    // If day is fully covered (no room left), move to next day
+    if (startMins >= 23 * 60 + 30) {
+      const nextDay = format(addDays(parseISO(selectedDate), 1), 'yyyy-MM-dd');
+      setSelectedDate(nextDay);
+      setFormError('');
+      return; // useEffect will re-run with the new selectedDate
+    }
+
     const h = Math.floor(startMins / 60) % 24;
     const m = startMins % 60;
     const startTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     // End time = start + 8 hours (capped at 23:59)
     const endMins = Math.min(startMins + 480, 23 * 60 + 59);
-    const eh = Math.floor(endMins / 60);
-    const em = endMins % 60;
-    const endTime = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+    const efh = Math.floor(endMins / 60);
+    const efm = endMins % 60;
+    const endTime = `${String(efh).padStart(2, '0')}:${String(efm).padStart(2, '0')}`;
     setAvailForm({ service: 'all', start_time: startTime, end_time: endTime, slots_per_session: 10 });
   }, [dialogOpen, selectedDate]);
 
@@ -132,6 +154,18 @@ export function ServiceAvailabilityManager({ activeServices, refreshTrigger }: S
 
   const handleSave = async () => {
     if (!selectedDate) return;
+
+    // Block slot creation if the selected time has already passed today
+    const today = format(new Date(), 'yyyy-MM-dd');
+    if (selectedDate === today) {
+      const now = new Date();
+      const [eh, em] = availForm.end_time.split(':').map(Number);
+      if (eh * 60 + em <= now.getHours() * 60 + now.getMinutes()) {
+        setFormError('Please try again with the next day.');
+        return;
+      }
+    }
+
     try {
       const payload = {
         ...availForm,
@@ -139,15 +173,14 @@ export function ServiceAvailabilityManager({ activeServices, refreshTrigger }: S
         service: availForm.service === 'all' ? null : Number(availForm.service),
       };
       await serviceProvidersApi.createAvailability(payload);
+      setFormError('');
       toast({ title: 'Success', description: 'Availability slot added.' });
       setDialogOpen(false);
       loadAvailabilities();
     } catch (err: any) {
-      toast({ 
-        title: 'Error', 
-        description: err?.response?.data?.error || 'Could not save availability.', 
-        variant: 'destructive' 
-      });
+      const d = err?.response?.data;
+      const msg = d?.non_field_errors?.[0] || d?.error || (typeof d === 'string' ? d : 'Could not save availability.');
+      setFormError(msg);
     }
   };
 
@@ -333,6 +366,11 @@ export function ServiceAvailabilityManager({ activeServices, refreshTrigger }: S
               <Input type="number" value={availForm.slots_per_session} onChange={e => setAvailForm({...availForm, slots_per_session: Number(e.target.value)})} />
             </div>
           </div>
+          {formError && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              ⚠️ {formError}
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">Add Slot</Button>
