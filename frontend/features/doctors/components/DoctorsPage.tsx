@@ -111,17 +111,13 @@ export function DoctorsPage() {
       getDoctors({
         search: searchQuery || undefined,
         specialty: selectedSpecialty || undefined,
+        location: locationFilter || undefined,
       }),
   });
 
-  const doctors: Doctor[] = data?.results || [];
+  const doctors: Doctor[] = data?.results || (Array.isArray(data) ? data : []);
 
-  // Apply location filter on client side since backend supports it
-  const filteredDoctors = locationFilter
-    ? doctors.filter((doctor) =>
-        doctor.location?.toLowerCase().includes(locationFilter.toLowerCase())
-      )
-    : doctors;
+  const filteredDoctors = doctors;
 
   // Get doctor initials for avatar
   const getInitials = (name: string) => {

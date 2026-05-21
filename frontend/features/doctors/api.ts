@@ -21,6 +21,7 @@ const BASE = '/api/doctors';
 export async function getDoctors(params?: {
   specialty?: string;
   search?: string;
+  location?: string;
 }): Promise<PaginatedResponse<Doctor>> {
   const { data } = await apiClient.get<PaginatedResponse<Doctor>>(BASE, { params });
   return data;

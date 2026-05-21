@@ -14,9 +14,8 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     """
     List and retrieve doctors.
     Supports filtering by specialty and location.
-    Only shows approved doctors.
     """
-    queryset = Doctor.objects.filter(verification_status='approved')
+    queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter]
@@ -26,10 +25,11 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         
-        # Filter by specialty
+        # Filter by specialty (match variations like Dermatology/Dermatologist)
         specialty = self.request.query_params.get('specialty')
         if specialty:
-            queryset = queryset.filter(specialty__icontains=specialty)
+            root = specialty.rstrip('y').rstrip('ist')
+            queryset = queryset.filter(specialty__icontains=root)
         
         # Filter by location
         location = self.request.query_params.get('location')
