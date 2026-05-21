@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { LocationPicker } from '@/components/ui/LocationPicker';
 import { ServiceAvailabilityManager } from './ServiceAvailabilityManager';
+import { ProviderBookingModal } from './ProviderBookingModal';
 import { cn } from '@/lib/utils/cn';
 import type { ProviderService, ProviderServiceCategory, ServiceProviderOrganization, ServiceBooking } from '@/types/api';
 import { serviceProvidersApi, type ProviderServiceInput } from '../api';
@@ -53,6 +54,8 @@ export function ProviderDashboard() {
 
   // Scheduling States
   const [bookings, setBookings] = useState<ServiceBooking[]>([]);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [availabilities, setAvailabilities] = useState<any[]>([]);
 
   const activeServices = useMemo(() => services.filter(s => s.approval_status === 'approved'), [services]);
   const pendingServices = useMemo(() => services.filter(s => s.approval_status === 'pending'), [services]);
@@ -78,8 +81,12 @@ export function ProviderDashboard() {
 
   const loadBookings = async () => {
     try {
-      const bookingData = await serviceProvidersApi.listBookings();
+      const [bookingData, availData] = await Promise.all([
+        serviceProvidersApi.listBookings(),
+        serviceProvidersApi.listAvailability(),
+      ]);
       setBookings(bookingData);
+      setAvailabilities(availData);
     } catch (err) {
       console.error('Failed to load bookings', err);
     }
@@ -378,9 +385,14 @@ export function ProviderDashboard() {
 
         <TabsContent value="scheduling" className="space-y-6">
           <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-bold tracking-tight">Availability Management</h2>
-              <p className="text-sm text-muted-foreground">Manage your hospital's operational windows for medical services.</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight">Availability Management</h2>
+                <p className="text-sm text-muted-foreground">Manage your hospital's operational windows for medical services.</p>
+              </div>
+              <Button onClick={() => setShowBookingModal(true)} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="mr-2 h-4 w-4" /> Book Patient
+              </Button>
             </div>
             
             <ServiceAvailabilityManager activeServices={activeServices} />
@@ -703,6 +715,14 @@ export function ProviderDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ProviderBookingModal
+        open={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+        activeServices={activeServices}
+        availabilities={availabilities}
+        onSuccess={loadBookings}
+      />
     </div>
   );
 }

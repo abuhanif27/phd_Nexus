@@ -110,7 +110,11 @@ function AppointmentsContent() {
 
   const appointments = filteredRawAppointments.map((a) => {
     if (a.status === 'scheduled') {
-      const endDateTime = new Date(`${a.date}T${a.end_time}`);
+      let endDateTime = new Date(`${a.date}T${a.end_time}`);
+      // Cross-midnight: if end_time <= start_time, end is next day
+      if (a.end_time <= a.start_time) {
+        endDateTime = new Date(endDateTime.getTime() + 24 * 60 * 60 * 1000);
+      }
       const now = new Date();
       if (now > endDateTime) {
         const hoursOver = (now.getTime() - endDateTime.getTime()) / (1000 * 60 * 60);

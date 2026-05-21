@@ -81,16 +81,21 @@ class ServiceBookingViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         elif user.role == 'provider':
-            # Providers must provide patient ID
+            # Providers must provide patient ID or patient_code
             patient_id = data.get('patient')
-            if not patient_id:
+            patient_code = data.get('patient_code')
+            if not patient_id and not patient_code:
                 return Response(
-                    {'error': 'Patient ID is required for provider-initiated booking.'},
+                    {'error': 'Patient ID or patient code is required for provider-initiated booking.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
             try:
-                patient_obj = PatientModel.objects.get(id=patient_id)
+                if patient_code:
+                    patient_obj = PatientModel.objects.get(patient_code__iexact=patient_code)
+                else:
+                    patient_obj = PatientModel.objects.get(id=patient_id)
+                data['patient'] = patient_obj.id
                 provider_obj = user.service_provider_profile
                 
                 # Verify consent

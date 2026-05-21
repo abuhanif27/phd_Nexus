@@ -86,6 +86,8 @@ export const serviceProvidersApi = {
     date: string; 
     preferred_time?: string; 
     notes?: string; 
+    patient?: number;
+    patient_code?: string;
   }): Promise<ServiceBooking> => {
     return api.post('/api/service-providers/bookings/', data);
   },

@@ -7,9 +7,17 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from apps.consent.permissions import IsPatient, IsDoctor
+from apps.consent.permissions import IsPatient, IsDoctor, IsServiceProvider
 from .models import Patient
 from .serializers import PatientSerializer
+
+
+class IsDoctorOrProvider(IsDoctor):
+    """Doctors or service providers can access."""
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return request.user.role in ('doctor', 'provider')
 
 
 class PatientViewSet(viewsets.ModelViewSet):
@@ -124,9 +132,9 @@ class PatientViewSet(viewsets.ModelViewSet):
             ).count(),
         })
 
-    @action(detail=False, methods=['get'], url_path='search', permission_classes=[IsAuthenticated, IsDoctor])
+    @action(detail=False, methods=['get'], url_path='search', permission_classes=[IsAuthenticated, IsDoctorOrProvider])
     def search_patients(self, request):
-        """Search patients by code, name, email, or phone (doctors only)."""
+        """Search patients by code, name, email, or phone (doctors and providers)."""
         query = (request.query_params.get('q') or '').strip()
         if not query:
             return Response({'results': []})
