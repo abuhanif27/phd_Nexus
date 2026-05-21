@@ -36,7 +36,7 @@ import { toast } from 'sonner';
 import React from 'react';
 import { PrescriptionGenerator } from '@/features/records/components/PrescriptionGenerator';
 import { BookingModal } from '@/features/scheduling/components/BookingModal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 export function DoctorPatientsPage() {
   const { data: user, isLoading: userLoading } = useCurrentUser();

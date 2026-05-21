@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getMedicalFiles, parsePrescriptionImage } from '@/features/records/api';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -303,7 +303,6 @@ export default function PrescriptionAnalyzerPage() {
                   <p className="text-[10px] text-muted-foreground italic">Will sync reminders to your mobile app</p>
                 </div>
                 <Switch 
-                  id="auto-save" 
                   checked={autoSave} 
                   onCheckedChange={setAutoSave} 
                 />

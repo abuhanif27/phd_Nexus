@@ -8,11 +8,15 @@ import type { PaginatedResponse } from '@/types/api';
 const BASE = '/api/notifications';
 
 export interface NotificationPayload {
-  type: 'access_request' | 'appointment' | 'lab_result' | 'system';
+  type: 'access_request' | 'appointment' | 'lab_result' | 'system' | 'booking_permission_request';
   message: string;
+  title?: string;
+  body?: string;
   from_doctor_id?: number;
   from_doctor_user_id?: number;
   from_doctor_email?: string;
+  doctor_id?: number;
+  doctor_name?: string;
   patient_id?: number;
 }
 

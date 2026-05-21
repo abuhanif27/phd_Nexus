@@ -34,6 +34,7 @@ export interface Prescription {
   doctor_name?: string;
   items: PrescriptionItem[];
   notes: string;
+  expires_at?: string;
   ts: string;
 }
 
